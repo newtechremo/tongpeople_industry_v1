@@ -1,0 +1,16 @@
+{
+  "name": "tong-pass",
+  "version": "0.1.0",
+  "private": true,
+  "description": "산업현장통 2.0 - QR 기반 출퇴근 관리 서비스",
+  "scripts": {
+    "dev:admin": "pnpm --filter admin-web dev",
+    "dev:mobile": "pnpm --filter worker-mobile start",
+    "build:admin": "pnpm --filter admin-web build",
+    "build:mobile": "pnpm --filter worker-mobile build",
+    "build:shared": "pnpm --filter @tong-pass/shared build",
+    "lint": "pnpm -r lint",
+    "clean": "pnpm -r clean"
+  },
+  "packageManager": "pnpm@9.15.0"
+}
