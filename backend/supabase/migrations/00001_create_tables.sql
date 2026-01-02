@@ -4,7 +4,11 @@
 
 -- ENUM 타입 정의
 CREATE TYPE checkout_policy AS ENUM ('AUTO_8H', 'MANUAL');
-CREATE TYPE user_role AS ENUM ('관리자', '근로자');
+CREATE TYPE user_role AS ENUM ('SUPER_ADMIN', 'SITE_ADMIN', 'TEAM_ADMIN', 'WORKER');
+-- SUPER_ADMIN: 최고 관리자 (회사/본사) - 시스템 전체 설정, 결제 관리
+-- SITE_ADMIN: 현장 관리자 (현장 소장) - 특정 현장의 모든 데이터 관리
+-- TEAM_ADMIN: 팀 관리자 (업체장/오반장) - 자기 팀원 QR 스캔
+-- WORKER: 근로자 (팀원) - QR 생성, 본인 출퇴근 인증
 
 -- =============================================
 -- 1. 회사 테이블 (companies)
@@ -68,11 +72,12 @@ CREATE INDEX idx_partners_company ON partners(company_id);
 CREATE TABLE users (
     id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
     company_id BIGINT REFERENCES companies(id),
-    partner_id BIGINT REFERENCES partners(id),
+    site_id BIGINT REFERENCES sites(id),      -- 현장 관리자/팀 관리자/근로자의 소속 현장
+    partner_id BIGINT REFERENCES partners(id), -- 팀 관리자/근로자의 소속 팀(업체)
     name VARCHAR(50) NOT NULL,
     phone VARCHAR(20),
     birth_date DATE,
-    role user_role DEFAULT '근로자',
+    role user_role DEFAULT 'WORKER',
     is_active BOOLEAN DEFAULT TRUE,
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
@@ -81,6 +86,7 @@ CREATE TABLE users (
 COMMENT ON TABLE users IS '사용자 (관리자/근로자)';
 
 CREATE INDEX idx_users_company ON users(company_id);
+CREATE INDEX idx_users_site ON users(site_id);
 CREATE INDEX idx_users_partner ON users(partner_id);
 
 -- =============================================

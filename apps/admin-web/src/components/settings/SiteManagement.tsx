@@ -1,31 +1,10 @@
 import { useState } from 'react';
 import { Plus, Edit2, Trash2, Building2, MapPin, User, Phone, Clock, Save, X, ChevronRight } from 'lucide-react';
 import type { Site, CheckoutPolicy } from '@tong-pass/shared';
-
-// 임시 데이터
-const initialSites: Site[] = [
-  {
-    id: 1,
-    name: '통하는사람들 서울본사',
-    address: '서울특별시 강남구 테헤란로 123',
-    managerName: '김철수',
-    managerPhone: '02-1234-5678',
-    checkoutPolicy: 'AUTO_8H',
-    autoHours: 8,
-  },
-  {
-    id: 2,
-    name: '통사 대전공장',
-    address: '대전광역시 유성구 대덕대로 456',
-    managerName: '박영희',
-    managerPhone: '042-987-6543',
-    checkoutPolicy: 'MANUAL',
-    autoHours: 8,
-  },
-];
+import { useSites } from '@/context/SitesContext';
 
 export default function SiteManagement() {
-  const [sites, setSites] = useState<Site[]>(initialSites);
+  const { sites, addSite, updateSite, deleteSite } = useSites();
   const [isAdding, setIsAdding] = useState(false);
   const [editingSite, setEditingSite] = useState<Site | null>(null);
   const [formData, setFormData] = useState<Partial<Site>>({
@@ -62,7 +41,7 @@ export default function SiteManagement() {
       checkoutPolicy: formData.checkoutPolicy as CheckoutPolicy,
       autoHours: formData.autoHours || 8,
     };
-    setSites([...sites, site]);
+    addSite(site);
     resetForm();
     setIsAdding(false);
   };
@@ -77,18 +56,16 @@ export default function SiteManagement() {
       alert('현장명을 입력해주세요.');
       return;
     }
-    setSites(sites.map((s) =>
-      s.id === editingSite?.id
-        ? { ...s, ...formData } as Site
-        : s
-    ));
+    if (editingSite) {
+      updateSite(editingSite.id, formData);
+    }
     setEditingSite(null);
     resetForm();
   };
 
   const handleDeleteSite = (id: number) => {
     if (confirm('정말 삭제하시겠습니까?\n해당 현장의 모든 출퇴근 기록도 함께 삭제됩니다.')) {
-      setSites(sites.filter((s) => s.id !== id));
+      deleteSite(id);
     }
   };
 
