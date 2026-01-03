@@ -26,10 +26,9 @@ export default function Header() {
   return (
     <header className="bg-white h-16 shrink-0 z-[50] px-6 flex items-center justify-between shadow-sm border-b border-gray-200">
       {/* Left: Company & Site Selector */}
-      <div className="flex items-center gap-3">
-        <div className="flex items-center gap-2 px-3 py-2 bg-orange-50 rounded-lg border border-orange-200">
-          <span className="text-sm font-bold text-orange-600">(주)통하는사람들</span>
-        </div>
+      <div className="flex items-center gap-4">
+        {/* Company Name - 로고와 동일한 스타일 */}
+        <span className="text-xl font-black text-orange-600">(주)통하는사람들</span>
 
         {/* Site Dropdown */}
         <div className="relative" ref={dropdownRef}>

@@ -2,12 +2,14 @@ import { useState } from 'react';
 import { User, Building2, UserPlus, UsersRound, Receipt } from 'lucide-react';
 import AccountSettings from '@/components/settings/AccountSettings';
 import SiteManagement from '@/components/settings/SiteManagement';
+import AdminManagement from '@/components/settings/AdminManagement';
+import TeamManagement from '@/components/settings/TeamManagement';
 
 const tabs = [
   { id: 'account', label: '계정 설정', icon: User, disabled: false },
   { id: 'sites', label: '현장 관리', icon: Building2, disabled: false },
-  { id: 'admins', label: '관리자 추가', icon: UserPlus, disabled: true },
-  { id: 'teams', label: '팀 추가', icon: UsersRound, disabled: true },
+  { id: 'admins', label: '관리자 관리', icon: UserPlus, disabled: false },
+  { id: 'teams', label: '팀(업체) 관리', icon: UsersRound, disabled: false },
   { id: 'billing', label: '결제라인 추가', icon: Receipt, disabled: true },
 ];
 
@@ -29,9 +31,9 @@ export default function SettingsPage() {
       case 'sites':
         return <SiteManagement />;
       case 'admins':
-        return <ComingSoon title="관리자 추가" description="새로운 관리자를 초대하고 권한을 관리할 수 있습니다." />;
+        return <AdminManagement />;
       case 'teams':
-        return <ComingSoon title="팀 추가" description="팀/부서를 생성하고 근로자를 배정할 수 있습니다." />;
+        return <TeamManagement />;
       case 'billing':
         return <ComingSoon title="결제라인 추가" description="결제 담당자와 청구 정보를 관리할 수 있습니다." />;
       default:

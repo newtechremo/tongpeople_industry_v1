@@ -222,7 +222,7 @@ export default function AccountSettings() {
   // 보기 모드
   if (!isEditing) {
     return (
-      <div className="space-y-8 max-w-2xl">
+      <div className="space-y-8 w-full">
         {/* 헤더 */}
         <div className="flex items-center justify-between">
           <div>
@@ -327,7 +327,7 @@ export default function AccountSettings() {
         </button>
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-6 max-w-2xl">
+      <form onSubmit={handleSubmit} className="space-y-6 w-full">
         {/* 회사명 */}
         <div className="space-y-2">
           <label className="flex items-center gap-2 text-sm font-bold text-slate-700">

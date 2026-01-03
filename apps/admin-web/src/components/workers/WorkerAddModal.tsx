@@ -218,27 +218,33 @@ export default function WorkerAddModal({ isOpen, onClose, teams }: WorkerAddModa
             <p className="text-xs text-slate-400 mt-1">만 65세 이상 자동 판별</p>
           </div>
 
-          {/* 직책/직종 */}
+          {/* 직책/직종 - 선택 또는 직접 입력 */}
           <div>
             <label className="flex items-center gap-2 text-sm font-bold text-slate-700 mb-2">
               <Briefcase size={16} className="text-slate-400" />
               직책/직종 <span className="text-red-500">*</span>
             </label>
-            <select
-              value={formData.position}
-              onChange={(e) => handleChange('position', e.target.value)}
-              className={`w-full px-4 py-3 rounded-xl border ${
-                errors.position ? 'border-red-500' : 'border-gray-200'
-              } focus:outline-none focus:ring-2 focus:ring-orange-500`}
-            >
-              <option value="">직책/직종을 선택하세요</option>
-              {POSITION_OPTIONS.map(pos => (
-                <option key={pos} value={pos}>{pos}</option>
-              ))}
-            </select>
+            <div className="relative">
+              <input
+                type="text"
+                list="position-options"
+                placeholder="선택하거나 직접 입력"
+                value={formData.position}
+                onChange={(e) => handleChange('position', e.target.value)}
+                className={`w-full px-4 py-3 rounded-xl border ${
+                  errors.position ? 'border-red-500' : 'border-gray-200'
+                } focus:outline-none focus:ring-2 focus:ring-orange-500`}
+              />
+              <datalist id="position-options">
+                {POSITION_OPTIONS.map(pos => (
+                  <option key={pos} value={pos} />
+                ))}
+              </datalist>
+            </div>
             {errors.position && (
               <p className="text-sm text-red-500 mt-1">{errors.position}</p>
             )}
+            <p className="text-xs text-slate-400 mt-1">목록에서 선택하거나 직접 입력하세요</p>
           </div>
 
           {/* 시스템 권한 */}
