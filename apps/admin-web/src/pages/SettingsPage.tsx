@@ -1,9 +1,16 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { User, Building2, UserPlus, UsersRound, Receipt } from 'lucide-react';
 import AccountSettings from '@/components/settings/AccountSettings';
 import SiteManagement from '@/components/settings/SiteManagement';
 import AdminManagement from '@/components/settings/AdminManagement';
 import TeamManagement from '@/components/settings/TeamManagement';
+
+// 네비게이션 state 타입 정의
+interface SettingsLocationState {
+  tab?: string;
+  openModal?: 'add';
+}
 
 const tabs = [
   { id: 'account', label: '계정 설정', icon: User, disabled: false },
@@ -14,7 +21,35 @@ const tabs = [
 ];
 
 export default function SettingsPage() {
+  const location = useLocation();
+  const navigate = useNavigate();
+  const locationState = location.state as SettingsLocationState | null;
+
   const [activeTab, setActiveTab] = useState('account');
+  const [autoOpenModal, setAutoOpenModal] = useState<'add' | null>(null);
+
+  // URL state로 전달된 탭과 모달 열기 처리
+  useEffect(() => {
+    if (locationState?.tab) {
+      const validTabs = tabs.filter(t => !t.disabled).map(t => t.id);
+      if (validTabs.includes(locationState.tab)) {
+        setActiveTab(locationState.tab);
+      }
+    }
+    if (locationState?.openModal) {
+      setAutoOpenModal(locationState.openModal);
+    }
+
+    // state 초기화 (뒤로가기 시 다시 모달이 열리지 않도록)
+    if (locationState) {
+      navigate(location.pathname, { replace: true, state: null });
+    }
+  }, [locationState, navigate, location.pathname]);
+
+  // 자식 컴포넌트에서 모달을 닫을 때 autoOpenModal 초기화
+  const handleModalAutoOpened = () => {
+    setAutoOpenModal(null);
+  };
 
   const handleTabClick = (tabId: string, disabled: boolean) => {
     if (disabled) {
@@ -22,6 +57,8 @@ export default function SettingsPage() {
       return;
     }
     setActiveTab(tabId);
+    // 탭 변경 시 autoOpenModal 초기화
+    setAutoOpenModal(null);
   };
 
   const renderTabContent = () => {
@@ -31,9 +68,19 @@ export default function SettingsPage() {
       case 'sites':
         return <SiteManagement />;
       case 'admins':
-        return <AdminManagement />;
+        return (
+          <AdminManagement
+            autoOpenModal={autoOpenModal === 'add'}
+            onModalAutoOpened={handleModalAutoOpened}
+          />
+        );
       case 'teams':
-        return <TeamManagement />;
+        return (
+          <TeamManagement
+            autoOpenModal={autoOpenModal === 'add'}
+            onModalAutoOpened={handleModalAutoOpened}
+          />
+        );
       case 'billing':
         return <ComingSoon title="결제라인 추가" description="결제 담당자와 청구 정보를 관리할 수 있습니다." />;
       default:

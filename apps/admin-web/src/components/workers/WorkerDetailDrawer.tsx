@@ -19,7 +19,7 @@ import {
   Briefcase,
   Flag,
 } from 'lucide-react';
-import type { Worker, EmergencyContact, HealthInfo, WorkerDocument, DocumentType, DOCUMENT_TYPE_LABELS } from '@tong-pass/shared';
+import type { Worker, EmergencyContact, HealthInfo, WorkerDocument, DocumentType } from '@tong-pass/shared';
 
 interface WorkerDetailDrawerProps {
   worker: Worker | null;

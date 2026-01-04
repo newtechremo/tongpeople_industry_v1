@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import {
   Users,
   UserCheck,
@@ -44,6 +44,7 @@ const companyInfo = {
 };
 
 export default function DashboardPage() {
+  const navigate = useNavigate();
   const seniorRatio = Math.round((mockData.seniorCount / mockData.totalWorkers) * 100);
   const [currentNoticeIndex, setCurrentNoticeIndex] = useState(0);
   const [showTrialBanner, setShowTrialBanner] = useState(true);
@@ -57,8 +58,17 @@ export default function DashboardPage() {
     return () => clearInterval(interval);
   }, []);
 
-  const handleQuickAction = (action: string) => {
-    alert(`${action} 기능은 준비중입니다.`);
+  // 빠른 액션 핸들러: 해당 페이지로 이동하면서 모달 자동 열기 상태 전달
+  const handleAddAdmin = () => {
+    navigate('/settings', { state: { tab: 'admins', openModal: 'add' } });
+  };
+
+  const handleAddTeam = () => {
+    navigate('/settings', { state: { tab: 'teams', openModal: 'add' } });
+  };
+
+  const handleAddWorker = () => {
+    navigate('/workers', { state: { openModal: 'add' } });
   };
 
   return (
@@ -169,7 +179,7 @@ export default function DashboardPage() {
           <h3 className="text-sm font-black text-slate-500 uppercase tracking-wider mb-4">빠른 액션</h3>
           <div className="grid grid-cols-3 gap-4">
             <button
-              onClick={() => handleQuickAction('관리자 추가')}
+              onClick={handleAddAdmin}
               className="p-4 bg-blue-50 hover:bg-blue-100 rounded-xl transition-colors group"
             >
               <div className="w-12 h-12 bg-blue-100 group-hover:bg-blue-200 rounded-xl flex items-center justify-center mx-auto mb-3 transition-colors">
@@ -180,7 +190,7 @@ export default function DashboardPage() {
             </button>
 
             <button
-              onClick={() => handleQuickAction('팀 추가')}
+              onClick={handleAddTeam}
               className="p-4 bg-purple-50 hover:bg-purple-100 rounded-xl transition-colors group"
             >
               <div className="w-12 h-12 bg-purple-100 group-hover:bg-purple-200 rounded-xl flex items-center justify-center mx-auto mb-3 transition-colors">
@@ -191,7 +201,7 @@ export default function DashboardPage() {
             </button>
 
             <button
-              onClick={() => handleQuickAction('신규 근로자 초대')}
+              onClick={handleAddWorker}
               className="p-4 bg-green-50 hover:bg-green-100 rounded-xl transition-colors group"
             >
               <div className="w-12 h-12 bg-green-100 group-hover:bg-green-200 rounded-xl flex items-center justify-center mx-auto mb-3 transition-colors">

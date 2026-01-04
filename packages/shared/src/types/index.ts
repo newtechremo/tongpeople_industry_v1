@@ -44,10 +44,17 @@ export interface Site {
 // 팀/협력업체 (Team = Partner)
 // ============================================
 // 이 프로젝트에서 '팀'과 '소속업체'는 동일한 개념
+// DB 테이블: partners
 export interface Team {
   id: number;
-  name: string;                // 팀명 (예: A업체(전기팀))
-  siteId: number;              // 소속 현장
+  companyId?: number;          // 소속 회사 (API 응답에서 필수)
+  siteId?: number | null;      // 소속 현장 (null이면 회사 전체에 속한 팀)
+  name: string;                // 팀명 (예: (주)정이앤지)
+  contactName?: string;        // 담당자 이름
+  contactPhone?: string;       // 담당자 연락처
+  isExternal?: boolean;        // 협력업체 여부 (false면 자체 팀)
+  isActive?: boolean;          // 활성화 여부
+  // 조인/집계 필드
   leaderId?: string;           // 팀 관리자 ID
   leaderName?: string;         // 팀 관리자 이름
   workerCount?: number;        // 팀원 수
@@ -213,3 +220,8 @@ export interface QRPayload {
   expiresAt: number;         // 만료 시간 (Unix timestamp)
   signature: string;         // 위변조 방지 서명
 }
+
+// ============================================
+// 인증 관련 타입 (auth.ts)
+// ============================================
+export * from './auth';

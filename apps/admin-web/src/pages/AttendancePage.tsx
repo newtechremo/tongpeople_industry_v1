@@ -8,7 +8,6 @@ import {
   Download,
   CheckCircle2,
   Crown,
-  Phone,
   RefreshCw,
   ChevronDown,
 } from 'lucide-react';
@@ -274,13 +273,13 @@ export default function AttendancePage() {
     return { total, admins, workers, checkedOut, working, pending, senior };
   }, [filteredData]);
 
-  const handleManualCheckout = (id: number, workerName: string) => {
+  const handleManualCheckout = (_id: number, workerName: string) => {
     if (confirm(`${workerName}님을 수동 퇴근 처리하시겠습니까?`)) {
       alert(`${workerName}님이 퇴근 처리되었습니다.`);
     }
   };
 
-  const handleApprove = (id: number, workerName: string) => {
+  const handleApprove = (_id: number, workerName: string) => {
     if (confirm(`${workerName}님의 출근을 승인하시겠습니까?`)) {
       alert(`${workerName}님의 출근이 승인되었습니다.`);
     }
@@ -492,7 +491,7 @@ export default function AttendancePage() {
                       <div className="flex items-center gap-1.5">
                         <span className="font-bold text-slate-800">{record.workerName}</span>
                         {record.isTeamAdmin && (
-                          <Crown size={16} className="text-blue-500" title="팀 관리자" />
+                          <Crown size={16} className="text-blue-500" />
                         )}
                       </div>
                     </div>

@@ -1,7 +1,13 @@
-import { useState } from 'react';
-import { Plus, Edit2, Trash2, Users, Building2, Handshake, User, ChevronRight } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Plus, Edit2, Trash2, Users, Building2, Handshake, User } from 'lucide-react';
 import { useSites } from '@/context/SitesContext';
 import TeamAddModal from './TeamAddModal';
+
+// Props 타입 정의
+interface TeamManagementProps {
+  autoOpenModal?: boolean;
+  onModalAutoOpened?: () => void;
+}
 
 // 팀 타입 정의
 interface Team {
@@ -81,11 +87,22 @@ const mockTeams: Team[] = [
   },
 ];
 
-export default function TeamManagement() {
+export default function TeamManagement({
+  autoOpenModal = false,
+  onModalAutoOpened,
+}: TeamManagementProps) {
   const { sites } = useSites();
   const [teams, setTeams] = useState<Team[]>(mockTeams);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [filterSiteId, setFilterSiteId] = useState<number | 'ALL'>('ALL');
+
+  // autoOpenModal prop이 true이면 모달 자동 열기
+  useEffect(() => {
+    if (autoOpenModal) {
+      setIsAddModalOpen(true);
+      onModalAutoOpened?.();
+    }
+  }, [autoOpenModal, onModalAutoOpened]);
 
   // 필터링된 팀 목록
   const filteredTeams = filterSiteId === 'ALL'

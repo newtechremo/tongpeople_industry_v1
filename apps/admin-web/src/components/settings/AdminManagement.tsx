@@ -1,6 +1,12 @@
-import { useState } from 'react';
-import { Crown, Search, MoreVertical, UserPlus, Building2, Trash2, Edit2 } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Crown, Search, UserPlus, Building2, Trash2, Edit2 } from 'lucide-react';
 import AdminAddModal from './AdminAddModal';
+
+// Props 타입 정의
+interface AdminManagementProps {
+  autoOpenModal?: boolean;
+  onModalAutoOpened?: () => void;
+}
 
 // Mock 관리자 데이터
 interface Admin {
@@ -54,9 +60,20 @@ const mockAdmins: Admin[] = [
   },
 ];
 
-export default function AdminManagement() {
+export default function AdminManagement({
+  autoOpenModal = false,
+  onModalAutoOpened,
+}: AdminManagementProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+
+  // autoOpenModal prop이 true이면 모달 자동 열기
+  useEffect(() => {
+    if (autoOpenModal) {
+      setIsAddModalOpen(true);
+      onModalAutoOpened?.();
+    }
+  }, [autoOpenModal, onModalAutoOpened]);
 
   // 필터링
   const filteredAdmins = mockAdmins.filter(admin => {
@@ -138,7 +155,7 @@ export default function AdminManagement() {
                   <div className="flex items-center gap-2">
                     <span className="font-bold text-slate-800">{admin.name}</span>
                     {admin.role === 'SUPER_ADMIN' && (
-                      <Crown size={16} className="text-yellow-500" title="최고 관리자" />
+                      <Crown size={16} className="text-yellow-500" />
                     )}
                   </div>
                   {admin.email && (

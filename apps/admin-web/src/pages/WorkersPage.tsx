@@ -1,4 +1,5 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import {
   UserPlus,
   Search,
@@ -18,6 +19,11 @@ import type { Worker, Team } from '@tong-pass/shared';
 import WorkerAddModal from '@/components/workers/WorkerAddModal';
 import WorkerDetailModal from '@/components/workers/WorkerDetailModal';
 import WorkerExcelUploadModal from '@/components/workers/WorkerExcelUploadModal';
+
+// 네비게이션 state 타입 정의
+interface WorkersLocationState {
+  openModal?: 'add';
+}
 
 // Mock 데이터: 팀(업체) 목록
 const mockTeams: Team[] = [
@@ -86,6 +92,10 @@ function StatusBadge({ status }: { status: Worker['status'] }) {
 }
 
 export default function WorkersPage() {
+  const location = useLocation();
+  const navigate = useNavigate();
+  const locationState = location.state as WorkersLocationState | null;
+
   // 필터 상태
   const [searchQuery, setSearchQuery] = useState('');
   const [teamFilter, setTeamFilter] = useState<number | 'ALL'>('ALL');
@@ -98,6 +108,16 @@ export default function WorkersPage() {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isExcelModalOpen, setIsExcelModalOpen] = useState(false);
   const [selectedWorker, setSelectedWorker] = useState<Worker | null>(null);
+
+  // URL state로 전달된 모달 열기 처리
+  useEffect(() => {
+    if (locationState?.openModal === 'add') {
+      setIsAddModalOpen(true);
+
+      // state 초기화 (뒤로가기 시 다시 모달이 열리지 않도록)
+      navigate(location.pathname, { replace: true, state: null });
+    }
+  }, [locationState, navigate, location.pathname]);
 
   // 필터링된 근로자 목록
   const filteredWorkers = useMemo(() => {
@@ -384,11 +404,11 @@ export default function WorkersPage() {
                       <span className="font-bold text-slate-800">{worker.name}</span>
                       {/* 현장 관리자: 금색 왕관 */}
                       {worker.role === 'SITE_ADMIN' && (
-                        <Crown size={16} className="text-yellow-500" title="현장 관리자" />
+                        <Crown size={16} className="text-yellow-500" />
                       )}
                       {/* 팀 관리자: 파란색 왕관 */}
                       {worker.role === 'TEAM_ADMIN' && (
-                        <Crown size={16} className="text-blue-500" title="팀 관리자" />
+                        <Crown size={16} className="text-blue-500" />
                       )}
                       {/* 고령 근로자: 지팡이 아이콘 */}
                       {worker.isSenior && (

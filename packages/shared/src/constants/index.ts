@@ -34,13 +34,7 @@ export const CHECKOUT_POLICY_LABELS = {
   MANUAL: '수동 인증',
 } as const;
 
-// ============================================
-// 역할 라벨
-// ============================================
-export const USER_ROLE_LABELS = {
-  관리자: '관리자',
-  근로자: '근로자',
-} as const;
+// 역할 라벨은 types/index.ts에서 정의됨 (USER_ROLE_LABELS)
 
 // ============================================
 // 대시보드 차트 색상
