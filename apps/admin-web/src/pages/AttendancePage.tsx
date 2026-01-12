@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect, useCallback } from 'react';
 import {
   Calendar,
   Clock,
@@ -11,6 +11,10 @@ import {
   RefreshCw,
   ChevronDown,
 } from 'lucide-react';
+import { useAuth } from '@/context/AuthContext';
+import { getAttendanceRecords } from '@/api/attendance';
+import { getPartners } from '@/api/partners';
+import { getWorkDate } from '@tong-pass/shared';
 
 // 팀별 색상 매핑
 const TEAM_COLORS: Record<string, { bg: string; border: string; text: string }> = {
@@ -242,14 +246,83 @@ function StatusBadge({ status }: { status: AttendanceStatus }) {
 }
 
 export default function AttendancePage() {
-  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
+  const { user } = useAuth();
+
+  // 데이터 상태
+  const [attendanceData, setAttendanceData] = useState<AttendanceRecord[]>(mockAttendanceData);
+  const [teamList, setTeamList] = useState<string[]>(teams);
+  const [isLoading, setIsLoading] = useState(false);
+  const [useMockData, setUseMockData] = useState(true);
+  const [lastUpdated, setLastUpdated] = useState(new Date());
+
+  // 필터 상태
+  const [selectedDate, setSelectedDate] = useState(getWorkDate());
   const [selectedTeam, setSelectedTeam] = useState('전체 팀');
   const [searchTerm, setSearchTerm] = useState('');
-  const [lastUpdated] = useState(new Date());
+
+  // 데이터 로드
+  const loadData = useCallback(async () => {
+    if (!user?.siteId) {
+      setUseMockData(true);
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      const [recordsData, partnersData] = await Promise.all([
+        getAttendanceRecords({ siteId: user.siteId, workDate: selectedDate }),
+        getPartners(user.siteId),
+      ]);
+
+      if (recordsData && recordsData.length > 0) {
+        // API 데이터를 AttendanceRecord 타입으로 변환
+        const convertedRecords: AttendanceRecord[] = recordsData.map((r, idx) => ({
+          id: r.id || idx,
+          workerId: r.worker_id || '',
+          workerName: r.worker_name || '',
+          teamName: r.partnerName || '미지정',
+          position: r.position || '일반근로자',
+          birthDate: r.birth_date || '',
+          age: r.birth_date ? new Date().getFullYear() - new Date(r.birth_date).getFullYear() : 0,
+          isSenior: r.is_senior || false,
+          isTeamAdmin: r.role === 'TEAM_ADMIN' || r.role === 'SITE_ADMIN',
+          checkInTime: r.check_in_time ? new Date(r.check_in_time).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' }) : null,
+          checkOutTime: r.check_out_time ? new Date(r.check_out_time).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' }) : null,
+          isAutoOut: r.is_auto_out || false,
+          status: r.check_out_time ? 'CHECKED_OUT' : 'WORKING',
+        }));
+        setAttendanceData(convertedRecords);
+        setUseMockData(false);
+      } else {
+        setUseMockData(true);
+      }
+
+      if (partnersData && partnersData.length > 0) {
+        const partnerNames = ['전체 팀', ...partnersData.map(p => p.name)];
+        setTeamList(partnerNames);
+      }
+
+      setLastUpdated(new Date());
+    } catch (error) {
+      console.error('출퇴근 데이터 로드 실패:', error);
+      setUseMockData(true);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [user?.siteId, selectedDate]);
+
+  // 초기 로드 및 날짜 변경 시 재로드
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
+
+  // 현재 표시할 데이터
+  const displayData = useMockData ? mockAttendanceData : attendanceData;
+  const displayTeams = useMockData ? teams : teamList;
 
   // 필터링된 데이터
   const filteredData = useMemo(() => {
-    return mockAttendanceData.filter((record) => {
+    return displayData.filter((record) => {
       if (selectedTeam !== '전체 팀' && record.teamName !== selectedTeam) {
         return false;
       }
@@ -290,7 +363,7 @@ export default function AttendancePage() {
   };
 
   const handleRefresh = () => {
-    alert('데이터를 새로고침합니다.');
+    loadData();
   };
 
   // 날짜/시간 포맷
@@ -308,16 +381,24 @@ export default function AttendancePage() {
     <div className="space-y-6">
       {/* 페이지 헤더 */}
       <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-xl font-black tracking-tight text-slate-800">출퇴근 관리</h1>
-          <p className="text-sm text-slate-500 mt-1">현장 근로자의 출퇴근 현황을 관리합니다</p>
+        <div className="flex items-center gap-3">
+          <div>
+            <h1 className="text-xl font-black tracking-tight text-slate-800">출퇴근 관리</h1>
+            <p className="text-sm text-slate-500 mt-1">현장 근로자의 출퇴근 현황을 관리합니다</p>
+          </div>
+          {useMockData && (
+            <span className="px-2 py-1 text-xs font-bold text-orange-600 bg-orange-50 rounded-lg">
+              샘플 데이터
+            </span>
+          )}
         </div>
         <div className="flex items-center gap-3">
           <button
             onClick={handleRefresh}
-            className="flex items-center gap-2 px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm font-bold text-slate-600 hover:bg-gray-50 transition-colors"
+            disabled={isLoading}
+            className="flex items-center gap-2 px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm font-bold text-slate-600 hover:bg-gray-50 transition-colors disabled:opacity-50"
           >
-            <RefreshCw size={16} />
+            <RefreshCw size={16} className={isLoading ? 'animate-spin' : ''} />
             새로고침
           </button>
           <button
@@ -421,7 +502,7 @@ export default function AttendancePage() {
               onChange={(e) => setSelectedTeam(e.target.value)}
               className="px-4 py-2.5 pr-10 border border-gray-200 rounded-lg text-sm font-medium focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent appearance-none bg-white"
             >
-              {teams.map((team) => (
+              {displayTeams.map((team) => (
                 <option key={team} value={team}>{team}</option>
               ))}
             </select>

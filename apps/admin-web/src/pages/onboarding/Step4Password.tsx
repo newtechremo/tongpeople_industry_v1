@@ -80,6 +80,9 @@ export function Step4Password() {
         email: email || undefined,
       });
 
+      // localStorage 저장 완료를 위한 짧은 지연
+      await new Promise(resolve => setTimeout(resolve, 100));
+
       nextStep();
       navigate('/onboarding/step5');
     } finally {

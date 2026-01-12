@@ -1,9 +1,12 @@
 import { useState, FormEvent, ChangeEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Loader2, Check, ChevronRight, AlertCircle, Phone, User, Sparkles, Shield } from 'lucide-react';
+import { Loader2, Check, ChevronRight, AlertCircle, Phone, User, Sparkles, Shield, Zap } from 'lucide-react';
 import { formatPhone, isValidPhone } from '@tong-pass/shared';
 import { useOnboarding } from '@/hooks/useOnboarding';
 import { sendSms, verifySms } from '@/api/auth';
+
+// 개발 환경 체크
+const IS_DEV = import.meta.env.DEV;
 
 // Types
 interface TermsState {
@@ -260,6 +263,23 @@ export function Step1Personal() {
               </div>
               <span className="text-sm font-bold text-green-700">인증이 완료되었습니다</span>
             </div>
+          )}
+          {/* 개발 환경에서만 표시되는 개발용 인증 우회 버튼 */}
+          {IS_DEV && !isVerified && isValidPhone(phone) && (
+            <button
+              type="button"
+              onClick={() => {
+                // 개발용 토큰 생성
+                const devToken = `DEV_TOKEN_${phone.replace(/[^0-9]/g, '')}_${Date.now()}`;
+                setVerificationToken(devToken);
+                setIsVerified(true);
+                console.log('[DEV] 개발용 인증 토큰 생성:', devToken);
+              }}
+              className="flex items-center justify-center gap-2 w-full px-4 py-3 rounded-xl font-bold text-amber-700 bg-amber-50 border-2 border-amber-200 hover:bg-amber-100 transition-colors"
+            >
+              <Zap className="w-4 h-4" />
+              <span>[DEV] 인증 우회</span>
+            </button>
           )}
         </div>
 

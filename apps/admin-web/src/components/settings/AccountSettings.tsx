@@ -1,5 +1,6 @@
 import { useState, useRef } from 'react';
 import { Save, Building2, User, MapPin, FileText, Upload, Clock, Lock, Search, Phone, Mail, Headphones, CreditCard, Pencil, X, Users } from 'lucide-react';
+import { useDaumPostcode } from '@/hooks/useDaumPostcode';
 
 // 직원 수 옵션
 const EMPLOYEE_COUNT_OPTIONS = [
@@ -132,6 +133,13 @@ export default function AccountSettings() {
   const [isEditing, setIsEditing] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [isCodeDropdownOpen, setIsCodeDropdownOpen] = useState(false);
+
+  // Daum 주소 검색
+  const { openPostcode } = useDaumPostcode({
+    onComplete: (data) => {
+      setFormData((prev) => ({ ...prev, address: data.address }));
+    },
+  });
 
   // 저장된 데이터 (API에서 조회한다고 가정)
   const [savedData, setSavedData] = useState({
@@ -387,7 +395,7 @@ export default function AccountSettings() {
             />
             <button
               type="button"
-              onClick={() => alert('주소 검색 API 연동 필요')}
+              onClick={openPostcode}
               className="px-4 py-3 bg-gray-100 border border-gray-300 rounded-lg
                          text-sm font-bold text-slate-600 hover:bg-gray-200 transition-all"
             >

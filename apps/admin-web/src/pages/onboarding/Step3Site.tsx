@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Loader2, Search, Building2, Clock, Hand, Check, X, MapPin, Sparkles } from 'lucide-react';
 import type { CheckoutPolicy } from '@tong-pass/shared';
 import { useOnboarding } from '@/hooks/useOnboarding';
+import { useDaumPostcode } from '@/hooks/useDaumPostcode';
 
 // Types
 type ModalStep = 'none' | 'policy' | 'complete';
@@ -18,16 +19,34 @@ export function Step3Site() {
   const [checkoutPolicy, setCheckoutPolicy] = useState<CheckoutPolicy>(
     data.step3?.checkoutPolicy || 'AUTO_8H'
   );
+  const [sameAsCompany, setSameAsCompany] = useState(false);
+
+  // 회사 주소 (Step2에서 가져옴)
+  const companyAddress = data.step2?.address || '';
 
   // UI state
   const [modalStep, setModalStep] = useState<ModalStep>('none');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Handlers
+  // 회사 주소와 동일 체크 핸들러
+  const handleSameAsCompanyChange = (checked: boolean) => {
+    setSameAsCompany(checked);
+    if (checked && companyAddress) {
+      setSiteAddress(companyAddress);
+    } else if (!checked) {
+      setSiteAddress('');
+    }
+  };
+
+  // Daum 주소 검색
+  const { openPostcode } = useDaumPostcode({
+    onComplete: (data) => {
+      setSiteAddress(data.address);
+    },
+  });
+
   const handleAddressSearch = () => {
-    // Mock address search - would integrate with Daum/Kakao address API
-    console.log('[DEV] 현장 주소 검색 API 호출');
-    setSiteAddress('대전광역시 유성구 대학로 99');
+    openPostcode();
   };
 
   const handleCreateClick = (e: FormEvent<HTMLFormElement>) => {
@@ -115,6 +134,23 @@ export function Step3Site() {
             <MapPin className="w-4 h-4 text-slate-400" />
             현장 주소 <span className="text-red-500">*</span>
           </label>
+
+          {/* 회사 주소와 동일 체크박스 */}
+          {companyAddress && (
+            <label className="flex items-center gap-3 p-3 rounded-xl bg-orange-50 border border-orange-100 cursor-pointer hover:bg-orange-100 transition-all">
+              <input
+                type="checkbox"
+                checked={sameAsCompany}
+                onChange={(e) => handleSameAsCompanyChange(e.target.checked)}
+                className="w-5 h-5 rounded border-orange-300 text-orange-500 focus:ring-orange-500 focus:ring-offset-0"
+              />
+              <div className="flex-1">
+                <span className="text-sm font-bold text-orange-700">회사 주소와 동일</span>
+                <p className="text-xs text-orange-600 mt-0.5 truncate">{companyAddress}</p>
+              </div>
+            </label>
+          )}
+
           <div className="flex gap-3">
             <input
               id="siteAddress"
@@ -123,14 +159,23 @@ export function Step3Site() {
               onChange={(e) => setSiteAddress(e.target.value)}
               placeholder="주소를 검색해주세요"
               required
-              readOnly
-              className="flex-1 px-5 py-4 rounded-2xl border-2 border-gray-100 bg-gray-50 text-slate-800 placeholder-slate-400 cursor-pointer hover:border-gray-200 transition-all"
-              onClick={handleAddressSearch}
+              readOnly={sameAsCompany}
+              className={`flex-1 px-5 py-4 rounded-2xl border-2 text-slate-800 placeholder-slate-400 transition-all ${
+                sameAsCompany
+                  ? 'border-orange-200 bg-orange-50 cursor-not-allowed'
+                  : 'border-gray-100 bg-gray-50 cursor-pointer hover:border-gray-200'
+              }`}
+              onClick={!sameAsCompany ? handleAddressSearch : undefined}
             />
             <button
               type="button"
               onClick={handleAddressSearch}
-              className="px-5 py-4 rounded-2xl font-bold text-slate-700 bg-white border-2 border-gray-200 hover:bg-gray-50 hover:border-gray-300 transition-all"
+              disabled={sameAsCompany}
+              className={`px-5 py-4 rounded-2xl font-bold transition-all ${
+                sameAsCompany
+                  ? 'text-slate-400 bg-gray-100 border-2 border-gray-100 cursor-not-allowed'
+                  : 'text-slate-700 bg-white border-2 border-gray-200 hover:bg-gray-50 hover:border-gray-300'
+              }`}
               aria-label="주소 검색"
             >
               <Search className="w-5 h-5" />

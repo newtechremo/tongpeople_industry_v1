@@ -17,7 +17,7 @@ interface LoadingStep {
 export function Step5Loading() {
   const navigate = useNavigate();
   const { data, nextStep, reset } = useOnboarding();
-  const hasStarted = useRef(false);
+  const [isProcessing, setIsProcessing] = useState(false);
 
   // State
   const [progress, setProgress] = useState(0);
@@ -29,29 +29,33 @@ export function Step5Loading() {
     { id: 'dashboard', label: '대시보드 준비 완료', activeLabel: '대시보드 준비 중...', status: 'pending', icon: LayoutDashboard },
   ]);
 
-  // Call signup API
+  // 실제 회원가입 API 호출
   useEffect(() => {
-    if (hasStarted.current) return;
-    hasStarted.current = true;
+    if (isProcessing) return;
+    setIsProcessing(true);
 
     const processSignup = async () => {
-      // Validate data
+      console.log('[Step5] 회원가입 시작');
+      console.log('[Step5] 데이터:', JSON.stringify(data, null, 2));
+
+      // 데이터 검증
       if (!data.step1 || !data.step2 || !data.step3 || !data.step4) {
+        console.error('[Step5] 데이터 누락');
         setError('회원가입 정보가 누락되었습니다. 처음부터 다시 진행해주세요.');
         return;
       }
 
-      // Update step 1: company
+      // Step 1 시작
       setSteps(prev => prev.map((step, i) => ({ ...step, status: i === 0 ? 'loading' : step.status })));
       setProgress(10);
 
       try {
-        // Simulate progress animation while API call is in progress
+        // 프로그레스 애니메이션
         const progressInterval = setInterval(() => {
           setProgress(prev => Math.min(prev + 5, 80));
         }, 200);
 
-        // Call signup API
+        console.log('[Step5] signup API 호출');
         const result = await signup({
           verificationToken: data.step1.verificationToken || '',
           name: data.step1.name,
@@ -66,10 +70,13 @@ export function Step5Loading() {
           employeeCountRange: data.step2.employeeCountRange,
           siteName: data.step3.siteName,
           siteAddress: data.step3.siteAddress,
+          checkoutPolicy: data.step3.checkoutPolicy,
+          autoHours: data.step3.autoHours,
           password: data.step4.password,
         });
 
         clearInterval(progressInterval);
+        console.log('[Step5] signup 결과:', result);
 
         if (!result.success) {
           setError(result.error || '회원가입에 실패했습니다.');
@@ -77,11 +84,9 @@ export function Step5Loading() {
           return;
         }
 
-        // Success! Animate the rest
+        // 성공 애니메이션
         const stepDurations = [300, 300, 300, 300];
-
         for (let i = 0; i < steps.length; i++) {
-          // Complete current step
           setSteps(prev => prev.map((step, idx) => ({
             ...step,
             status: idx <= i ? 'completed' : idx === i + 1 ? 'loading' : step.status,
@@ -90,23 +95,23 @@ export function Step5Loading() {
           await new Promise(resolve => setTimeout(resolve, stepDurations[i]));
         }
 
-        // Clear onboarding data and navigate to completion
+        // Step6로 이동
         setTimeout(() => {
           nextStep();
           navigate('/onboarding/step6');
         }, 500);
 
       } catch (err) {
-        console.error('Signup error:', err);
+        console.error('[Step5] 오류:', err);
         setError('서버 오류가 발생했습니다. 다시 시도해주세요.');
         setSteps(prev => prev.map(step => ({ ...step, status: step.status === 'loading' ? 'error' : step.status })));
       }
     };
 
-    // Start process after a short delay
     const timer = setTimeout(processSignup, 300);
     return () => clearTimeout(timer);
-  }, [data, navigate, nextStep, steps.length]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Handle retry
   const handleRetry = () => {

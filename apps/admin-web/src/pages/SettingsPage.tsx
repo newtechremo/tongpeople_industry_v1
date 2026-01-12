@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { User, Building2, UserPlus, UsersRound, Receipt } from 'lucide-react';
+import { User, Building2, UserPlus, UsersRound, FileSignature } from 'lucide-react';
 import AccountSettings from '@/components/settings/AccountSettings';
 import SiteManagement from '@/components/settings/SiteManagement';
 import AdminManagement from '@/components/settings/AdminManagement';
 import TeamManagement from '@/components/settings/TeamManagement';
+import ApprovalLineSettings from '@/components/settings/ApprovalLineSettings';
 
 // 네비게이션 state 타입 정의
 interface SettingsLocationState {
@@ -17,7 +18,7 @@ const tabs = [
   { id: 'sites', label: '현장 관리', icon: Building2, disabled: false },
   { id: 'admins', label: '관리자 관리', icon: UserPlus, disabled: false },
   { id: 'teams', label: '팀(업체) 관리', icon: UsersRound, disabled: false },
-  { id: 'billing', label: '결제라인 추가', icon: Receipt, disabled: true },
+  { id: 'approval-lines', label: '결재라인 설정', icon: FileSignature, disabled: false },
 ];
 
 export default function SettingsPage() {
@@ -81,8 +82,13 @@ export default function SettingsPage() {
             onModalAutoOpened={handleModalAutoOpened}
           />
         );
-      case 'billing':
-        return <ComingSoon title="결제라인 추가" description="결제 담당자와 청구 정보를 관리할 수 있습니다." />;
+      case 'approval-lines':
+        return (
+          <ApprovalLineSettings
+            autoOpenModal={autoOpenModal === 'add'}
+            onModalAutoOpened={handleModalAutoOpened}
+          />
+        );
       default:
         return <AccountSettings />;
     }
@@ -94,7 +100,7 @@ export default function SettingsPage() {
       <div>
         <h1 className="text-xl font-black tracking-tight text-slate-800">설정</h1>
         <p className="text-sm text-slate-500 mt-1">
-          계정, 현장, 관리자, 팀, 결제 정보를 관리합니다
+          계정, 현장, 관리자, 팀, 문서전자결재 라인을 관리합니다
         </p>
       </div>
 
@@ -136,7 +142,8 @@ export default function SettingsPage() {
   );
 }
 
-// 준비중 컴포넌트
+// 준비중 컴포넌트 (향후 사용 예정)
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function ComingSoon({ title, description }: { title: string; description: string }) {
   return (
     <div className="py-16 text-center">

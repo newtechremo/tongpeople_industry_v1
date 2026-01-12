@@ -2,6 +2,16 @@
 -- client_profiles 테이블 (회사 상세 프로필)
 -- =============================================
 
+-- 관리자 여부 확인 함수 (SUPER_ADMIN 또는 SITE_ADMIN)
+CREATE OR REPLACE FUNCTION is_admin()
+RETURNS BOOLEAN AS $$
+BEGIN
+    RETURN (
+        SELECT role IN ('SUPER_ADMIN', 'SITE_ADMIN') FROM users WHERE id = auth.uid()
+    );
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
 CREATE TABLE client_profiles (
     id BIGSERIAL PRIMARY KEY,
     company_id BIGINT NOT NULL UNIQUE REFERENCES companies(id) ON DELETE CASCADE,

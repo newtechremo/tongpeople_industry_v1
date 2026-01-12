@@ -33,7 +33,7 @@ const menuItems: MenuItem[] = [
     label: '중대재해 점검사항',
     icon: ShieldAlert,
     children: [
-      { id: 'risk', label: '위험성 평가', icon: ClipboardList, path: '/safety/risk', disabled: true },
+      { id: 'risk', label: '위험성 평가', icon: ClipboardList, path: '/safety/risk' },
       { id: 'tbm', label: 'TBM', icon: FileSearch, path: '/safety/tbm', disabled: true },
       { id: 'education', label: '안전교육', icon: GraduationCap, path: '/safety/education', disabled: true },
       { id: 'siren', label: '위급사이렌', icon: Siren, path: '/safety/siren', disabled: true },

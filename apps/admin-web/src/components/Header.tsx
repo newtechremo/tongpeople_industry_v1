@@ -1,11 +1,41 @@
 import { useState, useRef, useEffect } from 'react';
-import { Bell, ChevronDown, Building2, Check } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { Bell, ChevronDown, Building2, Check, Settings, LogOut } from 'lucide-react';
 import { useSites } from '@/context/SitesContext';
+import { useAuth } from '@/context/AuthContext';
+import WorkerDetailModal from '@/components/workers/WorkerDetailModal';
+import type { Worker } from '@tong-pass/shared';
 
 export default function Header() {
+  const navigate = useNavigate();
+  const { user, logout } = useAuth();
   const { sites, selectedSite, setSelectedSite } = useSites();
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [showProfileModal, setShowProfileModal] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+
+  // 로그아웃 처리
+  const handleLogout = async () => {
+    await logout();
+    navigate('/login');
+  };
+
+  // 현재 사용자를 Worker 형태로 변환 (본인 계정 설정용)
+  const currentUserAsWorker: Worker | null = user ? {
+    id: user.id,
+    name: user.name,
+    phone: user.phone,
+    role: user.role,
+    teamId: user.partnerId ? String(user.partnerId) : undefined,
+    teamName: '관리자',
+    birthDate: '1980-01-01', // 실제 데이터 연동 시 수정
+    age: 45,
+    position: '관리자',
+    nationality: '대한민국',
+    status: 'ACTIVE',
+    isSenior: false,
+    registeredAt: new Date().toISOString().split('T')[0],
+  } : null;
 
   // 외부 클릭 시 드롭다운 닫기
   useEffect(() => {
@@ -113,14 +143,41 @@ export default function Header() {
         {/* User */}
         <div className="flex items-center gap-3 pl-4 border-l border-gray-200">
           <div className="w-8 h-8 rounded-full bg-gradient-to-br from-orange-500 to-orange-600 flex items-center justify-center">
-            <span className="text-white font-bold text-sm">관</span>
+            <span className="text-white font-bold text-sm">
+              {user?.name?.charAt(0) || '관'}
+            </span>
           </div>
-          <div className="hidden sm:block">
-            <p className="text-sm font-bold text-slate-700">관리자</p>
-            <p className="text-xs text-slate-400">admin@tongpass.com</p>
-          </div>
+          <span className="hidden sm:block text-sm font-bold text-slate-700">
+            {user?.name || '관리자'}
+          </span>
+
+          {/* 내 계정 설정 버튼 */}
+          <button
+            onClick={() => setShowProfileModal(true)}
+            className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+            title="내 계정 설정"
+          >
+            <Settings size={18} className="text-slate-500" />
+          </button>
+
+          {/* 로그아웃 버튼 */}
+          <button
+            onClick={handleLogout}
+            className="p-2 hover:bg-red-50 rounded-lg transition-colors"
+            title="로그아웃"
+          >
+            <LogOut size={18} className="text-slate-500 hover:text-red-500" />
+          </button>
         </div>
       </div>
+
+      {/* 내 계정 설정 모달 */}
+      {showProfileModal && currentUserAsWorker && (
+        <WorkerDetailModal
+          worker={currentUserAsWorker}
+          onClose={() => setShowProfileModal(false)}
+        />
+      )}
     </header>
   );
 }

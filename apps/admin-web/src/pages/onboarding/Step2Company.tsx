@@ -9,6 +9,7 @@ import {
 } from '@tong-pass/shared';
 import type { EmployeeCountRange, IndustryCode } from '@tong-pass/shared';
 import { useOnboarding } from '@/hooks/useOnboarding';
+import { useDaumPostcode } from '@/hooks/useDaumPostcode';
 import { checkBusinessNumber } from '@/api/auth';
 
 // Step2Company Component
@@ -70,11 +71,15 @@ export function Step2Company() {
     setBizNumChecking(false);
   };
 
+  // Daum 주소 검색
+  const { openPostcode } = useDaumPostcode({
+    onComplete: (data) => {
+      setAddress(data.address);
+    },
+  });
+
   const handleAddressSearch = () => {
-    // Mock address search - would integrate with Daum/Kakao address API
-    console.log('[DEV] 주소 검색 API 호출');
-    // For now, just set a sample address
-    setAddress('서울특별시 강남구 테헤란로 123');
+    openPostcode();
   };
 
   const handleIndustrySelect = (code: IndustryCode) => {

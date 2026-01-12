@@ -184,6 +184,27 @@ className="hover:bg-orange-50 transition-colors cursor-pointer"
 className="bg-orange-50 text-orange-600 shadow-sm"
 ```
 
+### 페이지 레이아웃
+- 레이아웃 컴포넌트가 외부 패딩(`px-6 py-8`)을 제공하므로, 각 페이지에서는 `p-6` 등 추가 패딩 사용 금지
+- 페이지 최상위 div는 `space-y-6`만 사용
+```tsx
+// 올바른 페이지 구조
+export default function SomePage() {
+  return (
+    <div className="space-y-6">
+      {/* 헤더 */}
+      <div className="flex items-center justify-between">
+        <h1 className="text-xl font-black tracking-tight text-slate-800">페이지 제목</h1>
+      </div>
+      {/* 콘텐츠 */}
+    </div>
+  );
+}
+
+// 잘못된 예시 (이중 패딩 발생)
+<div className="p-6 space-y-6">  // ❌ p-6 사용 금지
+```
+
 ### 타이포그래피
 - 페이지 제목: `text-xl font-black tracking-tight`
 - 섹션 제목: `text-lg font-bold text-slate-500 uppercase`
@@ -210,3 +231,31 @@ className="bg-orange-50 text-orange-600 shadow-sm"
 - `is_senior`: 65세 이상 여부 (고령자 대시보드용)
 - `is_auto_out`: 자동 퇴근 처리 여부
 - `has_accident`: 사고 발생 여부
+
+## 배포 가이드
+
+### 참조 문서
+| 문서 | 용도 |
+|------|------|
+| `SKILL_INSTALL_GUIDE.md` | Claude Code 스킬 설치 참조 |
+| `TEAM_GUIDE.md` | 팀원용 배포 워크플로우 가이드 |
+
+### 배포 서버 정보
+```yaml
+호스트: 49.168.236.221
+포트: 6201
+사용자: finefit-temp
+프로젝트 경로: /home/finefit-temp/Desktop/project
+```
+
+### 배포 워크플로우
+1. **로컬**: `/github-setup` 스킬로 GitHub 업로드
+2. **서버 접속**: `ssh -p 6201 finefit-temp@49.168.236.221`
+3. **서버**: `/server-setup` 스킬로 프로젝트 설정
+4. **서버**: `/deploy` 스킬로 Nginx/SSL 설정
+
+### Claude Code 스킬 경로
+| OS | 경로 |
+|----|------|
+| Windows | `$env:USERPROFILE\.claude\commands\` |
+| macOS/Linux | `~/.claude/commands/` |

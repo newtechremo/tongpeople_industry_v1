@@ -64,6 +64,8 @@ export interface SignupRequest {
   employeeCountRange?: string;
   siteName: string;
   siteAddress?: string;
+  checkoutPolicy?: 'AUTO_8H' | 'MANUAL';
+  autoHours?: number;
   password: string;
 }
 
@@ -110,16 +112,53 @@ export async function verifySms(
  * 관리자 회원가입
  */
 export async function signup(data: SignupRequest): Promise<{ success: boolean; message: string; error?: string }> {
-  const response = await fetch(`${FUNCTIONS_URL}/signup`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
-    },
-    body: JSON.stringify(data),
-  });
+  console.log('[signup] 요청 시작:', { ...data, password: '***' });
 
-  return response.json();
+  try {
+    const response = await fetch(`${FUNCTIONS_URL}/signup`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+      },
+      body: JSON.stringify(data),
+    });
+
+    console.log('[signup] 응답 상태:', response.status, response.statusText);
+
+    // 응답 텍스트 먼저 확인
+    const responseText = await response.text();
+    console.log('[signup] 응답 내용:', responseText);
+
+    // JSON 파싱 시도
+    try {
+      const result = JSON.parse(responseText);
+
+      if (!response.ok) {
+        return {
+          success: false,
+          message: result.error || '회원가입에 실패했습니다.',
+          error: result.error,
+        };
+      }
+
+      return result;
+    } catch (parseError) {
+      console.error('[signup] JSON 파싱 실패:', parseError);
+      return {
+        success: false,
+        message: '서버 응답을 처리할 수 없습니다.',
+        error: responseText,
+      };
+    }
+  } catch (fetchError) {
+    console.error('[signup] 네트워크 오류:', fetchError);
+    return {
+      success: false,
+      message: '서버에 연결할 수 없습니다.',
+      error: fetchError instanceof Error ? fetchError.message : '네트워크 오류',
+    };
+  }
 }
 
 /**

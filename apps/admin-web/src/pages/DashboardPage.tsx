@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import {
   Users,
@@ -15,9 +15,12 @@ import {
   UserRoundPlus,
   Sparkles,
   Clock,
+  RefreshCw,
 } from 'lucide-react';
 import KpiCard from '@/components/KpiCard';
-import { SENIOR_AGE_THRESHOLD } from '@tong-pass/shared';
+import { SENIOR_AGE_THRESHOLD, getWorkDate } from '@tong-pass/shared';
+import { useAuth } from '@/context/AuthContext';
+import { getDashboardSummary, getAttendanceByPartner } from '@/api/attendance';
 
 // 공지사항 데이터
 const notices = [
@@ -26,29 +29,84 @@ const notices = [
   { id: 3, text: '안전교육 이수 마감일: 이번 달 말까지 필수 안전교육을 완료해주세요.' },
 ];
 
-// 임시 데이터 (나중에 API로 대체)
+// 목업 데이터 (API 실패 또는 데이터 없을 때)
 const mockData = {
   totalWorkers: 128,
   managerCount: 12,
   workerCount: 116,
   seniorCount: 23,
+  seniorRatio: 18,
   checkoutRate: 87,
   accidentCount: 0,
 };
 
-// 회사 정보 (나중에 Context로 대체)
-const companyInfo = {
+// 목업 회사 정보
+const mockCompanyInfo = {
   name: '(주)통하는사람들',
   address: '서울특별시 강남구 테헤란로 123',
   businessNumber: '123-45-67890',
 };
 
+// 대시보드 데이터 타입
+interface DashboardData {
+  totalWorkers: number;
+  managerCount: number;
+  workerCount: number;
+  seniorCount: number;
+  seniorRatio: number;
+  checkoutRate: number;
+  accidentCount: number;
+}
+
 export default function DashboardPage() {
   const navigate = useNavigate();
-  const seniorRatio = Math.round((mockData.seniorCount / mockData.totalWorkers) * 100);
+  const { user } = useAuth();
+
+  // State
+  const [data, setData] = useState<DashboardData>(mockData);
+  const [companyInfo, setCompanyInfo] = useState(mockCompanyInfo);
+  const [isLoading, setIsLoading] = useState(false);
+  const [lastUpdated, setLastUpdated] = useState<Date>(new Date());
   const [currentNoticeIndex, setCurrentNoticeIndex] = useState(0);
   const [showTrialBanner, setShowTrialBanner] = useState(true);
+  const [useMockData, setUseMockData] = useState(true);
   const trialDaysLeft = 14;
+
+  // 데이터 로드
+  const loadData = useCallback(async () => {
+    if (!user?.siteId) {
+      // 로그인 안됨 또는 siteId 없음 - 목업 사용
+      setUseMockData(true);
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      const workDate = getWorkDate();
+      const summary = await getDashboardSummary(user.siteId, workDate);
+
+      // 데이터가 있으면 실제 데이터 사용
+      if (summary.totalWorkers > 0) {
+        setData(summary);
+        setUseMockData(false);
+      } else {
+        // 데이터 없으면 목업 사용
+        setUseMockData(true);
+      }
+
+      setLastUpdated(new Date());
+    } catch (error) {
+      console.error('대시보드 데이터 로드 실패:', error);
+      setUseMockData(true);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [user?.siteId]);
+
+  // 초기 로드
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
 
   // 공지사항 자동 슬라이드
   useEffect(() => {
@@ -57,6 +115,10 @@ export default function DashboardPage() {
     }, 5000);
     return () => clearInterval(interval);
   }, []);
+
+  // 현재 표시할 데이터
+  const displayData = useMockData ? mockData : data;
+  const seniorRatio = displayData.seniorRatio;
 
   // 빠른 액션 핸들러: 해당 페이지로 이동하면서 모달 자동 열기 상태 전달
   const handleAddAdmin = () => {
@@ -224,9 +286,22 @@ export default function DashboardPage() {
             현장 인원 현황 및 안전 지표
           </p>
         </div>
-        <div className="flex items-center gap-2 text-sm text-slate-500">
-          <Clock size={16} />
-          <span>마지막 업데이트: 방금 전</span>
+        <div className="flex items-center gap-3">
+          {useMockData && (
+            <span className="px-2 py-1 text-xs font-bold text-orange-600 bg-orange-50 rounded-lg">
+              샘플 데이터
+            </span>
+          )}
+          <button
+            onClick={loadData}
+            disabled={isLoading}
+            className="flex items-center gap-2 text-sm text-slate-500 hover:text-orange-600 transition-colors disabled:opacity-50"
+          >
+            <RefreshCw size={16} className={isLoading ? 'animate-spin' : ''} />
+            <span>
+              {isLoading ? '로딩 중...' : `마지막 업데이트: ${lastUpdated.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}`}
+            </span>
+          </button>
         </div>
       </div>
 
@@ -234,21 +309,21 @@ export default function DashboardPage() {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
         <KpiCard
           title="총 출근 현황"
-          value={mockData.totalWorkers}
+          value={displayData.totalWorkers}
           unit="명"
           icon={Users}
-          subtext={`관리자 ${mockData.managerCount}명 / 근로자 ${mockData.workerCount}명`}
+          subtext={`관리자 ${displayData.managerCount}명 / 근로자 ${displayData.workerCount}명`}
         />
         <KpiCard
           title="퇴근율"
-          value={mockData.checkoutRate}
+          value={displayData.checkoutRate}
           unit="%"
           icon={UserCheck}
-          variant={mockData.checkoutRate === 100 ? 'success' : 'default'}
+          variant={displayData.checkoutRate === 100 ? 'success' : 'default'}
         />
         <KpiCard
           title={`고령자 (${SENIOR_AGE_THRESHOLD}세+)`}
-          value={mockData.seniorCount}
+          value={displayData.seniorCount}
           unit="명"
           icon={AlertCircle}
           subtext={`전체의 ${seniorRatio}%`}
@@ -256,10 +331,10 @@ export default function DashboardPage() {
         />
         <KpiCard
           title="금일 사고"
-          value={mockData.accidentCount}
+          value={displayData.accidentCount}
           unit="건"
           icon={ShieldAlert}
-          variant={mockData.accidentCount > 0 ? 'danger' : 'success'}
+          variant={displayData.accidentCount > 0 ? 'danger' : 'success'}
         />
       </div>
 

@@ -9,6 +9,7 @@ import DashboardPage from './pages/DashboardPage';
 import WorkersPage from './pages/WorkersPage';
 import AttendancePage from './pages/AttendancePage';
 import SettingsPage from './pages/SettingsPage';
+import RiskAssessmentPage from './pages/RiskAssessmentPage';
 import LoginPage from './pages/LoginPage';
 import PasswordResetPage from './pages/PasswordResetPage';
 import {
@@ -55,6 +56,7 @@ function App() {
                 <Route index element={<DashboardPage />} />
                 <Route path="workers" element={<WorkersPage />} />
                 <Route path="attendance" element={<AttendancePage />} />
+                <Route path="safety/risk" element={<RiskAssessmentPage />} />
                 <Route path="settings" element={<SettingsPage />} />
               </Route>
             </Routes>

@@ -4,6 +4,22 @@ import { useAuth } from '@/context/AuthContext';
 import { hasPermission } from '@/api/auth';
 import type { AuthUser } from '@/api/auth';
 
+// ============================================
+// 🔧 개발용 인증 우회 설정
+// ============================================
+const DEV_BYPASS_AUTH = true; // true로 설정하면 로그인 없이 접근 가능
+
+// 개발용 Mock 사용자 (인증 우회 시 사용)
+const DEV_MOCK_USER: AuthUser = {
+  id: 'dev-user-001',
+  name: '개발자 테스트',
+  phone: '01000000000',
+  role: 'SUPER_ADMIN',
+  companyId: 'dev-company-001',
+  siteId: 'dev-site-001',
+};
+// ============================================
+
 // Types
 interface ProtectedRouteProps {
   children: React.ReactNode;
@@ -58,6 +74,19 @@ export function ProtectedRoute({ children, requiredRole }: ProtectedRouteProps) 
   // Hooks
   const { user, loading } = useAuth();
   const location = useLocation();
+
+  // 🔧 개발용 인증 우회
+  if (DEV_BYPASS_AUTH) {
+    // 개발 모드에서는 Mock 사용자로 바로 접근
+    const devUser = DEV_MOCK_USER;
+
+    // 역할 체크도 우회 (필요시)
+    if (requiredRole && !hasPermission(devUser, requiredRole)) {
+      return <AccessDenied />;
+    }
+
+    return <>{children}</>;
+  }
 
   // Loading state
   if (loading) {

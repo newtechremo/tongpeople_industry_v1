@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useCallback } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import {
   UserPlus,
@@ -14,11 +14,15 @@ import {
   Filter,
   RotateCcw,
   FileSpreadsheet,
+  RefreshCw,
 } from 'lucide-react';
 import type { Worker, Team } from '@tong-pass/shared';
 import WorkerAddModal from '@/components/workers/WorkerAddModal';
 import WorkerDetailModal from '@/components/workers/WorkerDetailModal';
 import WorkerExcelUploadModal from '@/components/workers/WorkerExcelUploadModal';
+import { useAuth } from '@/context/AuthContext';
+import { getWorkers } from '@/api/workers';
+import { getPartners } from '@/api/partners';
 
 // 네비게이션 state 타입 정의
 interface WorkersLocationState {
@@ -95,6 +99,13 @@ export default function WorkersPage() {
   const location = useLocation();
   const navigate = useNavigate();
   const locationState = location.state as WorkersLocationState | null;
+  const { user } = useAuth();
+
+  // 데이터 상태
+  const [workers, setWorkers] = useState<Worker[]>(mockWorkers);
+  const [teams, setTeams] = useState<Team[]>(mockTeams);
+  const [isLoading, setIsLoading] = useState(false);
+  const [useMockData, setUseMockData] = useState(true);
 
   // 필터 상태
   const [searchQuery, setSearchQuery] = useState('');
@@ -109,6 +120,67 @@ export default function WorkersPage() {
   const [isExcelModalOpen, setIsExcelModalOpen] = useState(false);
   const [selectedWorker, setSelectedWorker] = useState<Worker | null>(null);
 
+  // 데이터 로드
+  const loadData = useCallback(async () => {
+    if (!user?.siteId) {
+      setUseMockData(true);
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      const [workersData, partnersData] = await Promise.all([
+        getWorkers({ siteId: user.siteId }),
+        getPartners(user.siteId),
+      ]);
+
+      if (workersData && workersData.length > 0) {
+        // API 데이터를 Worker 타입으로 변환
+        const convertedWorkers: Worker[] = workersData.map(w => ({
+          id: w.id,
+          name: w.name,
+          phone: w.phone || '',
+          birthDate: w.birth_date || undefined,
+          age: w.age || 0,
+          isSenior: w.isSenior || false,
+          siteId: w.site_id || 0,
+          teamId: w.partner_id || undefined,
+          teamName: w.partnerName || undefined,
+          role: w.role as Worker['role'],
+          position: w.position || undefined,
+          status: w.is_active ? 'ACTIVE' : 'INACTIVE',
+          totalWorkDays: 0,
+          monthlyWorkDays: 0,
+          registeredAt: w.created_at || '',
+        }));
+        setWorkers(convertedWorkers);
+        setUseMockData(false);
+      } else {
+        setUseMockData(true);
+      }
+
+      if (partnersData && partnersData.length > 0) {
+        const convertedTeams: Team[] = partnersData.map(p => ({
+          id: p.id,
+          name: p.name,
+          siteId: p.site_id || 0,
+          workerCount: 0,
+        }));
+        setTeams(convertedTeams);
+      }
+    } catch (error) {
+      console.error('근로자 데이터 로드 실패:', error);
+      setUseMockData(true);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [user?.siteId]);
+
+  // 초기 로드
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
+
   // URL state로 전달된 모달 열기 처리
   useEffect(() => {
     if (locationState?.openModal === 'add') {
@@ -119,9 +191,13 @@ export default function WorkersPage() {
     }
   }, [locationState, navigate, location.pathname]);
 
+  // 현재 표시할 데이터
+  const displayWorkers = useMockData ? mockWorkers : workers;
+  const displayTeams = useMockData ? mockTeams : teams;
+
   // 필터링된 근로자 목록
   const filteredWorkers = useMemo(() => {
-    return mockWorkers
+    return displayWorkers
       .filter(worker => {
         // 검색 필터
         if (searchQuery) {
@@ -207,11 +283,26 @@ export default function WorkersPage() {
     <div className="space-y-6">
       {/* Page Header */}
       <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-xl font-black tracking-tight text-slate-800">근로자 관리</h1>
-          <p className="text-sm text-slate-500 mt-1">
-            총 {filteredWorkers.length}명의 근로자
-          </p>
+        <div className="flex items-center gap-3">
+          <div>
+            <h1 className="text-xl font-black tracking-tight text-slate-800">근로자 관리</h1>
+            <p className="text-sm text-slate-500 mt-1">
+              총 {filteredWorkers.length}명의 근로자
+            </p>
+          </div>
+          {useMockData && (
+            <span className="px-2 py-1 text-xs font-bold text-orange-600 bg-orange-50 rounded-lg">
+              샘플 데이터
+            </span>
+          )}
+          <button
+            onClick={loadData}
+            disabled={isLoading}
+            className="p-2 rounded-lg hover:bg-gray-100 transition-colors disabled:opacity-50"
+            title="새로고침"
+          >
+            <RefreshCw size={18} className={`text-slate-400 ${isLoading ? 'animate-spin' : ''}`} />
+          </button>
         </div>
         <div className="flex items-center gap-2">
           <button
@@ -267,7 +358,7 @@ export default function WorkersPage() {
                          focus:outline-none focus:ring-2 focus:ring-orange-500 bg-white"
             >
               <option value="ALL">전체 팀</option>
-              {mockTeams.map(team => (
+              {displayTeams.map(team => (
                 <option key={team.id} value={team.id}>{team.name}</option>
               ))}
             </select>
@@ -517,7 +608,7 @@ export default function WorkersPage() {
       <WorkerAddModal
         isOpen={isAddModalOpen}
         onClose={() => setIsAddModalOpen(false)}
-        teams={mockTeams}
+        teams={displayTeams}
       />
 
       {/* Worker Detail Modal */}
@@ -530,7 +621,7 @@ export default function WorkersPage() {
       <WorkerExcelUploadModal
         isOpen={isExcelModalOpen}
         onClose={() => setIsExcelModalOpen(false)}
-        teams={mockTeams}
+        teams={displayTeams}
       />
     </div>
   );

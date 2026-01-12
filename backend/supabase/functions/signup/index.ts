@@ -26,6 +26,8 @@ interface SignupRequest {
   // Step 3: 첫 현장
   siteName: string;
   siteAddress?: string;
+  checkoutPolicy?: 'AUTO_8H' | 'MANUAL';
+  autoHours?: number;
 
   // Step 4: 비밀번호
   password: string;
@@ -57,34 +59,41 @@ Deno.serve(async (req) => {
     const normalizedPhone = normalizePhone(data.phone);
 
     // 1. 인증 토큰 검증
-    try {
-      const tokenData = JSON.parse(atob(data.verificationToken));
+    // 개발용 토큰 우회 (DEV_TOKEN_으로 시작하는 토큰)
+    const isDevToken = data.verificationToken.startsWith('DEV_TOKEN_');
 
-      if (tokenData.phone !== normalizedPhone) {
+    if (!isDevToken) {
+      try {
+        const tokenData = JSON.parse(atob(data.verificationToken));
+
+        if (tokenData.phone !== normalizedPhone) {
+          return new Response(
+            JSON.stringify({ error: '인증 정보가 일치하지 않습니다.' }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        if (tokenData.expiresAt < Date.now()) {
+          return new Response(
+            JSON.stringify({ error: '인증이 만료되었습니다. 처음부터 다시 진행해주세요.' }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        if (tokenData.purpose !== 'SIGNUP') {
+          return new Response(
+            JSON.stringify({ error: '잘못된 인증 토큰입니다.' }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+      } catch {
         return new Response(
-          JSON.stringify({ error: '인증 정보가 일치하지 않습니다.' }),
+          JSON.stringify({ error: '유효하지 않은 인증 토큰입니다.' }),
           { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
-
-      if (tokenData.expiresAt < Date.now()) {
-        return new Response(
-          JSON.stringify({ error: '인증이 만료되었습니다. 처음부터 다시 진행해주세요.' }),
-          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
-      }
-
-      if (tokenData.purpose !== 'SIGNUP') {
-        return new Response(
-          JSON.stringify({ error: '잘못된 인증 토큰입니다.' }),
-          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
-      }
-    } catch {
-      return new Response(
-        JSON.stringify({ error: '유효하지 않은 인증 토큰입니다.' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+    } else {
+      console.log('[DEV] 개발용 토큰으로 인증 우회:', normalizedPhone);
     }
 
     // 2. 필수 필드 검증
@@ -184,14 +193,17 @@ Deno.serve(async (req) => {
     }
 
     // 7. 현장 생성
+    const checkoutPolicy = data.checkoutPolicy || 'AUTO_8H';
+    const autoHours = checkoutPolicy === 'AUTO_8H' ? (data.autoHours || 8) : null;
+
     const { data: site, error: siteError } = await supabase
       .from('sites')
       .insert({
         company_id: company.id,
         name: data.siteName,
         address: data.siteAddress,
-        checkout_policy: 'AUTO_8H',
-        auto_hours: 8,
+        checkout_policy: checkoutPolicy,
+        auto_hours: autoHours,
       })
       .select()
       .single();
