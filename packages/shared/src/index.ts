@@ -11,3 +11,6 @@ export * from './constants';
 
 // Utils
 export * from './utils';
+
+// Risk Assessment (위험성평가)
+export * from './risk-assessment';
