@@ -11,8 +11,10 @@ QR 코드 기반 산업현장 출퇴근 관리 서비스. 건설/제조 현장�
 ### 서비스 구성
 | 앱 | 대상 | 플랫폼 | 주요 기능 |
 |----|------|--------|-----------|
-| **관리자 웹** | 현장 관리자 | 웹 (React) | 대시보드, QR 스캔, 현장 설정 |
-| **근로자 앱** | 현장 근로자 | 모바일 (React Native) | QR 생성, 출퇴근 확인 |
+| **관리자 웹** | 현장 관리자 | 웹 (React) | 대시보드, 근로자 관리(승인/선등록), 현장 설정 |
+| **근로자 앱** | 현장 근로자 | 모바일 (React Native) | 회사코드 가입, QR 생성, 출퇴근 확인 |
+
+> **Note:** QR 스캔은 모바일 앱에서 수행. 팀 관리자(TEAM_ADMIN) 이상 권한자가 앱에서 팀원 QR을 스캔하여 출퇴근 처리.
 
 ### 핵심 기능
 - **동적 QR 출근**: 캡처 방지를 위한 시간 기반 갱신 QR 코드
@@ -81,6 +83,64 @@ type WorkerStatus = 'PENDING' | 'REQUESTED' | 'ACTIVE' | 'INACTIVE' | 'BLOCKED';
 | `ACTIVE` | 정상 | 가입완료 |
 | `INACTIVE` | 비활성 | 퇴사/차단 |
 | `BLOCKED` | 차단 | 관리자 차단 |
+
+## 웹-앱 연동 아키텍처
+
+관리자 웹과 모바일 앱 간 양방향 실시간 연동. Supabase Realtime(WebSocket) 사용.
+
+```
+┌─────────────────┐                    ┌─────────────────┐
+│   관리자 웹      │◄──── Realtime ────►│   Supabase      │
+│   (admin-web)   │                    │   PostgreSQL    │
+└─────────────────┘                    └────────┬────────┘
+                                                │
+                                       ┌────────▼────────┐
+                                       │   근로자 앱      │
+                                       │ (worker-mobile) │
+                                       └─────────────────┘
+```
+
+### 연동 시나리오
+
+#### 웹 → 앱 (관리자 액션)
+
+| 액션 | 테이블 변경 | 앱 반응 |
+|------|------------|---------|
+| 가입 승인 | `users.status` REQUESTED → ACTIVE | 승인대기 → 메인 화면 전환 |
+| 가입 반려 | `users.status` → REJECTED | 반려 안내 화면 표시 |
+| 수동 퇴근 | `attendances.check_out_time` 업데이트 | 출근 → 퇴근 상태 변경 |
+| 근로자 차단 | `users.status` → BLOCKED | 강제 로그아웃, 접근 차단 |
+
+#### 앱 → 웹 (근로자/팀관리자 액션)
+
+| 액션 | 테이블 변경 | 웹 반응 |
+|------|------------|---------|
+| QR 출근 스캔 | `attendances` INSERT | 대시보드 KPI 실시간 갱신 |
+| QR 퇴근 스캔 | `attendances.check_out_time` 업데이트 | 퇴근율 갱신 |
+| 사고 발생 등록 | `attendances.has_accident = true` | 사고 KPI 갱신 + 알림 |
+| 신규 가입 요청 | `users` INSERT (REQUESTED) | 근로자 목록 승인대기 뱃지 |
+
+### Realtime 채널 구조
+
+```typescript
+// 관리자 웹 구독 채널
+const webChannels = {
+  attendance: `attendance-${siteId}`,   // 출퇴근 변경
+  users: `users-${siteId}`,             // 근로자 상태 변경
+};
+
+// 근로자 앱 구독 채널
+const appChannels = {
+  userStatus: `user-${userId}`,         // 본인 상태 (승인/차단)
+  attendance: `attendance-${userId}`,   // 본인 출퇴근 기록
+};
+```
+
+### 고도화 영역 (추후 적용)
+
+- **오프라인 큐**: 네트워크 없을 때 로컬 저장 후 복구 시 동기화 (모바일)
+- **Realtime 재연결**: WebSocket 끊김 시 자동 재연결 전략
+- **React Query 캐시 무효화**: Realtime 이벤트 → 캐시 무효화 → 자동 리페치
 
 ## 모노레포 구조
 
