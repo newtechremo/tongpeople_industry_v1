@@ -58,7 +58,29 @@ QR 코드 기반 산업현장 출퇴근 관리 서비스. 건설/제조 현장�
 ### TypeScript 타입
 ```typescript
 type UserRole = 'SUPER_ADMIN' | 'SITE_ADMIN' | 'TEAM_ADMIN' | 'WORKER';
+
+type WorkerStatus = 'PENDING' | 'REQUESTED' | 'ACTIVE' | 'INACTIVE' | 'BLOCKED';
 ```
+
+### 근로자 가입 및 상태 관리
+
+근로자 가입 방식(선등록/직접가입)과 상태값 전이에 대한 상세 내용은 아래 문서를 참조:
+
+| 문서 | 설명 |
+|------|------|
+| [`docs/signin/통패스_근로자앱_가입_PRD.md`](docs/signin/통패스_근로자앱_가입_PRD.md) | 가입 플로우, 입력 항목, 상태 전이, API 명세 |
+
+**핵심 요약:**
+- **선등록 (방식 A):** 관리자가 먼저 등록 → 근로자 동의 → 즉시 ACTIVE (프리패스)
+- **직접가입 (방식 B):** 근로자가 회사코드로 가입 → REQUESTED → 관리자 승인 후 ACTIVE
+
+| 상태코드 | 한글명 | 발생 경로 |
+|----------|--------|----------|
+| `PENDING` | 동의대기 | 관리자 선등록 |
+| `REQUESTED` | 승인대기 | 근로자 직접가입 |
+| `ACTIVE` | 정상 | 가입완료 |
+| `INACTIVE` | 비활성 | 퇴사/차단 |
+| `BLOCKED` | 차단 | 관리자 차단 |
 
 ## 모노레포 구조
 
