@@ -6,6 +6,7 @@
 |------|--------|--------|------|
 | **v1.0** | 2026.01.13 | PM & Client | MVP 개발용 최종 확정본 |
 | **v2.0** | 2026.01.13 | PM | 문서 통합, 입력항목 비교표 추가, 생년월일 필수화 |
+| **v2.1** | 2026.01.13 | PM | 방식 B에 팀 선택/직책 입력 추가, 입력 항목 통일화 |
 
 ---
 
@@ -122,6 +123,8 @@ type WorkerStatus = 'PENDING' | 'REQUESTED' | 'ACTIVE' | 'INACTIVE' | 'BLOCKED';
 | 5단계 | **이메일주소** | Email | X | **선택 (빈값 허용)**, 추후 소셜 로그인 연동용 |
 | 5단계 | **성별** | Radio | O | 남성 / 여성 |
 | 5단계 | **국적** | Dropdown | O | 국가 선택 |
+| 5단계 | **소속 팀** | Dropdown | O | 현장의 팀 목록에서 선택 |
+| 5단계 | **직책/직종** | Text + Datalist | O | 선택 또는 직접 입력 |
 | 6단계 | **약관동의** | Checkbox | O | 4개 항목 필수 |
 | 7단계 | **전자서명** | Canvas | O | Base64 이미지 저장 |
 
@@ -129,19 +132,21 @@ type WorkerStatus = 'PENDING' | 'REQUESTED' | 'ACTIVE' | 'INACTIVE' | 'BLOCKED';
 
 ### 방식 A vs B 비교 요약
 
-| 항목 | 방식 A (선등록) | 방식 B (직접가입) |
-|------|:--------------:|:----------------:|
-| 소속 팀 | O (관리자 지정) | X (승인 시 지정) |
-| 이름 | O | O |
-| 휴대폰번호 | O | O |
-| **생년월일** | O | **O (필수 추가)** |
-| 직책/직종 | O | X |
-| 시스템 권한 | O (선택 가능) | X (WORKER 고정) |
-| 이메일 | X | O (선택) |
-| 성별 | O | O |
-| 국적 | O | O |
-| 약관동의 | X | O |
-| 전자서명 | X | O |
+| 항목 | 방식 A (선등록) | 방식 B (직접가입) | 비고 |
+|------|:--------------:|:----------------:|------|
+| 소속 팀 | O (관리자 지정) | O (앱에서 선택) | 통일됨 |
+| 이름 | O | O | |
+| 휴대폰번호 | O | O | 고유 키 |
+| 생년월일 | O | O | 필수, 고령자 판별 |
+| 직책/직종 | O | O (앱에서 입력) | 통일됨 |
+| 시스템 권한 | O (선택 가능) | X (WORKER 고정) | 보안상 적절 |
+| 이메일 | X | O (선택) | 추후 소셜 로그인용 |
+| 성별 | O | O | |
+| 국적 | O | O | |
+| 약관동의 | O (링크) | O (앱) | |
+| 전자서명 | O | O | |
+
+> **핵심 차이점:** 시스템 권한만 다름 (방식 A는 TEAM_ADMIN 가능, 방식 B는 WORKER 고정)
 
 ---
 
@@ -282,6 +287,16 @@ graph TD
 │  │  대한민국                  ▼  │ │
 │  └──────────────────────────────┘ │
 │                                    │
+│  소속 팀 *                          │
+│  ┌──────────────────────────────┐ │
+│  │  (주)정이앤지              ▼  │ │
+│  └──────────────────────────────┘ │
+│                                    │
+│  직책/직종 *                        │
+│  ┌──────────────────────────────┐ │
+│  │  전기기사                  ▼  │ │
+│  └──────────────────────────────┘ │
+│                                    │
 │             [다음]                  │
 │                                    │
 └────────────────────────────────────┘
@@ -295,6 +310,8 @@ graph TD
 | 이메일주소 | X | 이메일 | **선택**, 입력 시 형식 검증, 추후 소셜 로그인용 |
 | 성별 | O | 라디오 | 남성 / 여성 |
 | 국적 | O | 드롭다운 | 국가 선택 |
+| **소속 팀** | **O** | 드롭다운 | 현장에 등록된 팀 목록에서 선택 |
+| **직책/직종** | **O** | 텍스트 + Datalist | 선택 또는 직접 입력 가능 |
 
 #### 선등록 데이터 매칭 (Pre-fill)
 
@@ -477,12 +494,14 @@ POST /functions/v1/register-worker
 // Request
 {
   "siteId": "uuid",
+  "teamId": "uuid",              // 소속 팀 (필수)
   "phoneNumber": "01012345678",
   "name": "홍길동",
   "birthDate": "19850315",
-  "email": null,
+  "email": null,                 // 선택
   "gender": "M",
   "nationality": "KR",
+  "jobTitle": "전기기사",         // 직책/직종 (필수)
   "signatureBase64": "data:image/png;base64,...",
   "isDataConflict": false
 }
@@ -533,6 +552,7 @@ Authorization: Bearer {accessToken}
 | `email` | VARCHAR | **Nullable**, 추후 소셜 로그인용 |
 | `gender` | CHAR(1) | M/F |
 | `nationality` | VARCHAR | 국적 코드 |
+| `job_title` | VARCHAR | 직책/직종 |
 | `status` | ENUM | `PENDING`, `REQUESTED`, `ACTIVE`, `INACTIVE`, `BLOCKED` |
 | `role` | ENUM | `WORKER` (앱 가입 시 고정), `TEAM_ADMIN` |
 | `pre_registered` | BOOLEAN | 관리자 선등록 여부 |
@@ -540,7 +560,7 @@ Authorization: Bearer {accessToken}
 | `signature_url` | TEXT | 전자서명 이미지 경로 |
 | `company_id` | UUID | FK → companies.id |
 | `site_id` | UUID | FK → sites.id |
-| `team_id` | UUID | FK → teams.id (Nullable) |
+| `team_id` | UUID | FK → teams.id |
 
 ---
 
