@@ -196,9 +196,45 @@ const getSignatureBase64 = async () => {
 1. 서명 이미지 Base64 변환
 2. API 호출: POST /register-worker
 3. 성공 시:
-   - 선등록 회원 (ACTIVE): 홈 화면으로 이동
-   - 직접가입 (REQUESTED): A08 승인대기로 이동
+   - 선등록 회원 (ACTIVE): 홈 화면으로 이동 (reset 네비게이션)
+   - 직접가입 (REQUESTED): A08 승인대기로 이동 (reset 네비게이션)
 4. 실패 시: 에러 토스트
+```
+
+> **중요 (뒤로가기 처리):**
+> - 가입 완료 후 이동 시 **`router.reset()`** 사용
+> - 전체 네비게이션 스택을 초기화하여 뒤로가기로 가입 플로우에 재진입하지 못하도록 함
+
+### 6.3 뒤로가기 처리
+
+**조건:** 서명이 입력된 경우 경고 팝업 표시
+
+**팝업 스펙:** (→ `00-common-popup-modal.md` 10.11 참조)
+```
+제목: "서명 입력을 중단하시겠습니까?"
+설명: "작성한 서명이 저장되지 않습니다."
+버튼: [취소] [나가기]
+```
+
+**구현 예시:**
+```typescript
+const [showExitWarning, setShowExitWarning] = useState(false);
+
+const hasSignature = useMemo(() => {
+  return signatureRef.current?.isEmpty() === false;
+}, [signatureData]);
+
+// Android 하드웨어 뒤로가기 처리
+useEffect(() => {
+  const backHandler = BackHandler.addEventListener('hardwareBackPress', () => {
+    if (hasSignature) {
+      setShowExitWarning(true);
+      return true; // 기본 동작 방지
+    }
+    return false; // 기본 뒤로가기 허용
+  });
+  return () => backHandler.remove();
+}, [hasSignature]);
 ```
 
 ---
@@ -272,7 +308,7 @@ POST /functions/v1/register-worker
 ```
 1. 토스트: "가입이 완료되었습니다!"
 2. 토큰 저장
-3. 홈 화면으로 이동 (M01~M03)
+3. 홈 화면으로 이동 (M01~M03) - reset 네비게이션
 ```
 
 ### 직접가입 (REQUESTED)
@@ -280,7 +316,33 @@ POST /functions/v1/register-worker
 ```
 1. 토스트: "가입 요청이 완료되었습니다"
 2. 토큰 저장
-3. A08 승인대기 화면으로 이동
+3. A08 승인대기 화면으로 이동 - reset 네비게이션
+```
+
+### 네비게이션 구현 예시
+
+```typescript
+const handleRegisterSuccess = async (response) => {
+  // 토큰 저장
+  await secureStore.setItem('accessToken', response.accessToken);
+  await secureStore.setItem('refreshToken', response.refreshToken);
+
+  if (response.status === 'ACTIVE') {
+    // 선등록 회원: 홈으로 이동 (스택 초기화)
+    Toast.show('가입이 완료되었습니다!');
+    router.reset({
+      index: 0,
+      routes: [{ name: 'Home' }],
+    });
+  } else if (response.status === 'REQUESTED') {
+    // 직접가입: 승인대기 화면으로 이동 (스택 초기화)
+    Toast.show('가입 요청이 완료되었습니다');
+    router.reset({
+      index: 0,
+      routes: [{ name: 'WaitingApproval' }],
+    });
+  }
+};
 ```
 
 ---
@@ -294,3 +356,4 @@ POST /functions/v1/register-worker
 | `A07 전자서명 / Signed` | 서명 완료 |
 | `A07 전자서명 / Submitting` | 가입 중 |
 | `A07 전자서명 / ClearConfirm` | 다시 쓰기 확인 팝업 |
+| `A07 전자서명 / BackExit` | 뒤로가기 경고 팝업 |

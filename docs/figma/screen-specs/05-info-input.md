@@ -287,6 +287,46 @@ const validate = () => {
 3. 성공 시: A06 약관 동의로 이동
 ```
 
+### 7.3 뒤로가기 처리
+
+**조건:** 다음 중 하나라도 입력된 경우 경고 팝업 표시
+- 이름, 생년월일, 이메일, 성별, 국적, 소속팀, 직책
+
+**팝업 스펙:** (→ `00-common-popup-modal.md` 10.9 참조)
+```
+제목: "정보 입력을 중단하시겠습니까?"
+설명: "입력한 정보가 저장되지 않습니다."
+버튼: [취소] [나가기]
+```
+
+**구현 예시:**
+```typescript
+const [showExitWarning, setShowExitWarning] = useState(false);
+
+const hasUnsavedData = useMemo(() => {
+  // 선등록 데이터가 있는 경우, 수정 여부 확인
+  if (preRegisteredData) {
+    return name !== preRegisteredData.name ||
+           birthDate !== preRegisteredData.birthDate ||
+           /* ... 기타 필드 비교 */;
+  }
+  // 직접 가입의 경우, 입력값 존재 여부 확인
+  return !!(name || birthDate || email || gender || nationality || teamId || jobTitle);
+}, [name, birthDate, email, gender, nationality, teamId, jobTitle, preRegisteredData]);
+
+// Android 하드웨어 뒤로가기 처리
+useEffect(() => {
+  const backHandler = BackHandler.addEventListener('hardwareBackPress', () => {
+    if (hasUnsavedData) {
+      setShowExitWarning(true);
+      return true; // 기본 동작 방지
+    }
+    return false; // 기본 뒤로가기 허용
+  });
+  return () => backHandler.remove();
+}, [hasUnsavedData]);
+```
+
 ---
 
 ## 8. 데이터 전달
@@ -317,4 +357,5 @@ interface WorkerInfoData {
 | `A05 정보입력 / Filled` | 모든 필드 입력 |
 | `A05 정보입력 / Error` | 검증 오류 |
 | `A05 정보입력 / Conflict` | 데이터 충돌 팝업 |
+| `A05 정보입력 / BackExit` | 뒤로가기 경고 팝업 |
 | `A05 정보입력 / Dropdown` | 드롭다운 열림 상태 |

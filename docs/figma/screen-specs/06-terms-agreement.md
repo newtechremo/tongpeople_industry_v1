@@ -194,6 +194,38 @@
 3. A07 전자서명 화면으로 이동
 ```
 
+### 5.5 뒤로가기 처리
+
+**조건:** 하나 이상의 약관에 동의한 경우 경고 팝업 표시
+
+**팝업 스펙:** (→ `00-common-popup-modal.md` 10.10 참조)
+```
+제목: "약관 동의를 중단하시겠습니까?"
+설명: "동의 내용이 저장되지 않습니다."
+버튼: [취소] [나가기]
+```
+
+**구현 예시:**
+```typescript
+const [showExitWarning, setShowExitWarning] = useState(false);
+
+const hasAnyAgreement = useMemo(() => {
+  return termsOfService || privacyPolicy || thirdPartySharing || locationService;
+}, [termsOfService, privacyPolicy, thirdPartySharing, locationService]);
+
+// Android 하드웨어 뒤로가기 처리
+useEffect(() => {
+  const backHandler = BackHandler.addEventListener('hardwareBackPress', () => {
+    if (hasAnyAgreement) {
+      setShowExitWarning(true);
+      return true; // 기본 동작 방지
+    }
+    return false; // 기본 뒤로가기 허용
+  });
+  return () => backHandler.remove();
+}, [hasAnyAgreement]);
+```
+
 ---
 
 ## 6. 약관 상세 모달
@@ -275,4 +307,5 @@ const termItem = {
 | `A06 약관동의 / Default` | 초기 상태 |
 | `A06 약관동의 / Partial` | 일부 동의 |
 | `A06 약관동의 / AllAgreed` | 전체 동의 |
+| `A06 약관동의 / BackExit` | 뒤로가기 경고 팝업 |
 | `A06 약관동의 / Modal` | 약관 상세 모달 |
