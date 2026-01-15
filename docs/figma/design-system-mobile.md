@@ -191,35 +191,95 @@ className="px-4 py-2 text-orange-600 font-medium"
 
 ### 4.2 입력 필드 (Input Field)
 
-#### Default State
+#### 기본 스펙
 
 ```
-┌─────────────────────────────────────┐
-│  이름을 입력해주세요                   │
-└─────────────────────────────────────┘
-
 Height: 52px
-Border: 1px gray-300
-Border Radius: 12px
+Border Radius: 12px (rounded-xl)
 Padding: 0 16px
-Background: White
+Font: 16px Regular
 ```
+
+#### 상태별 스타일 (6단계)
+
+입력 필드는 6가지 상태를 지원하며, 각 상태에 따라 테두리/배경/텍스트 색상이 변경됩니다.
+
+| 상태 | 테두리 | 배경 | 텍스트 | 추가 요소 |
+|------|--------|------|--------|----------|
+| **1. 입력 전 (Default)** | `#CBD5E1` (1px) | `#FFFFFF` | placeholder: `#94A3B8` | - |
+| **2. 입력 중 (Focused)** | `#F97316` (2px) | `#FFFFFF` | `#1E293B` | ring: `#FFEDD5` |
+| **3. 입력 후 (Filled)** | `#CBD5E1` (1px) | `#FFFFFF` | `#1E293B` | - |
+| **4. 입력 불가 (Disabled)** | `#E2E8F0` (1px) | `#F1F5F9` | `#94A3B8` | - |
+| **5. 에러 (Error)** | `#DC2626` (2px) | `#FFFFFF` | `#1E293B` | 하단 메시지 |
+| **6. 성공 (Success)** | `#16A34A` (1px) | `#FFFFFF` | `#1E293B` | 체크 아이콘 |
+
+#### 상태별 시각화
+
+```
+1. 입력 전 (Default)
+┌─────────────────────────────────────┐
+│  시공사명을 입력하세요.                │  ← #94A3B8 (placeholder)
+└─────────────────────────────────────┘
+   Border: #CBD5E1 (1px)
+
+2. 입력 중 (Focused)
+┌─────────────────────────────────────┐
+│  010 9571 4|                        │  ← #1E293B + 커서
+└─────────────────────────────────────┘
+   Border: #F97316 (2px)
+   Ring: #FFEDD5 (2px)
+
+3. 입력 후 (Filled)
+┌─────────────────────────────────────┐
+│  010 9571 4354                      │  ← #1E293B
+└─────────────────────────────────────┘
+   Border: #CBD5E1 (1px)
+
+4. 입력 불가 (Disabled)
+┌─────────────────────────────────────┐
+│  010 9571 4354                      │  ← #94A3B8
+└─────────────────────────────────────┘
+   Border: #E2E8F0 (1px)
+   Background: #F1F5F9
+
+5. 에러 (Error)
+┌─────────────────────────────────────┐
+│  123-56-78944                       │
+└─────────────────────────────────────┘
+   Border: #DC2626 (2px)
+   올바른 형식으로 입력해주세요.  ← #DC2626
+
+6. 성공 (Success)
+┌─────────────────────────────────────┐
+│  010-2481-7821                   ✓  │
+└─────────────────────────────────────┘
+   Border: #16A34A (1px)
+   Icon: #16A34A
+```
+
+#### Tailwind 클래스
 
 ```tsx
-className="w-full h-[52px] px-4 rounded-xl border border-gray-300
-           text-slate-800 placeholder:text-slate-400
-           focus:border-orange-500 focus:ring-2 focus:ring-orange-100"
+// 기본 (입력 전)
+className="w-full h-[52px] px-4 rounded-xl border border-slate-300 bg-white
+           text-slate-800 placeholder:text-slate-400"
+
+// 입력 중 (Focused)
+className="w-full h-[52px] px-4 rounded-xl border-2 border-orange-500 bg-white
+           text-slate-800 ring-2 ring-orange-100"
+
+// 입력 불가 (Disabled)
+className="w-full h-[52px] px-4 rounded-xl border border-slate-200 bg-slate-100
+           text-slate-400"
+
+// 에러 (Error)
+className="w-full h-[52px] px-4 rounded-xl border-2 border-red-600 bg-white
+           text-slate-800"
+
+// 성공 (Success)
+className="w-full h-[52px] px-4 rounded-xl border border-green-600 bg-white
+           text-slate-800"
 ```
-
-#### 상태별 스타일
-
-| 상태 | Border | 추가 요소 |
-|------|--------|----------|
-| Default | `gray-300` | - |
-| Focused | `orange-500` | ring-2 orange-100 |
-| Error | `red-500` | 하단 에러 메시지 |
-| Disabled | `gray-200` | bg-gray-100 |
-| Success | `green-500` | 체크 아이콘 |
 
 #### With Label
 
@@ -231,12 +291,17 @@ className="w-full h-[52px] px-4 rounded-xl border border-gray-300
 ```
 
 ```tsx
-<View className="mb-4">
-  <Text className="text-sm font-medium text-slate-600 mb-2">
-    이름 <Text className="text-red-500">*</Text>
-  </Text>
-  <TextInput ... />
-</View>
+import { Input } from '@/components/ui';
+
+<Input
+  label="이름"
+  required
+  placeholder="이름을 입력해주세요"
+  value={name}
+  onChangeText={setName}
+  state={nameError ? 'error' : 'default'}
+  errorMessage={nameError}
+/>
 ```
 
 ### 4.3 카드 (Card)
@@ -366,29 +431,71 @@ Selected: border orange-500, inner dot orange-500
 
 ### 6.1 상단 헤더
 
+모든 헤더는 **오렌지 배경 (#F97316) + 흰색 텍스트**를 기본으로 사용합니다.
+
+#### 헤더 색상
+
+| 요소 | 색상 | HEX |
+|------|------|-----|
+| **배경** | Orange 500 | `#F97316` |
+| **그라데이션 끝** | Orange 600 | `#EA580C` |
+| **텍스트** | White | `#FFFFFF` |
+| **아이콘** | White | `#FFFFFF` |
+
 #### 로고 헤더 (홈)
 
 ```
-┌─────────────────────────────────────┐
-│  [로고]                        [알림] │
+┌─────────────────────────────────────┐  ← Background: #F97316
+│  [로고]                        [알림] │  ← Text/Icon: White
 │  산업현장통                           │
 └─────────────────────────────────────┘
 
 Height: 56px
 Padding: 0 16px
+Background: #F97316 (Orange 500)
+Text: #FFFFFF (White), 20px Bold
+```
+
+```tsx
+import { LogoHeader } from '@/components/layout';
+
+<LogoHeader
+  rightAction={<Bell size={24} color="white" />}
+/>
 ```
 
 #### 타이틀 헤더 (서브 페이지)
 
 ```
-┌─────────────────────────────────────┐
-│  ←    출퇴근 기록                     │
+┌─────────────────────────────────────┐  ← Background: #F97316
+│  ←       인증번호 확인               │  ← Text/Icon: White
 └─────────────────────────────────────┘
 
 Height: 56px
-Back Button: 24px, left 16px
-Title: Center, Slate 800, 18px SemiBold
+Back Button: 24px, White
+Title: Center, White, 18px SemiBold
+Background: #F97316 (또는 그라데이션)
 ```
+
+```tsx
+import { Header } from '@/components/layout';
+
+<Header
+  title="인증번호 확인"
+  showBack
+  onBack={() => router.back()}
+  variant="solid"  // 'solid' | 'gradient' | 'transparent' | 'white'
+/>
+```
+
+#### 헤더 변형 (Variants)
+
+| Variant | 배경 | 텍스트/아이콘 | 용도 |
+|---------|------|--------------|------|
+| **solid** | `#F97316` | White | 기본 서브 페이지 |
+| **gradient** | `#F97316 → #EA580C` | White | 강조 화면 |
+| **transparent** | 투명 | White | 이미지 위 오버레이 |
+| **white** | `#FFFFFF` | Slate 800 | 설정, 프로필 등 |
 
 ### 6.2 하단 탭바
 
@@ -611,3 +718,177 @@ radius/
 | 화면 구조 | `docs/figma/screen-structure.md` |
 | 웹 디자인 가이드 | `docs/design_guideline_251221.md` |
 | 화면별 상세 스펙 | `docs/figma/screen-specs/*.md` |
+
+---
+
+## 12. 컴포넌트 구현
+
+### 12.1 파일 구조
+
+```
+apps/worker-mobile/src/
+├── components/
+│   ├── ui/                    # UI 컴포넌트
+│   │   ├── Button.tsx         # Primary, Secondary, Ghost, Danger
+│   │   ├── Input.tsx          # 6가지 상태 지원
+│   │   ├── Card.tsx           # 기본/터치 카드
+│   │   ├── Checkbox.tsx       # 체크박스, 전체동의
+│   │   ├── Radio.tsx          # 라디오, 라디오그룹
+│   │   ├── Select.tsx         # 드롭다운 (BottomSheet)
+│   │   ├── Toast.tsx          # 토스트 메시지 + useToast 훅
+│   │   ├── Modal.tsx          # 모달, AlertModal, BackExitWarning
+│   │   └── index.ts
+│   ├── layout/                # 레이아웃 컴포넌트
+│   │   ├── Header.tsx         # 헤더 (solid/gradient/transparent/white)
+│   │   ├── ScreenWrapper.tsx  # 화면 래퍼, BottomAction
+│   │   ├── TabBar.tsx         # 탭바
+│   │   └── index.ts
+│   └── index.ts
+├── theme/                     # 테마/토큰
+│   ├── colors.ts              # 색상 상수
+│   ├── typography.ts          # 폰트 스타일
+│   ├── spacing.ts             # 간격, 크기
+│   └── index.ts
+└── hooks/
+    └── useTheme.ts            # 테마 훅 (추후)
+```
+
+### 12.2 사용 예시
+
+#### Button
+
+```tsx
+import { Button } from '@/components/ui';
+
+// Primary (기본)
+<Button onPress={handleSubmit}>다음</Button>
+
+// Secondary
+<Button variant="secondary" onPress={handleCancel}>취소</Button>
+
+// Danger
+<Button variant="danger" onPress={handleDelete}>삭제</Button>
+
+// Loading
+<Button loading>처리 중...</Button>
+
+// Disabled
+<Button disabled>비활성</Button>
+```
+
+#### Input
+
+```tsx
+import { Input } from '@/components/ui';
+
+// 기본
+<Input
+  label="이름"
+  required
+  placeholder="이름을 입력해주세요"
+  value={name}
+  onChangeText={setName}
+/>
+
+// 에러 상태
+<Input
+  label="전화번호"
+  value={phone}
+  onChangeText={setPhone}
+  state="error"
+  errorMessage="올바른 전화번호를 입력해주세요"
+/>
+
+// 비활성 상태
+<Input
+  label="회사코드"
+  value={companyCode}
+  state="disabled"
+/>
+```
+
+#### Header
+
+```tsx
+import { Header, LogoHeader } from '@/components/layout';
+
+// 서브 페이지 헤더
+<Header
+  title="인증번호 확인"
+  showBack
+  onBack={() => router.back()}
+/>
+
+// 홈 헤더
+<LogoHeader
+  rightAction={<Bell size={24} color="white" />}
+/>
+```
+
+#### Toast
+
+```tsx
+import { Toast, useToast } from '@/components/ui';
+
+function MyScreen() {
+  const { toast, success, error, hideToast } = useToast();
+
+  const handleSave = async () => {
+    try {
+      await save();
+      success('저장되었습니다');
+    } catch (e) {
+      error('저장에 실패했습니다');
+    }
+  };
+
+  return (
+    <>
+      {/* ... */}
+      <Toast {...toast} onHide={hideToast} />
+    </>
+  );
+}
+```
+
+#### Modal
+
+```tsx
+import { AlertModal, BackExitWarning } from '@/components/ui';
+
+// 확인 팝업
+<AlertModal
+  visible={showAlert}
+  onClose={() => setShowAlert(false)}
+  type="warning"
+  title="정보 입력을 중단하시겠습니까?"
+  message="입력한 정보가 저장되지 않습니다."
+  confirmText="나가기"
+  cancelText="취소"
+  showCancel
+  onConfirm={handleExit}
+/>
+
+// 뒤로가기 경고 (간편 버전)
+<BackExitWarning
+  visible={showExitWarning}
+  onClose={() => setShowExitWarning(false)}
+  onConfirm={handleExit}
+/>
+```
+
+### 12.3 테마 상수 사용
+
+```tsx
+import { colors, spacing, borderRadius } from '@/theme';
+
+// 색상
+const headerBg = colors.header.background;  // #F97316
+const inputBorder = colors.input.focused.border;  // #F97316
+
+// 간격
+const padding = spacing[4];  // 16px
+
+// 라운딩
+const radius = borderRadius.lg;  // 12px
+```
