@@ -25,10 +25,10 @@ const variantConfig: Record<DialogVariant, {
 }> = {
   info: {
     icon: Info,
-    iconColor: 'text-blue-600',
-    iconBg: 'bg-blue-100',
-    confirmBg: 'bg-gradient-to-r from-blue-500 to-blue-600',
-    confirmHover: 'hover:from-blue-600 hover:to-blue-700',
+    iconColor: 'text-orange-600',
+    iconBg: 'bg-orange-100',
+    confirmBg: 'bg-gradient-to-r from-orange-500 to-orange-600',
+    confirmHover: 'hover:from-orange-600 hover:to-orange-700',
   },
   success: {
     icon: CheckCircle,
