@@ -72,13 +72,15 @@ export type WorkerStatus =
   | 'PENDING'     // 관리자 선등록 후 동의 대기
   | 'REQUESTED'   // 근로자 직접 가입 후 승인 대기
   | 'ACTIVE'      // 활성
+  | 'REJECTED'    // 관리자 반려 (재가입 가능)
   | 'INACTIVE'    // 비활성 (퇴사 등)
-  | 'BLOCKED';    // 관리자 차단
+  | 'BLOCKED';    // 관리자 차단 (재가입 불가)
 
 export const WORKER_STATUS_LABELS: Record<WorkerStatus, string> = {
   PENDING: '동의 대기',
   REQUESTED: '승인 대기',
   ACTIVE: '정상',
+  REJECTED: '반려',
   INACTIVE: '비활성',
   BLOCKED: '차단',
 };

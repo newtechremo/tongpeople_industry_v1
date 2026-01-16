@@ -79,21 +79,23 @@
 | 모서리 | 16px (rounded-2xl) |
 | 플레이스홀더 | "회사코드 입력" |
 | 폰트 | 24px, Bold, 중앙 정렬 |
-| 글자 간격 | 4px (tracking-wider) |
+| 글자 간격 | 8px (tracking-widest) |
 | 키보드 | 영문+숫자 (autoCapitalize="characters") |
 | 자동 대문자 | 활성화 |
-| **maxLength** | **20** |
-| **minLength** | **4** (버튼 활성화 기준) |
+| **maxLength** | **6** |
+| **minLength** | **6** (버튼 활성화 기준) |
+
+> **참고:** 회사 코드는 6자리 고정 (쏘카 비즈니스 벤치마킹)
 
 ```tsx
 <TextInput
   placeholder="회사코드 입력"
-  maxLength={20}
+  maxLength={6}
   autoCapitalize="characters"
   autoCorrect={false}
   keyboardType="default"
   className="w-full h-14 rounded-2xl border-2 border-gray-300
-             text-center text-2xl font-bold tracking-wider
+             text-center text-2xl font-bold tracking-widest
              focus:border-orange-500"
   onChangeText={(text) => setCode(filterCompanyCode(text))}
 />
@@ -162,12 +164,11 @@
 
 | 항목 | 규칙 |
 |------|------|
-| 최소 길이 | 4자 이상 (미만 시 버튼 비활성) |
-| 최대 길이 | 20자 (maxLength 제한) |
+| **길이** | **6자리 고정** (미만 시 버튼 비활성) |
 | 허용 문자 | 영문 대문자, 숫자 |
 | 자동 변환 | 소문자 → 대문자 |
 | 특수문자 | 자동 제거 (하이픈, 공백 등) |
-| 붙여넣기 | 20자 초과 시 앞 20자만 적용 |
+| 붙여넣기 | 6자 초과 시 앞 6자만 적용 |
 
 ### 5.2 입력 필터링 로직
 
@@ -176,7 +177,7 @@ const filterCompanyCode = (input: string): string => {
   return input
     .toUpperCase()                    // 대문자 변환
     .replace(/[^A-Z0-9]/g, '')        // 영문+숫자만 허용
-    .slice(0, 20);                    // 최대 20자 제한
+    .slice(0, 6);                     // 6자리 고정
 };
 ```
 
@@ -186,8 +187,8 @@ const filterCompanyCode = (input: string): string => {
 |--------|------|------|
 | 짧은 코드 | `ABC` (3자) | 버튼 비활성화 |
 | 정상 코드 | `ABC123` (6자) | 정상 동작 |
-| 최대 길이 | 키보드 21자 입력 | 20자에서 멈춤 |
-| 긴 텍스트 붙여넣기 | 100자 붙여넣기 | 앞 20자만 입력 |
+| 초과 입력 | 키보드 7자 입력 | 6자에서 멈춤 |
+| 긴 텍스트 붙여넣기 | 100자 붙여넣기 | 앞 6자만 입력 |
 | 특수문자 포함 | `ABC-123` | `ABC123` (하이픈 제거) |
 | 소문자 입력 | `abc123` | `ABC123` (대문자 변환) |
 | 공백 포함 | `ABC 123` | `ABC123` (공백 제거) |

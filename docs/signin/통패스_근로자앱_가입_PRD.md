@@ -58,7 +58,7 @@ type UserRole = 'SUPER_ADMIN' | 'SITE_ADMIN' | 'TEAM_ADMIN' | 'WORKER';
 ### 근로자 상태값 (WorkerStatus)
 
 ```typescript
-type WorkerStatus = 'PENDING' | 'REQUESTED' | 'ACTIVE' | 'INACTIVE' | 'BLOCKED';
+type WorkerStatus = 'PENDING' | 'REQUESTED' | 'ACTIVE' | 'REJECTED' | 'INACTIVE' | 'BLOCKED';
 ```
 
 | 상태코드 | 한글명 | 배지색 | 발생 경로 | 관리자 액션 |
@@ -66,8 +66,13 @@ type WorkerStatus = 'PENDING' | 'REQUESTED' | 'ACTIVE' | 'INACTIVE' | 'BLOCKED';
 | `PENDING` | 동의대기 | 노랑 | 관리자 선등록 | SMS 재전송 |
 | `REQUESTED` | 승인대기 | 빨강 | 근로자 직접가입 | [승인] / [반려] |
 | `ACTIVE` | 정상 | 없음 | 가입완료 | 정보수정 / 비활성화 |
+| **`REJECTED`** | **반려** | **주황** | **관리자 반려** | **재가입 가능** |
 | `INACTIVE` | 비활성 | 회색 | 퇴사/차단 | 활성화 |
 | `BLOCKED` | 차단 | 검정 | 관리자 차단 | - |
+
+> **REJECTED vs BLOCKED:**
+> - `REJECTED`: 가입 반려, 동일 번호로 재가입 가능
+> - `BLOCKED`: 완전 차단, 재가입 불가
 
 ---
 
