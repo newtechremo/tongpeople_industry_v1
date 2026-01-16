@@ -85,7 +85,7 @@ export function ConfirmDialog({
 
       {/* Dialog */}
       <div
-        className="relative w-full max-w-sm bg-white rounded-2xl shadow-xl overflow-hidden animate-fade-in"
+        className="relative w-full max-w-sm bg-white rounded-2xl shadow-xl overflow-hidden animate-dialog-in"
         role="alertdialog"
         aria-labelledby="dialog-title"
         aria-describedby="dialog-description"

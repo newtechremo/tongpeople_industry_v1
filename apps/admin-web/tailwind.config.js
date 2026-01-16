@@ -45,9 +45,14 @@ export default {
           '0%': { opacity: '0', transform: 'translate(-50%, 20px)' },
           '100%': { opacity: '1', transform: 'translate(-50%, 0)' },
         },
+        'dialog-in': {
+          '0%': { opacity: '0', transform: 'scale(0.95)' },
+          '100%': { opacity: '1', transform: 'scale(1)' },
+        },
       },
       animation: {
         'fade-in': 'fade-in 0.2s ease-out',
+        'dialog-in': 'dialog-in 0.15s ease-out',
       },
     },
   },
