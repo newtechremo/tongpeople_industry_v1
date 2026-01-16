@@ -58,11 +58,49 @@ arguments:
 - Header + Content + TabBar 구조
 - 인터랙션: 탭, 스와이프, 길게 누르기
 
-### 4. 동영상 추가 분석 (해당 시)
-- 화면 전환 흐름 파악
-- 상태 변화 식별 (로딩, 성공, 에러 등)
-- 상태 전이 다이어그램 작성
-- 사용자에게 주요 프레임 스크린샷 요청 (필요시)
+### 4. 동영상 분석 (해당 시)
+
+**프레임 추출 방법 (Python OpenCV):**
+```python
+import cv2
+import os
+
+video_path = "원본경로"
+output_dir = "C:/hongtong/reference/figma/frames_temp/"  # 영문 경로 사용
+os.makedirs(output_dir, exist_ok=True)
+
+cap = cv2.VideoCapture(video_path)
+fps = cap.get(cv2.CAP_PROP_FPS)
+total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+
+# 2초 간격으로 프레임 추출
+interval = int(fps * 2)
+frame_count = 0
+saved_count = 0
+
+while True:
+    ret, frame = cap.read()
+    if not ret:
+        break
+    if frame_count % interval == 0:
+        # 한글 경로 문제 해결: imencode 사용
+        output_path = f"{output_dir}frame_{saved_count:03d}.jpg"
+        _, encoded = cv2.imencode('.jpg', frame)
+        with open(output_path, 'wb') as f:
+            f.write(encoded.tobytes())
+        saved_count += 1
+    frame_count += 1
+
+cap.release()
+print(f"추출 완료: {saved_count}개 프레임")
+```
+
+**분석 프로세스:**
+1. 프레임 추출 후 Read 도구로 이미지 분석
+2. 화면 전환 흐름 파악 (구간별 그룹핑)
+3. 상태 변화 식별 (로딩, 성공, 에러, 모달 등)
+4. 구간별 문서 분리 여부 결정
+5. 상태 전이 다이어그램 작성
 
 ---
 
@@ -216,7 +254,9 @@ docs/ui-specs/mobile/{YYYY-MM-DD}-{화면명}.md
 
 ## 주의사항
 
-1. **동영상 분석**: Claude는 동영상을 직접 분석할 수 없으므로, 사용자에게 주요 화면 스크린샷을 요청
+1. **동영상 분석**: Python OpenCV로 프레임 추출 후 분석 (한글 경로는 영문 temp 폴더 사용)
 2. **복잡한 화면**: 여러 상태가 있는 경우 각 상태별로 분석
-3. **기존 코드 참조**: 반드시 기존 컴포넌트를 먼저 확인 후 매핑
-4. **PC 2단계**: 구현 명세서 생성 시 기획 문서가 없으면 먼저 기획 문서 생성 권장
+3. **구간 분리**: 동영상에 여러 화면/시나리오가 있으면 구간별로 문서 분리 고려
+4. **기존 코드 참조**: 반드시 기존 컴포넌트를 먼저 확인 후 매핑
+5. **PC 2단계**: 구현 명세서 생성 시 기획 문서가 없으면 먼저 기획 문서 생성 권장
+6. **API 스키마**: 구현 명세서에는 반드시 Request/Response 스키마 포함

@@ -317,11 +317,30 @@ export default function SomePage() {
 - `is_auto_out`: 자동 퇴근 처리 여부
 - `has_accident`: 사고 발생 여부
 
+## 프로젝트 스킬
+
+이 프로젝트에서 사용 가능한 Claude Code 스킬입니다.
+
+| 스킬 | 설명 | 사용 예시 |
+|------|------|----------|
+| `/ui-spec` | 레퍼런스 이미지/동영상 → UI 명세서 생성 | `/ui-spec C:/reference/화면.png` |
+
+> 상세 사용법: [`docs/SKILLS.md`](docs/SKILLS.md)
+
+### 스킬 파일 위치
+```
+.claude/commands/
+└── ui-spec.md        # UI 명세서 생성 스킬
+```
+
+---
+
 ## 배포 가이드
 
 ### 참조 문서
 | 문서 | 용도 |
 |------|------|
+| [`docs/SKILLS.md`](docs/SKILLS.md) | 프로젝트 스킬 사용 가이드 |
 | `SKILL_INSTALL_GUIDE.md` | Claude Code 스킬 설치 참조 |
 | `TEAM_GUIDE.md` | 팀원용 배포 워크플로우 가이드 |
 
