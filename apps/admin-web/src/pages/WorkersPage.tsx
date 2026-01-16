@@ -15,11 +15,13 @@ import {
   RotateCcw,
   FileSpreadsheet,
   RefreshCw,
+  QrCode,
 } from 'lucide-react';
 import type { Worker, Team } from '@tong-pass/shared';
 import WorkerAddModal from '@/components/workers/WorkerAddModal';
 import WorkerDetailModal from '@/components/workers/WorkerDetailModal';
 import WorkerExcelUploadModal from '@/components/workers/WorkerExcelUploadModal';
+import CompanyCodeModal from '@/components/workers/CompanyCodeModal';
 import { useAuth } from '@/context/AuthContext';
 import { getWorkers } from '@/api/workers';
 import { getPartners } from '@/api/partners';
@@ -66,12 +68,14 @@ const ROLE_FILTER_OPTIONS: { value: RoleFilter; label: string }[] = [
   { value: 'REPRESENTATIVE', label: '근로자 대표' },
 ];
 
-// 상태 필터 옵션 (승인대기, 비활성만)
-type StatusFilter = 'ALL' | 'PENDING' | 'INACTIVE';
+// 상태 필터 옵션
+type StatusFilter = 'ALL' | 'PENDING' | 'REQUESTED' | 'INACTIVE' | 'BLOCKED';
 const STATUS_FILTER_OPTIONS: { value: StatusFilter; label: string }[] = [
   { value: 'ALL', label: '전체 상태' },
-  { value: 'PENDING', label: '승인대기' },
+  { value: 'PENDING', label: '동의대기' },
+  { value: 'REQUESTED', label: '승인대기' },
   { value: 'INACTIVE', label: '비활성' },
+  { value: 'BLOCKED', label: '차단' },
 ];
 
 const ITEMS_PER_PAGE = 10;
@@ -81,14 +85,28 @@ function StatusBadge({ status }: { status: Worker['status'] }) {
   if (status === 'PENDING') {
     return (
       <span className="px-2 py-0.5 text-xs font-medium text-yellow-700 bg-yellow-100 rounded-full">
+        동의대기
+      </span>
+    );
+  }
+  if (status === 'REQUESTED') {
+    return (
+      <span className="px-2 py-0.5 text-xs font-medium text-red-700 bg-red-100 rounded-full">
         승인대기
       </span>
     );
   }
   if (status === 'INACTIVE') {
     return (
-      <span className="px-2 py-0.5 text-xs font-medium text-red-700 bg-red-100 rounded-full">
+      <span className="px-2 py-0.5 text-xs font-medium text-gray-700 bg-gray-100 rounded-full">
         비활성
+      </span>
+    );
+  }
+  if (status === 'BLOCKED') {
+    return (
+      <span className="px-2 py-0.5 text-xs font-medium text-white bg-slate-800 rounded-full">
+        차단
       </span>
     );
   }
@@ -118,6 +136,7 @@ export default function WorkersPage() {
   const [selectedWorkers, setSelectedWorkers] = useState<string[]>([]);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isExcelModalOpen, setIsExcelModalOpen] = useState(false);
+  const [isCodeModalOpen, setIsCodeModalOpen] = useState(false);
   const [selectedWorker, setSelectedWorker] = useState<Worker | null>(null);
 
   // 데이터 로드
@@ -223,7 +242,9 @@ export default function WorkersPage() {
         // 상태 필터
         if (statusFilter !== 'ALL') {
           if (statusFilter === 'PENDING' && worker.status !== 'PENDING') return false;
+          if (statusFilter === 'REQUESTED' && worker.status !== 'REQUESTED') return false;
           if (statusFilter === 'INACTIVE' && worker.status !== 'INACTIVE') return false;
+          if (statusFilter === 'BLOCKED' && worker.status !== 'BLOCKED') return false;
         }
 
         return true;
@@ -305,6 +326,15 @@ export default function WorkersPage() {
           </button>
         </div>
         <div className="flex items-center gap-2">
+          <button
+            onClick={() => setIsCodeModalOpen(true)}
+            className="flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold text-orange-600
+                       bg-orange-50 border border-orange-200
+                       hover:bg-orange-100 transition-all"
+          >
+            <QrCode size={18} />
+            QR/코드 공유
+          </button>
           <button
             onClick={() => setIsExcelModalOpen(true)}
             className="flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold text-orange-600
@@ -622,6 +652,12 @@ export default function WorkersPage() {
         isOpen={isExcelModalOpen}
         onClose={() => setIsExcelModalOpen(false)}
         teams={displayTeams}
+      />
+
+      {/* Company Code Modal */}
+      <CompanyCodeModal
+        isOpen={isCodeModalOpen}
+        onClose={() => setIsCodeModalOpen(false)}
       />
     </div>
   );
