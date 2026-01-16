@@ -23,6 +23,7 @@ import { SENIOR_AGE_THRESHOLD, getWorkDate } from '@tong-pass/shared';
 import { useAuth } from '@/context/AuthContext';
 import { useDialog } from '@/hooks/useDialog';
 import { getDashboardSummary, getAttendanceByPartner } from '@/api/attendance';
+import { getCompanyById } from '@/api/companies';
 
 // 공지사항 데이터
 const notices = [
@@ -85,18 +86,20 @@ export default function DashboardPage() {
 
     setIsLoading(true);
     try {
-      const workDate = getWorkDate();
-      const summary = await getDashboardSummary(user.siteId, workDate);
-
-      // 데이터가 있으면 실제 데이터 사용
-      if (summary.totalWorkers > 0) {
-        setData(summary);
-        setUseMockData(false);
-      } else {
-        // 데이터 없으면 목업 사용
-        setUseMockData(true);
+      // 회사 정보 로드
+      if (user.companyId) {
+        const company = await getCompanyById(user.companyId);
+        if (company) {
+          setCompanyInfo({
+            name: company.name,
+            address: company.address || '주소 정보 없음',
+            businessNumber: company.business_number || '-',
+          });
+        }
       }
 
+      // 출퇴근 현황은 그대로 목업 사용 (사용자 요청)
+      setUseMockData(true);
       setLastUpdated(new Date());
     } catch (error) {
       console.error('대시보드 데이터 로드 실패:', error);
@@ -104,7 +107,7 @@ export default function DashboardPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [user?.siteId]);
+  }, [user?.siteId, user?.companyId]);
 
   // 초기 로드
   useEffect(() => {

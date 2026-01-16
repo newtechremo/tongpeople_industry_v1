@@ -1,31 +1,12 @@
-import { createContext, useContext, useState, ReactNode } from 'react';
+import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import type { Site } from '@tong-pass/shared';
-
-// 초기 현장 데이터
-const initialSites: Site[] = [
-  {
-    id: 1,
-    name: '통하는사람들 서울본사',
-    address: '서울특별시 강남구 테헤란로 123',
-    managerName: '김철수',
-    managerPhone: '02-1234-5678',
-    checkoutPolicy: 'AUTO_8H',
-    autoHours: 8,
-  },
-  {
-    id: 2,
-    name: '통사 대전공장',
-    address: '대전광역시 유성구 대덕대로 456',
-    managerName: '박영희',
-    managerPhone: '042-987-6543',
-    checkoutPolicy: 'MANUAL',
-    autoHours: 8,
-  },
-];
+import { useAuth } from './AuthContext';
+import { getSites } from '../api/sites';
 
 interface SitesContextType {
   sites: Site[];
   selectedSite: Site | null;
+  loading: boolean;
   setSites: (sites: Site[]) => void;
   setSelectedSite: (site: Site | null) => void;
   addSite: (site: Site) => void;
@@ -36,8 +17,39 @@ interface SitesContextType {
 const SitesContext = createContext<SitesContextType | undefined>(undefined);
 
 export function SitesProvider({ children }: { children: ReactNode }) {
-  const [sites, setSites] = useState<Site[]>(initialSites);
-  const [selectedSite, setSelectedSite] = useState<Site | null>(initialSites[0] || null);
+  const { user } = useAuth();
+  const [sites, setSites] = useState<Site[]>([]);
+  const [selectedSite, setSelectedSite] = useState<Site | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  // 사용자의 회사에 속한 현장 목록 로드
+  useEffect(() => {
+    async function loadSites() {
+      if (!user?.companyId) {
+        setLoading(false);
+        return;
+      }
+
+      try {
+        const data = await getSites(user.companyId);
+        setSites(data);
+
+        // 사용자의 현장을 선택된 현장으로 설정
+        if (user.siteId) {
+          const userSite = data.find((site) => site.id === user.siteId);
+          setSelectedSite(userSite || data[0] || null);
+        } else {
+          setSelectedSite(data[0] || null);
+        }
+      } catch (error) {
+        console.error('Failed to load sites:', error);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    loadSites();
+  }, [user?.companyId, user?.siteId]);
 
   const addSite = (site: Site) => {
     setSites((prev) => [...prev, site]);
@@ -70,6 +82,7 @@ export function SitesProvider({ children }: { children: ReactNode }) {
       value={{
         sites,
         selectedSite,
+        loading,
         setSites,
         setSelectedSite,
         addSite,

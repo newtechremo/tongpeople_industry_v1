@@ -20,6 +20,22 @@ export default function Header() {
     navigate('/login');
   };
 
+  // 역할 한글명 변환
+  const getRoleDisplayName = (role: string) => {
+    switch (role) {
+      case 'SUPER_ADMIN':
+        return '최고 관리자';
+      case 'SITE_ADMIN':
+        return '현장 관리자';
+      case 'TEAM_ADMIN':
+        return '팀 관리자';
+      case 'WORKER':
+        return '근로자';
+      default:
+        return '관리자';
+    }
+  };
+
   // 현재 사용자를 Worker 형태로 변환 (본인 계정 설정용)
   const currentUserAsWorker: Worker | null = user ? {
     id: user.id,
@@ -27,10 +43,10 @@ export default function Header() {
     phone: user.phone,
     role: user.role,
     teamId: user.partnerId ? String(user.partnerId) : undefined,
-    teamName: '관리자',
+    teamName: user.partnerName || getRoleDisplayName(user.role),
     birthDate: '1980-01-01', // 실제 데이터 연동 시 수정
     age: 45,
-    position: '관리자',
+    position: getRoleDisplayName(user.role),
     nationality: '대한민국',
     status: 'ACTIVE',
     isSenior: false,
@@ -58,7 +74,7 @@ export default function Header() {
       {/* Left: Company & Site Selector */}
       <div className="flex items-center gap-4">
         {/* Company Name - 로고와 동일한 스타일 */}
-        <span className="text-xl font-black text-orange-600">(주)통하는사람들</span>
+        <span className="text-xl font-black text-orange-600">{user?.companyName || '통패스'}</span>
 
         {/* Site Dropdown */}
         <div className="relative" ref={dropdownRef}>

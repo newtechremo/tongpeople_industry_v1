@@ -22,6 +22,8 @@ interface SignupRequest {
   ceoName: string;
   companyAddress: string;
   employeeCountRange?: string;
+  businessCategoryCode?: string;
+  businessCategoryName?: string;
 
   // Step 3: 첫 현장
   siteName: string;
@@ -164,6 +166,8 @@ Deno.serve(async (req) => {
         ceo_name: data.ceoName,
         address: data.companyAddress,
         employee_count_range: data.employeeCountRange,
+        business_category_code: data.businessCategoryCode,
+        business_category_name: data.businessCategoryName,
         contact_phone: normalizedPhone,
       })
       .select()
@@ -219,7 +223,41 @@ Deno.serve(async (req) => {
       );
     }
 
-    // 8. 사용자 프로필 생성 (users 테이블)
+    // 8. 기본 팀 생성 (관리팀, 근로팀)
+    const { data: teams, error: teamsError } = await supabase
+      .from('partners')
+      .insert([
+        {
+          company_id: company.id,
+          site_id: site.id,
+          name: '관리팀',
+          is_active: true,
+        },
+        {
+          company_id: company.id,
+          site_id: site.id,
+          name: '근로팀',
+          is_active: true,
+        },
+      ])
+      .select();
+
+    if (teamsError || !teams || teams.length === 0) {
+      console.error('Teams error:', teamsError);
+      // 롤백
+      await supabase.from('sites').delete().eq('id', site.id);
+      await supabase.from('companies').delete().eq('id', company.id);
+      await supabase.auth.admin.deleteUser(authUser.user.id);
+      return new Response(
+        JSON.stringify({ error: '팀 생성 중 오류가 발생했습니다.' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // 관리팀 ID 가져오기 (첫 번째 팀)
+    const managementTeamId = teams[0].id;
+
+    // 9. 사용자 프로필 생성 (users 테이블) - 관리팀에 할당
     const now = new Date().toISOString();
     const { error: userError } = await supabase
       .from('users')
@@ -227,6 +265,7 @@ Deno.serve(async (req) => {
         id: authUser.user.id,
         company_id: company.id,
         site_id: site.id,
+        partner_id: managementTeamId,  // 관리팀에 할당
         name: data.name,
         phone: normalizedPhone,
         role: 'SUPER_ADMIN',
@@ -239,6 +278,7 @@ Deno.serve(async (req) => {
     if (userError) {
       console.error('User error:', userError);
       // 롤백
+      await supabase.from('partners').delete().in('id', teams.map(t => t.id));
       await supabase.from('sites').delete().eq('id', site.id);
       await supabase.from('companies').delete().eq('id', company.id);
       await supabase.auth.admin.deleteUser(authUser.user.id);
@@ -247,22 +287,6 @@ Deno.serve(async (req) => {
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
-
-    // 9. 기본 팀 생성 (관리자, 일반근로자)
-    await supabase.from('partners').insert([
-      {
-        company_id: company.id,
-        site_id: site.id,
-        name: '관리자',
-        is_active: true,
-      },
-      {
-        company_id: company.id,
-        site_id: site.id,
-        name: '일반근로자',
-        is_active: true,
-      },
-    ]);
 
     return new Response(
       JSON.stringify({

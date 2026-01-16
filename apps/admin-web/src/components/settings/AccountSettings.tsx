@@ -1,5 +1,8 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { Save, Building2, User, MapPin, FileText, Upload, Clock, Lock, Search, Phone, Mail, Headphones, CreditCard, Pencil, X, Users } from 'lucide-react';
+import { useAuth } from '@/context/AuthContext';
+import { getCompanyById, updateCompany, updateClientProfile } from '@/api/companies';
+import type { CompanyWithProfile } from '@/api/companies';
 import { useDaumPostcode } from '@/hooks/useDaumPostcode';
 
 // 직원 수 옵션
@@ -129,10 +132,13 @@ const ContactCard = ({
 };
 
 export default function AccountSettings() {
+  const { user } = useAuth();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [isCodeDropdownOpen, setIsCodeDropdownOpen] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [company, setCompany] = useState<CompanyWithProfile | null>(null);
 
   // Daum 주소 검색
   const { openPostcode } = useDaumPostcode({
@@ -141,15 +147,15 @@ export default function AccountSettings() {
     },
   });
 
-  // 저장된 데이터 (API에서 조회한다고 가정)
+  // 저장된 데이터
   const [savedData, setSavedData] = useState({
-    companyName: '(주)통하는사람들',
-    representativeName: '홍길동',
-    address: '서울특별시 강남구 테헤란로 123',
-    businessNumber: '123-45-67890',
-    businessCategoryCode: 'F',
-    businessCategoryName: '건설업',
-    employeeCount: '50_to_299',
+    companyName: '',
+    representativeName: '',
+    address: '',
+    businessNumber: '',
+    businessCategoryCode: '',
+    businessCategoryName: '',
+    employeeCount: '',
     timezone: 'Asia/Seoul',
     techAdminName: '',
     techAdminPhone: '',
@@ -161,6 +167,46 @@ export default function AccountSettings() {
 
   // 수정 중인 폼 데이터
   const [formData, setFormData] = useState({ ...savedData });
+
+  // 회사 데이터 로드
+  useEffect(() => {
+    async function loadCompanyData() {
+      if (!user?.companyId) return;
+
+      try {
+        setLoading(true);
+        const companyData = await getCompanyById(user.companyId);
+        if (companyData) {
+          setCompany(companyData);
+          const profile = companyData.client_profile;
+          const data = {
+            companyName: companyData.name || '',
+            representativeName: companyData.ceo_name || '',
+            address: companyData.address || '',
+            businessNumber: profile?.biz_num || '',
+            businessCategoryCode: companyData.business_category_code || '',
+            businessCategoryName: companyData.business_category_name || '',
+            employeeCount: companyData.employee_count_range || '',
+            timezone: 'Asia/Seoul',
+            techAdminName: profile?.admin_name || '',
+            techAdminPhone: profile?.admin_phone || '',
+            techAdminEmail: profile?.admin_email || '',
+            billingAdminName: profile?.billing_name || '',
+            billingAdminPhone: profile?.billing_phone || '',
+            billingAdminEmail: profile?.billing_email || '',
+          };
+          setSavedData(data);
+          setFormData(data);
+        }
+      } catch (error) {
+        console.error('Failed to load company data:', error);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    loadCompanyData();
+  }, [user?.companyId]);
 
   const [uploadedFile, setUploadedFile] = useState<{
     name: string;
@@ -220,12 +266,55 @@ export default function AccountSettings() {
     setIsCodeDropdownOpen(false);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setSavedData({ ...formData });
-    setIsEditing(false);
-    alert('회사 정보가 저장되었습니다.');
+
+    if (!user?.companyId) {
+      alert('회사 정보를 찾을 수 없습니다.');
+      return;
+    }
+
+    try {
+      // 1. 회사 기본 정보 업데이트
+      await updateCompany(user.companyId, {
+        name: formData.companyName,
+        ceo_name: formData.representativeName,
+        address: formData.address,
+        employee_count_range: formData.employeeCount,
+        business_category_code: formData.businessCategoryCode,
+        business_category_name: formData.businessCategoryName,
+      });
+
+      // 2. 담당자 정보 업데이트 (client_profiles)
+      await updateClientProfile(user.companyId, {
+        admin_name: formData.techAdminName,
+        admin_phone: formData.techAdminPhone,
+        admin_email: formData.techAdminEmail,
+        billing_name: formData.billingAdminName,
+        billing_phone: formData.billingAdminPhone,
+        billing_email: formData.billingAdminEmail,
+      });
+
+      setSavedData({ ...formData });
+      setIsEditing(false);
+      alert('회사 정보가 저장되었습니다.');
+    } catch (error) {
+      console.error('Failed to update company:', error);
+      alert('회사 정보 저장 중 오류가 발생했습니다.');
+    }
   };
+
+  // 로딩 상태
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <div className="text-center">
+          <div className="w-12 h-12 border-4 border-orange-200 border-t-orange-500 rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-sm text-slate-500">회사 정보를 불러오는 중...</p>
+        </div>
+      </div>
+    );
+  }
 
   // 보기 모드
   if (!isEditing) {

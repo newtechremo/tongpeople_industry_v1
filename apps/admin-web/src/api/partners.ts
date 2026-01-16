@@ -16,7 +16,7 @@ export async function getPartners(siteId?: number) {
   let query = supabase
     .from('partners')
     .select('*')
-    .order('name');
+    .order('created_at', { ascending: true });
 
   if (siteId) {
     query = query.or(`site_id.eq.${siteId},site_id.is.null`);
@@ -87,13 +87,13 @@ export async function deletePartner(id: number) {
  * 현장별 팀 목록 조회 (근로자 수 포함)
  */
 export async function getPartnersWithWorkerCount(siteId: number): Promise<PartnerWithWorkerCount[]> {
-  // 팀 목록 조회
+  // 팀 목록 조회 (생성 순서대로)
   const { data: partners, error: partnersError } = await supabase
     .from('partners')
     .select('*')
     .or(`site_id.eq.${siteId},site_id.is.null`)
     .eq('is_active', true)
-    .order('name');
+    .order('created_at', { ascending: true });
 
   if (partnersError) throw partnersError;
 

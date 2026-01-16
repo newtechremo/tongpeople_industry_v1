@@ -1,43 +1,7 @@
 import { useState, useCallback } from 'react';
 import { Plus, ChevronLeft, Pin, X, Users, Check, Trash2, Search } from 'lucide-react';
-
-// ============================================
-// 타입 정의
-// ============================================
-
-/** 결재자 정보 */
-interface Approver {
-  userId: string;
-  userName: string;
-  position: string;        // 조직 내 직책
-  approvalTitle: string;   // 결재직책 (결재서류에 표시)
-}
-
-/** 결재라인 템플릿 */
-interface ApprovalLine {
-  id: string;
-  name: string;                    // 결재라인 명칭
-  documentType: DocumentType;      // 문서 종류
-  isPinned: boolean;               // 고정 여부
-  approvers: Approver[];           // 결재자 목록 (순서대로)
-  createdAt: string;
-}
-
-/** 문서 종류 */
-type DocumentType =
-  | 'RISK_ASSESSMENT'        // 위험성평가
-  | 'TBM'                    // TBM
-  | 'SAFETY_EDUCATION'       // 안전 교육
-  | 'WORK_PLAN'              // 작업 계획서
-  | 'RISK_MEETING';          // 위험성 평가 회의록
-
-const DOCUMENT_TYPE_LABELS: Record<DocumentType, string> = {
-  RISK_ASSESSMENT: '위험성 평가',
-  TBM: 'TBM',
-  SAFETY_EDUCATION: '안전 교육',
-  WORK_PLAN: '작업 계획서',
-  RISK_MEETING: '위험성 평가 회의록',
-};
+import type { ApprovalDocumentType, Approver, ApprovalLine } from '@tong-pass/shared';
+import { APPROVAL_DOCUMENT_TYPE_LABELS } from '@tong-pass/shared';
 
 // 결재직책 기본 옵션
 const APPROVAL_TITLE_OPTIONS = [
@@ -119,8 +83,8 @@ export default function ApprovalLineSettings({
   onModalAutoOpened,
 }: ApprovalLineSettingsProps) {
   // 상태
-  const [approvalLines, setApprovalLines] = useState<ApprovalLine[]>(MOCK_APPROVAL_LINES);
-  const [filterType, setFilterType] = useState<DocumentType | 'ALL'>('ALL');
+  const [approvalLines, setApprovalLines] = useState<ApprovalLine[]>([]);  // 초기에는 빈 상태
+  const [filterType, setFilterType] = useState<ApprovalDocumentType | 'ALL'>('ALL');
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingLine, setEditingLine] = useState<ApprovalLine | null>(null);
 
@@ -145,7 +109,7 @@ export default function ApprovalLineSettings({
     }
     acc[type].push(line);
     return acc;
-  }, {} as Record<DocumentType, ApprovalLine[]>);
+  }, {} as Record<ApprovalDocumentType, ApprovalLine[]>);
 
   // 결재라인 추가/수정 완료 핸들러
   const handleSaveLine = (line: ApprovalLine) => {
@@ -209,13 +173,13 @@ export default function ApprovalLineSettings({
               전체보기
             </span>
           </label>
-          {Object.entries(DOCUMENT_TYPE_LABELS).map(([type, label]) => (
+          {Object.entries(APPROVAL_DOCUMENT_TYPE_LABELS).map(([type, label]) => (
             <label key={type} className="flex items-center gap-2 cursor-pointer">
               <input
                 type="radio"
                 name="docType"
                 checked={filterType === type}
-                onChange={() => setFilterType(type as DocumentType)}
+                onChange={() => setFilterType(type as ApprovalDocumentType)}
                 className="w-4 h-4 text-orange-500 border-gray-300 focus:ring-orange-500"
               />
               <span className={`text-sm ${filterType === type ? 'font-bold text-slate-800' : 'text-slate-600'}`}>
@@ -232,7 +196,7 @@ export default function ApprovalLineSettings({
           {/* 섹션 헤더 */}
           <div className="flex items-center justify-between">
             <h3 className="text-sm font-bold text-slate-600 underline">
-              {DOCUMENT_TYPE_LABELS[docType as DocumentType]} 결재라인 설정
+              {APPROVAL_DOCUMENT_TYPE_LABELS[docType as ApprovalDocumentType]} 결재라인 설정
             </h3>
             <button
               onClick={handleAddNew}
@@ -389,7 +353,7 @@ const MAX_APPROVERS = 7;
 function ApprovalLineForm({ editingLine, onSave, onCancel }: ApprovalLineFormProps) {
   // 폼 상태
   const [lineName, setLineName] = useState(editingLine?.name || '');
-  const [documentType] = useState<DocumentType>(
+  const [documentType, setDocumentType] = useState<ApprovalDocumentType>(
     editingLine?.documentType || 'RISK_ASSESSMENT'
   );
 
@@ -577,16 +541,47 @@ function ApprovalLineForm({ editingLine, onSave, onCancel }: ApprovalLineFormPro
         </h2>
       </div>
 
+      {/* 문서 종류 선택 */}
+      <div className="space-y-2">
+        <label className="block text-sm font-bold text-slate-700">
+          문서 종류 선택 <span className="text-red-500">*</span>
+        </label>
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+          {Object.entries(APPROVAL_DOCUMENT_TYPE_LABELS).map(([type, label]) => (
+            <label
+              key={type}
+              className={`flex items-center gap-3 p-4 border-2 rounded-xl cursor-pointer transition-all
+                ${documentType === type
+                  ? 'border-orange-500 bg-orange-50'
+                  : 'border-gray-200 hover:border-orange-300'
+                }`}
+            >
+              <input
+                type="radio"
+                name="documentType"
+                value={type}
+                checked={documentType === type}
+                onChange={(e) => setDocumentType(e.target.value as ApprovalDocumentType)}
+                className="w-5 h-5 text-orange-500 border-gray-300 focus:ring-orange-500"
+              />
+              <span className={`text-sm font-medium ${documentType === type ? 'text-orange-600' : 'text-slate-700'}`}>
+                {label}
+              </span>
+            </label>
+          ))}
+        </div>
+      </div>
+
       {/* 결재라인 명칭 */}
       <div className="space-y-2">
-        <label className="block text-sm font-medium text-slate-700">
-          결재라인 명칭
+        <label className="block text-sm font-bold text-slate-700">
+          결재라인 명칭 <span className="text-red-500">*</span>
         </label>
         <input
           type="text"
           value={lineName}
           onChange={(e) => setLineName(e.target.value)}
-          placeholder="결재라인 명칭을 입력하세요."
+          placeholder="예: 기본 결재라인, 간편 결재라인"
           className="w-full px-4 py-3 border border-gray-200 rounded-lg text-sm
                      focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
         />

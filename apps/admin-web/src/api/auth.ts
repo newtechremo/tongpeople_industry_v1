@@ -9,8 +9,11 @@ export interface AuthUser {
   name: string;
   role: 'SUPER_ADMIN' | 'SITE_ADMIN' | 'TEAM_ADMIN' | 'WORKER';
   companyId: number | null;
+  companyName: string | null;
   siteId: number | null;
+  siteName: string | null;
   partnerId: number | null;
+  partnerName: string | null;
 }
 
 export interface LoginResponse {
@@ -249,17 +252,22 @@ export async function getSession() {
 }
 
 /**
- * 현재 사용자 정보 조회 (users 테이블 포함)
+ * 현재 사용자 정보 조회 (users, companies, sites, partners 조인)
  */
 export async function getCurrentUser(): Promise<AuthUser | null> {
   const { data: { user }, error: authError } = await supabase.auth.getUser();
 
   if (authError || !user) return null;
 
-  // users 테이블에서 추가 정보 조회
+  // users 테이블에서 company, site, partner 정보 조인
   const { data: profile, error: profileError } = await supabase
     .from('users')
-    .select('*')
+    .select(`
+      *,
+      company:companies(id, name),
+      site:sites(id, name),
+      partner:partners(id, name)
+    `)
     .eq('id', user.id)
     .single();
 
@@ -274,8 +282,11 @@ export async function getCurrentUser(): Promise<AuthUser | null> {
     name: profile.name,
     role: profile.role,
     companyId: profile.company_id,
+    companyName: profile.company?.name || null,
     siteId: profile.site_id,
+    siteName: profile.site?.name || null,
     partnerId: profile.partner_id,
+    partnerName: profile.partner?.name || null,
   };
 }
 
