@@ -11,6 +11,7 @@ import {
   Send,
   Edit3,
 } from 'lucide-react';
+import * as XLSX from 'xlsx';
 import type { Team } from '@tong-pass/shared';
 
 interface WorkerExcelUploadModalProps {
@@ -107,10 +108,71 @@ export default function WorkerExcelUploadModal({ isOpen, onClose, teams }: Worke
   }, [processFile]);
 
   // 양식 다운로드
-  const downloadTemplate = () => {
-    // 실제로는 팀 목록이 포함된 엑셀 파일 생성
-    alert('엑셀 양식이 다운로드됩니다. (현재 시스템에 등록된 팀 목록이 포함됨)');
-  };
+  const downloadTemplate = useCallback(() => {
+    // 근로자 등록 양식 시트 생성
+    const templateData = [
+      ['성명', '휴대폰번호', '소속팀', '생년월일', '역할', '직종', '성별', '국적'],
+      ['홍길동', '01012345678', '', '19850101', '근로자', '전기기사', '남성', '대한민국'],
+      ['김영희', '01098765432', '', '19900515', '팀 관리자', '안전관리자', '여성', '대한민국'],
+    ];
+
+    // 팀 목록 시트 생성
+    const teamListData = [
+      ['등록된 소속팀 목록'],
+      ['(아래 팀명을 복사하여 사용하세요)'],
+      [''],
+      ...teams.map(team => [team.name]),
+    ];
+
+    // 입력 안내 시트 생성
+    const guideData = [
+      ['컬럼명', '필수여부', '형식', '설명'],
+      ['성명', '필수', '텍스트', '근로자 이름'],
+      ['휴대폰번호', '필수', '숫자 11자리', '하이픈(-) 없이 입력 (예: 01012345678)'],
+      ['소속팀', '필수', '텍스트', '시스템에 등록된 팀명과 정확히 일치해야 함'],
+      ['생년월일', '필수', '숫자 8자리', '하이픈(-) 없이 입력 (예: 19850101)'],
+      ['역할', '필수', '텍스트', '"근로자" 또는 "팀 관리자"'],
+      ['직종', '선택', '텍스트', '직종/직책 (예: 전기기사, 용접공)'],
+      ['성별', '선택', '텍스트', '"남성" 또는 "여성"'],
+      ['국적', '선택', '텍스트', '국적 (기본값: 대한민국)'],
+    ];
+
+    // 워크북 생성
+    const workbook = XLSX.utils.book_new();
+
+    // 시트 추가
+    const templateSheet = XLSX.utils.aoa_to_sheet(templateData);
+    const teamSheet = XLSX.utils.aoa_to_sheet(teamListData);
+    const guideSheet = XLSX.utils.aoa_to_sheet(guideData);
+
+    // 열 너비 설정
+    templateSheet['!cols'] = [
+      { wch: 12 }, // 성명
+      { wch: 15 }, // 휴대폰번호
+      { wch: 20 }, // 소속팀
+      { wch: 12 }, // 생년월일
+      { wch: 12 }, // 역할
+      { wch: 15 }, // 직종
+      { wch: 8 },  // 성별
+      { wch: 12 }, // 국적
+    ];
+
+    teamSheet['!cols'] = [{ wch: 30 }];
+    guideSheet['!cols'] = [
+      { wch: 15 },
+      { wch: 10 },
+      { wch: 20 },
+      { wch: 40 },
+    ];
+
+    XLSX.utils.book_append_sheet(workbook, templateSheet, '근로자등록');
+    XLSX.utils.book_append_sheet(workbook, teamSheet, '팀목록');
+    XLSX.utils.book_append_sheet(workbook, guideSheet, '입력안내');
+
+    // 파일 다운로드
+    const fileName = `통패스_근로자등록_양식_${new Date().toISOString().slice(0, 10)}.xlsx`;
+    XLSX.writeFile(workbook, fileName);
+  }, [teams]);
 
   // 셀 수정
   const handleCellEdit = (rowNumber: number, field: keyof ExcelRow, value: string) => {

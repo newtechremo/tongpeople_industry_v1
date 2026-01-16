@@ -33,7 +33,8 @@ export function CompanyCodeModal({ isOpen, onClose }: CompanyCodeModalProps) {
 
   // Derived values
   const signupUrl = `${MOCK_SIGNUP_BASE_URL}?code=${companyCode}`;
-  const siteName = selectedSite?.name || '(주)리모 테스트 현장';
+  // 회사명만 표시 (현장명 제외)
+  const companyName = '통하는사람들';
 
   // Toast handler
   const showToast = useCallback((message: string) => {
@@ -201,7 +202,7 @@ export function CompanyCodeModal({ isOpen, onClose }: CompanyCodeModalProps) {
                 </div>
               ))}
             </div>
-            <p className="text-sm text-slate-500">{siteName}</p>
+            <p className="text-sm text-slate-500">{companyName}</p>
             {!isCodeActive && (
               <p className="text-sm font-bold text-red-500">비활성화됨</p>
             )}
