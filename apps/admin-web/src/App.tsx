@@ -10,6 +10,7 @@ import WorkersPage from './pages/WorkersPage';
 import AttendancePage from './pages/AttendancePage';
 import SettingsPage from './pages/SettingsPage';
 import RiskAssessmentPage from './pages/RiskAssessmentPage';
+import CreateAssessmentPage from './pages/risk-assessment/CreateAssessmentPage';
 import LoginPage from './pages/LoginPage';
 import PasswordResetPage from './pages/PasswordResetPage';
 import {
@@ -57,6 +58,7 @@ function App() {
                 <Route path="workers" element={<WorkersPage />} />
                 <Route path="attendance" element={<AttendancePage />} />
                 <Route path="safety/risk" element={<RiskAssessmentPage />} />
+                <Route path="safety/risk/create/:type" element={<CreateAssessmentPage />} />
                 <Route path="settings" element={<SettingsPage />} />
               </Route>
             </Routes>

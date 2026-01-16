@@ -1,12 +1,11 @@
 import { useState } from 'react';
-import { ChevronLeft, Plus, FileText, Calendar, RefreshCw, Clock } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { Plus, FileText, Calendar, RefreshCw, Clock } from 'lucide-react';
+import AssessmentTypeSelectModal, { AssessmentType } from '../components/risk-assessment/AssessmentTypeSelectModal';
 
 // ============================================
 // 타입 정의
 // ============================================
-
-/** 위험성평가 유형 */
-type AssessmentType = 'OCCASIONAL' | 'INITIAL' | 'REGULAR' | 'CONTINUOUS';
 
 interface AssessmentTypeInfo {
   id: AssessmentType;
@@ -247,41 +246,42 @@ const MOCK_ASSESSMENTS: RiskAssessment[] = [
 // 메인 컴포넌트
 // ============================================
 
+// URL 파라미터용 타입 매핑
+const TYPE_URL_MAP: Record<AssessmentType, string> = {
+  INITIAL: 'initial',
+  REGULAR: 'regular',
+  OCCASIONAL: 'occasional',
+  CONTINUOUS: 'continuous',
+};
+
 export default function RiskAssessmentPage() {
-  const [view, setView] = useState<'list' | 'create'>('list');
-  const [selectedType, setSelectedType] = useState<AssessmentType | null>(null);
+  const navigate = useNavigate();
   const [filterType, setFilterType] = useState<AssessmentType | 'ALL'>('ALL');
+  const [showTypeModal, setShowTypeModal] = useState(false);
 
   // 필터링된 목록
   const filteredAssessments = filterType === 'ALL'
     ? MOCK_ASSESSMENTS
     : MOCK_ASSESSMENTS.filter(a => a.type === filterType);
 
-  // 만들기 화면으로 전환
+  // 만들기 버튼 클릭
   const handleCreateClick = () => {
-    setView('create');
-    setSelectedType(null);
-  };
-
-  // 목록으로 돌아가기
-  const handleBackToList = () => {
-    setView('list');
-    setSelectedType(null);
-  };
-
-  // 위험성평가 생성 시작
-  const handleStartCreate = () => {
-    if (!selectedType) {
-      alert('위험성평가 유형을 선택해주세요.');
-      return;
+    if (filterType !== 'ALL') {
+      // 특정 유형 필터 선택 상태 → 바로 이동
+      navigate(`/safety/risk/create/${TYPE_URL_MAP[filterType]}`);
+    } else {
+      // 전체 필터 → 팝업 표시
+      setShowTypeModal(true);
     }
-    // TODO: 선택된 유형으로 폼 화면으로 이동
-    alert(`${ASSESSMENT_TYPES.find(t => t.id === selectedType)?.label} 만들기를 시작합니다.`);
   };
 
-  // 목록 화면
-  if (view === 'list') {
-    return (
+  // 팝업에서 유형 선택 시
+  const handleTypeSelect = (type: AssessmentType) => {
+    navigate(`/safety/risk/create/${TYPE_URL_MAP[type]}`);
+  };
+
+  return (
+    <>
       <div className="space-y-6">
         {/* 헤더 */}
         <div className="flex items-center justify-between">
@@ -409,108 +409,13 @@ export default function RiskAssessmentPage() {
           <button className="w-8 h-8 flex items-center justify-center text-sm text-slate-400">&gt;</button>
         </div>
       </div>
-    );
-  }
 
-  // 만들기 화면 (유형 선택)
-  return (
-    <div className="space-y-6">
-      {/* 뒤로가기 + 제목 */}
-      <div className="flex items-center gap-3">
-        <button
-          onClick={handleBackToList}
-          className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-        >
-          <ChevronLeft size={20} className="text-slate-600" />
-        </button>
-        <h1 className="text-xl font-bold text-slate-800">위험성평가 만들기</h1>
-      </div>
-
-      {/* 유형 선택 UI */}
-      <div className="flex gap-6">
-        {/* 왼쪽: 유형 목록 */}
-        <div className="w-[400px] space-y-3">
-          {ASSESSMENT_TYPES.map((type) => {
-            const isSelected = selectedType === type.id;
-            return (
-              <button
-                key={type.id}
-                onClick={() => setSelectedType(type.id)}
-                className={`w-full text-left p-5 rounded-xl border-2 transition-all
-                  ${isSelected
-                    ? 'border-orange-400 bg-orange-50'
-                    : 'border-gray-200 bg-white hover:border-orange-200 hover:bg-orange-50/30'
-                  }`}
-              >
-                <div className="flex items-center gap-3">
-                  <span className="text-lg font-bold text-orange-500">{type.number}</span>
-                  <span className={`text-base font-bold ${isSelected ? 'text-orange-700' : 'text-slate-700'}`}>
-                    {type.label}
-                  </span>
-                  <span className="text-sm text-slate-400 ml-auto">만들기부터</span>
-                </div>
-              </button>
-            );
-          })}
-        </div>
-
-        {/* 오른쪽: 선택된 유형 설명 */}
-        <div className="flex-1 bg-white rounded-xl border border-gray-200 p-6">
-          {selectedType ? (
-            (() => {
-              const typeInfo = ASSESSMENT_TYPES.find(t => t.id === selectedType)!;
-              return (
-                <div className="space-y-6">
-                  {/* 제목 */}
-                  <div>
-                    <h2 className="text-lg font-bold text-slate-800 flex items-center gap-2">
-                      <span className="text-orange-500">{typeInfo.number}</span>
-                      {typeInfo.label} 만들기부터
-                    </h2>
-                  </div>
-
-                  {/* 설명 */}
-                  <p className="text-sm text-slate-600 leading-relaxed">
-                    {typeInfo.description}
-                  </p>
-
-                  {/* 단계 */}
-                  <div className="space-y-2">
-                    {typeInfo.steps.map((step, index) => (
-                      <div key={index} className="flex items-start gap-3">
-                        <span className="flex-shrink-0 w-5 h-5 rounded-full bg-orange-100 text-orange-600
-                                         text-xs font-bold flex items-center justify-center mt-0.5">
-                          {index + 1}
-                        </span>
-                        <p className="text-sm text-slate-700">{step}</p>
-                      </div>
-                    ))}
-                  </div>
-
-                  {/* 만들기 버튼 */}
-                  <div className="pt-4">
-                    <button
-                      onClick={handleStartCreate}
-                      className="w-full py-3 rounded-xl font-bold text-white
-                                 bg-gradient-to-r from-orange-500 to-orange-600
-                                 hover:from-orange-600 hover:to-orange-700
-                                 shadow-sm transition-all"
-                    >
-                      위험성평가 만들기
-                    </button>
-                  </div>
-                </div>
-              );
-            })()
-          ) : (
-            <div className="h-full flex items-center justify-center text-slate-400">
-              <p className="text-center">
-                원하는 위험성평가 방법 탭을 선택해주세요.
-              </p>
-            </div>
-          )}
-        </div>
-      </div>
-    </div>
+      {/* 유형 선택 모달 */}
+      <AssessmentTypeSelectModal
+        isOpen={showTypeModal}
+        onClose={() => setShowTypeModal(false)}
+        onSelect={handleTypeSelect}
+      />
+    </>
   );
 }
