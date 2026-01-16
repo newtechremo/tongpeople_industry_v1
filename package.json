@@ -5,12 +5,14 @@
   "description": "산업현장통 2.0 - QR 기반 출퇴근 관리 서비스",
   "scripts": {
     "dev:admin": "pnpm --filter admin-web dev",
-    "dev:mobile": "pnpm --filter worker-mobile start",
+    "dev:mobile": "cd apps/TongPassApp && yarn start",
     "build:admin": "pnpm --filter admin-web build",
-    "build:mobile": "pnpm --filter worker-mobile build",
+    "build:mobile": "cd apps/TongPassApp && yarn android:build",
     "build:shared": "pnpm --filter @tong-pass/shared build",
     "lint": "pnpm -r lint",
-    "clean": "pnpm -r clean"
+    "clean": "pnpm -r clean",
+    "ios": "cd apps/TongPassApp && yarn ios",
+    "android": "cd apps/TongPassApp && yarn android"
   },
   "packageManager": "pnpm@9.15.0"
 }
