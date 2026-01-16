@@ -437,19 +437,19 @@ export default function WorkerExcelUploadModal({ isOpen, onClose, teams }: Worke
                     재검증
                   </button>
                 </div>
-                <div className="overflow-x-auto">
+                <div className="overflow-auto max-h-[400px]">
                   <table className="w-full min-w-[900px]">
-                    <thead>
+                    <thead className="sticky top-0 z-10">
                       <tr className="bg-gray-50 text-left border-b border-gray-200">
-                        <th className="px-3 py-2 text-xs font-bold text-slate-500 w-12">#</th>
-                        <th className="px-3 py-2 text-xs font-bold text-slate-500">상태</th>
-                        <th className="px-3 py-2 text-xs font-bold text-slate-500">성명</th>
-                        <th className="px-3 py-2 text-xs font-bold text-slate-500">휴대폰번호</th>
-                        <th className="px-3 py-2 text-xs font-bold text-slate-500">소속팀</th>
-                        <th className="px-3 py-2 text-xs font-bold text-slate-500">생년월일</th>
-                        <th className="px-3 py-2 text-xs font-bold text-slate-500">역할</th>
-                        <th className="px-3 py-2 text-xs font-bold text-slate-500">직종</th>
-                        <th className="px-3 py-2 text-xs font-bold text-slate-500 w-20">관리</th>
+                        <th className="px-3 py-2 text-xs font-bold text-slate-500 w-12 bg-gray-50">#</th>
+                        <th className="px-3 py-2 text-xs font-bold text-slate-500 bg-gray-50">상태</th>
+                        <th className="px-3 py-2 text-xs font-bold text-slate-500 bg-gray-50">성명</th>
+                        <th className="px-3 py-2 text-xs font-bold text-slate-500 bg-gray-50">휴대폰번호</th>
+                        <th className="px-3 py-2 text-xs font-bold text-slate-500 bg-gray-50">소속팀</th>
+                        <th className="px-3 py-2 text-xs font-bold text-slate-500 bg-gray-50">생년월일</th>
+                        <th className="px-3 py-2 text-xs font-bold text-slate-500 bg-gray-50">역할</th>
+                        <th className="px-3 py-2 text-xs font-bold text-slate-500 bg-gray-50">직종</th>
+                        <th className="px-3 py-2 text-xs font-bold text-slate-500 w-20 bg-gray-50">관리</th>
                       </tr>
                     </thead>
                     <tbody>
