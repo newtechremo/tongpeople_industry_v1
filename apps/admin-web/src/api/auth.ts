@@ -65,6 +65,8 @@ export interface SignupRequest {
   ceoName: string;
   companyAddress: string;
   employeeCountRange?: string;
+  businessCategoryCode?: string;
+  businessCategoryName?: string;
   siteName: string;
   siteAddress?: string;
   checkoutPolicy?: 'AUTO_8H' | 'MANUAL';
@@ -252,26 +254,32 @@ export async function getSession() {
 }
 
 /**
- * 현재 사용자 정보 조회 (users, companies, sites, partners 조인)
+ * 현재 사용자 정보 조회 (조인 사용 - 성능 최적화)
  */
 export async function getCurrentUser(): Promise<AuthUser | null> {
   const { data: { user }, error: authError } = await supabase.auth.getUser();
 
   if (authError || !user) return null;
 
-  // users 테이블에서 company, site, partner 정보 조인
+  // users 테이블에서 company, site, partner 정보 조인해서 한 번에 가져오기
   const { data: profile, error: profileError } = await supabase
     .from('users')
     .select(`
-      *,
-      company:companies(id, name),
-      site:sites(id, name),
-      partner:partners(id, name)
+      id,
+      name,
+      phone,
+      role,
+      company_id,
+      site_id,
+      partner_id,
+      companies!inner(id, name),
+      sites(id, name),
+      partners(id, name)
     `)
     .eq('id', user.id)
     .single();
 
-  if (profileError) {
+  if (profileError || !profile) {
     console.error('Failed to fetch user profile:', profileError);
     return null;
   }
@@ -282,11 +290,11 @@ export async function getCurrentUser(): Promise<AuthUser | null> {
     name: profile.name,
     role: profile.role,
     companyId: profile.company_id,
-    companyName: profile.company?.name || null,
+    companyName: Array.isArray(profile.companies) ? profile.companies[0]?.name : profile.companies?.name || null,
     siteId: profile.site_id,
-    siteName: profile.site?.name || null,
+    siteName: Array.isArray(profile.sites) ? profile.sites[0]?.name : profile.sites?.name || null,
     partnerId: profile.partner_id,
-    partnerName: profile.partner?.name || null,
+    partnerName: Array.isArray(profile.partners) ? profile.partners[0]?.name : profile.partners?.name || null,
   };
 }
 
