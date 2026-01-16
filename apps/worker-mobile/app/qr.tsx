@@ -1,44 +1,97 @@
-import { useState, useEffect } from 'react';
-import { View, Text } from 'react-native';
+/**
+ * QR 코드 출근 화면
+ *
+ * 서명된 QR 코드를 생성하여 관리자가 스캔할 수 있도록 합니다.
+ * QR 코드는 30초마다 자동 갱신됩니다.
+ */
+import { useState, useEffect, useCallback } from 'react';
+import { View, Text, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import QRCode from 'react-native-qrcode-svg';
 import { QR_VALIDITY_SECONDS, QR_REFRESH_INTERVAL_SECONDS } from '@tong-pass/shared';
+import { useAuth } from '../src/context/AuthContext';
+import {
+  generateSignedQR,
+  stringifyQRPayload,
+  type QRPayload,
+} from '../src/utils/qrSigner';
 
 export default function QRScreen() {
-  const [qrData, setQrData] = useState('');
+  const { user } = useAuth();
+  const [qrData, setQrData] = useState<string>('');
+  const [qrPayload, setQrPayload] = useState<QRPayload | null>(null);
   const [countdown, setCountdown] = useState(QR_VALIDITY_SECONDS);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   // QR 데이터 생성
-  const generateQRData = () => {
-    const payload = {
-      workerId: 'worker-001',  // 실제로는 로그인된 사용자 ID
-      timestamp: Date.now(),
-      expiresAt: Date.now() + QR_VALIDITY_SECONDS * 1000,
-    };
-    return JSON.stringify(payload);
-  };
+  const generateQR = useCallback(async () => {
+    if (!user?.id) {
+      setError('사용자 정보를 불러올 수 없습니다.');
+      setIsLoading(false);
+      return;
+    }
 
-  // QR 갱신
+    try {
+      setError(null);
+      const validityMs = QR_VALIDITY_SECONDS * 1000;
+      const payload = await generateSignedQR(user.id, validityMs);
+      setQrPayload(payload);
+      setQrData(stringifyQRPayload(payload));
+      setCountdown(QR_VALIDITY_SECONDS);
+      setIsLoading(false);
+    } catch (err: any) {
+      console.error('QR 생성 실패:', err);
+      setError('QR 코드 생성에 실패했습니다.');
+      setIsLoading(false);
+    }
+  }, [user?.id]);
+
+  // QR 갱신 (30초마다)
   useEffect(() => {
-    setQrData(generateQRData());
-    setCountdown(QR_VALIDITY_SECONDS);
+    generateQR();
 
     const refreshInterval = setInterval(() => {
-      setQrData(generateQRData());
-      setCountdown(QR_VALIDITY_SECONDS);
+      generateQR();
     }, QR_REFRESH_INTERVAL_SECONDS * 1000);
 
     return () => clearInterval(refreshInterval);
-  }, []);
+  }, [generateQR]);
 
   // 카운트다운
   useEffect(() => {
     const countdownInterval = setInterval(() => {
-      setCountdown((prev) => (prev > 0 ? prev - 1 : QR_VALIDITY_SECONDS));
+      setCountdown((prev) => {
+        if (prev <= 1) {
+          return QR_VALIDITY_SECONDS;
+        }
+        return prev - 1;
+      });
     }, 1000);
 
     return () => clearInterval(countdownInterval);
   }, []);
+
+  // 로딩 중
+  if (isLoading) {
+    return (
+      <SafeAreaView className="flex-1 bg-gray-50 items-center justify-center">
+        <ActivityIndicator size="large" color="#F97316" />
+        <Text className="text-slate-500 mt-4">QR 코드 생성 중...</Text>
+      </SafeAreaView>
+    );
+  }
+
+  // 에러
+  if (error) {
+    return (
+      <SafeAreaView className="flex-1 bg-gray-50 items-center justify-center px-6">
+        <View className="bg-red-50 p-6 rounded-2xl">
+          <Text className="text-red-600 text-center">{error}</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView className="flex-1 bg-gray-50">
@@ -62,7 +115,11 @@ export default function QRScreen() {
           {/* 카운트다운 */}
           <View className="mt-6 items-center">
             <Text className="text-sm text-slate-400">QR 코드 갱신까지</Text>
-            <Text className="text-3xl font-black text-orange-600 mt-1">
+            <Text
+              className={`text-3xl font-black mt-1 ${
+                countdown <= 5 ? 'text-red-500' : 'text-orange-600'
+              }`}
+            >
               {countdown}초
             </Text>
           </View>
@@ -77,9 +134,21 @@ export default function QRScreen() {
         </View>
 
         {/* 사용자 정보 */}
-        <View className="mt-8 items-center">
-          <Text className="text-lg font-bold text-slate-700">홍길동</Text>
-          <Text className="text-sm text-slate-500 mt-1">(주)정이앤지</Text>
+        {user && (
+          <View className="mt-8 items-center">
+            <Text className="text-lg font-bold text-slate-700">{user.name}</Text>
+            {user.partner_name && (
+              <Text className="text-sm text-slate-500 mt-1">{user.partner_name}</Text>
+            )}
+          </View>
+        )}
+
+        {/* 보안 안내 */}
+        <View className="mt-6 px-4">
+          <Text className="text-xs text-slate-400 text-center">
+            QR 코드는 암호화된 서명을 포함하여{'\n'}
+            캡처나 복사로 위변조할 수 없습니다.
+          </Text>
         </View>
       </View>
     </SafeAreaView>

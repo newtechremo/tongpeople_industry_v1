@@ -226,3 +226,56 @@ export async function getActiveAttendance(siteId: number, workDate: string) {
     partners: undefined,
   })) as AttendanceWithDetails[];
 }
+
+/**
+ * QR 페이로드 타입
+ */
+export interface QRPayload {
+  workerId: string;
+  timestamp: number;
+  expiresAt: number;
+  signature: string;
+}
+
+/**
+ * QR 스캔 출근 처리 응답
+ */
+export interface CheckInResponse {
+  success: boolean;
+  message: string;
+  data?: {
+    worker_name: string;
+    partner_name?: string;
+    check_in_time: string;
+    check_out_time?: string;
+    is_auto_out: boolean;
+    is_senior: boolean;
+  };
+  error?: string;
+}
+
+/**
+ * QR 스캔으로 출근 처리 (Edge Function 호출)
+ */
+export async function checkInWithQR(
+  siteId: number,
+  qrPayload: QRPayload
+): Promise<CheckInResponse> {
+  const { data, error } = await supabase.functions.invoke('check-in', {
+    body: {
+      site_id: siteId,
+      qr_payload: qrPayload,
+    },
+  });
+
+  if (error) {
+    throw new Error(error.message || '출근 처리에 실패했습니다.');
+  }
+
+  // Edge Function이 에러를 반환한 경우
+  if (data?.error) {
+    throw new Error(data.error);
+  }
+
+  return data as CheckInResponse;
+}

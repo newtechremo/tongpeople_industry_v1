@@ -7,6 +7,7 @@
 | **v1.0** | 2026.01.13 | PM & Client | MVP 개발용 최종 확정본 |
 | **v2.0** | 2026.01.13 | PM | 문서 통합, 입력항목 비교표 추가, 생년월일 필수화 |
 | **v2.1** | 2026.01.13 | PM | 방식 B에 팀 선택/직책 입력 추가, 입력 항목 통일화 |
+| **v2.2** | 2026.01.13 | PM | 리뷰 반영: 퇴근모드 참조, Realtime 참조, 고령자 판별 로직 명시 |
 
 ---
 
@@ -78,6 +79,8 @@ type WorkerStatus = 'PENDING' | 'REQUESTED' | 'ACTIVE' | 'INACTIVE' | 'BLOCKED';
 |------|------|
 | `AUTO_8H` | 출근 후 8시간 경과 시 자동 퇴근 처리 |
 | `MANUAL` | 근로자가 직접 퇴근 버튼을 눌러야 퇴근 처리 |
+
+> **📌 설정 권한:** 퇴근 모드는 **현장(Site) 단위 설정**이며, **관리자 웹**에서만 변경 가능합니다. 근로자 앱에서는 현장 설정값을 조회만 합니다.
 
 ### 근무일 사이클
 
@@ -369,6 +372,7 @@ graph TD
 > - 실제 GPS 좌표 수집 로직(Geofencing)은 **v1에 구현하지 않습니다.**
 > - 단, **약관 동의 체크박스는 미리 넣어주세요.** (향후 안전 기능 확장 대비)
 > - 약관 내용은 "위급 상황 시 근로자 위치 파악 및 안전 확보" 목적으로 명시합니다.
+> - **v3 GPS 기능 확장을 대비하여 사전 동의를 확보**합니다.
 
 ---
 
@@ -548,7 +552,7 @@ Authorization: Bearer {accessToken}
 | `phone_number` | VARCHAR | Unique Key, 로그인 ID 역할 |
 | `name` | VARCHAR | 이름 |
 | `birth_date` | VARCHAR(8) | 생년월일 YYYYMMDD |
-| `is_senior` | BOOLEAN | 만 65세 이상 여부 (자동 계산) |
+| `is_senior` | BOOLEAN | 만 65세 이상 여부 (INSERT/UPDATE 트리거로 자동 계산) |
 | `email` | VARCHAR | **Nullable**, 추후 소셜 로그인용 |
 | `gender` | CHAR(1) | M/F |
 | `nationality` | VARCHAR | 국적 코드 |
@@ -562,6 +566,27 @@ Authorization: Bearer {accessToken}
 | `site_id` | UUID | FK → sites.id |
 | `team_id` | UUID | FK → teams.id |
 
+#### 고령자(is_senior) 판별 로직
+
+```sql
+-- PostgreSQL Trigger (Supabase)
+CREATE OR REPLACE FUNCTION calculate_is_senior()
+RETURNS TRIGGER AS $$
+BEGIN
+  NEW.is_senior := (
+    EXTRACT(YEAR FROM AGE(CURRENT_DATE, TO_DATE(NEW.birth_date, 'YYYYMMDD'))) >= 65
+  );
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER trg_calculate_is_senior
+BEFORE INSERT OR UPDATE OF birth_date ON workers
+FOR EACH ROW EXECUTE FUNCTION calculate_is_senior();
+```
+
+> **📌 참고:** 생일이 지나 65세가 되는 경우는 연 1회 수동 갱신 스크립트로 처리합니다. (MVP 단순성 우선)
+
 ---
 
 ## 9. 비기능 요구사항
@@ -570,6 +595,7 @@ Authorization: Bearer {accessToken}
 |------|------|
 | **토큰 관리** | Access Token 만료 시 Refresh Token으로 갱신 |
 | **에러 처리** | "잠시 후 다시 시도해주세요" 팝업 통일 |
+| **실시간 상태 업데이트** | Supabase Realtime(WebSocket) 사용. 상세 채널 구조는 `CLAUDE.md` 참조 |
 | **Android** | Min SDK 26+ |
 | **iOS** | 14+ |
 

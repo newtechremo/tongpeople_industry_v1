@@ -68,7 +68,21 @@ export type Partner = Team;
 // ============================================
 // 근로자 상태
 // ============================================
-export type WorkerStatus = 'ACTIVE' | 'INACTIVE' | 'PENDING';  // 활성/비활성/승인대기
+export type WorkerStatus =
+  | 'PENDING'     // 관리자 선등록 후 동의 대기
+  | 'REQUESTED'   // 근로자 직접 가입 후 승인 대기
+  | 'ACTIVE'      // 활성
+  | 'INACTIVE'    // 비활성 (퇴사 등)
+  | 'BLOCKED';    // 관리자 차단
+
+export const WORKER_STATUS_LABELS: Record<WorkerStatus, string> = {
+  PENDING: '동의 대기',
+  REQUESTED: '승인 대기',
+  ACTIVE: '정상',
+  INACTIVE: '비활성',
+  BLOCKED: '차단',
+};
+
 export type AttendanceStatus = 'CHECKED_IN' | 'CHECKED_OUT' | 'NOT_TODAY';  // 출근중/퇴근/미출근
 
 // ============================================
