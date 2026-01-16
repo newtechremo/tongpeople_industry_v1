@@ -13,7 +13,7 @@
 | **인증 플로우 UI** | ✅ | 6개 화면 구현 |
 | **메인 화면 UI** | ✅ | 홈 화면 구현 |
 | **API 클라이언트** | ✅ | Axios 설정, 토큰 갱신 |
-| **API 연동** | ⏳ | 실제 백엔드 연동 |
+| **API 연동** | ✅ | Supabase Edge Functions |
 | **푸시 알림** | ⏳ | FCM 연동 |
 
 ---
@@ -29,18 +29,37 @@
 │     localhost:5173          │    iOS / Android                  │
 └─────────────────────────────┴───────────────────────────────────┘
                               │
+                              ▼ HTTPS
+┌─────────────────────────────────────────────────────────────────┐
+│                    Supabase (Backend as a Service)              │
+├─────────────────────────────────────────────────────────────────┤
+│  ┌─────────────────────┐  ┌──────────────────────────────────┐ │
+│  │  Edge Functions     │  │        PostgreSQL                │ │
+│  │  (Deno Runtime)     │  │  - companies, sites, partners    │ │
+│  ├─────────────────────┤  │  - users, attendance             │ │
+│  │ verify-company-code │  │  - company_codes                 │ │
+│  │ send-sms / verify   │  │  - sms_verifications             │ │
+│  │ register-worker     │  │                                  │ │
+│  │ worker-me           │  │  RLS Policies 활성화              │ │
+│  │ check-in/out        │  └──────────────────────────────────┘ │
+│  └─────────────────────┘                                        │
+│  ┌─────────────────────┐  ┌──────────────────────────────────┐ │
+│  │   Auth (JWT)        │  │        Storage                   │ │
+│  │  - 토큰 발급/검증    │  │  - 전자서명 이미지                │ │
+│  │  - 자동 갱신         │  │  - 프로필 사진 (추후)             │ │
+│  └─────────────────────┘  └──────────────────────────────────┘ │
+│  ┌──────────────────────────────────────────────────────────┐  │
+│  │                Realtime (WebSocket)                      │  │
+│  │  - 가입 승인 알림 (웹→앱)                                  │  │
+│  │  - 출퇴근 기록 실시간 업데이트 (앱→웹)                      │  │
+│  └──────────────────────────────────────────────────────────┘  │
+└─────────────────────────────────────────────────────────────────┘
+                              │
                               ▼
 ┌─────────────────────────────────────────────────────────────────┐
-│                         백엔드 서버                              │
+│                     외부 서비스                                  │
 ├─────────────────────────────────────────────────────────────────┤
-│  ┌─────────────┐  ┌─────────────┐  ┌─────────────────────────┐  │
-│  │   Auth API  │  │  Worker API │  │   Attendance API        │  │
-│  │  (인증/토큰)  │  │ (근로자 관리) │  │  (출퇴근 처리)            │  │
-│  └─────────────┘  └─────────────┘  └─────────────────────────┘  │
-│  ┌─────────────┐  ┌─────────────┐                               │
-│  │   SMS API   │  │  Storage    │                               │
-│  │  (인증번호)   │  │ (파일 저장)   │                               │
-│  └─────────────┘  └─────────────┘                               │
+│  네이버 클라우드 SENS API (SMS 발송)                             │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
@@ -509,12 +528,99 @@ module.exports = {
 ### 9.3 환경 변수 (.env)
 
 ```bash
-API_BASE_URL=https://api.tongpass.com
+# Supabase
+SUPABASE_URL=https://xxxxx.supabase.co
+SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+
+# QR 코드 서명 (클라이언트)
+QR_SECRET_KEY=your-secret-key-here
 ```
 
 ---
 
-## 10. 향후 개발 계획
+## 10. Edge Functions (Supabase)
+
+### 10.1 구현된 함수
+
+| Function | Endpoint | 인증 필요 | 설명 |
+|----------|----------|:--------:|------|
+| `verify-company-code` | POST /functions/v1/verify-company-code | ❌ | 회사코드 검증 + 현장/팀 목록 |
+| `send-sms` | POST /functions/v1/send-sms | ❌ | SMS 인증번호 발송 |
+| `verify-sms` | POST /functions/v1/verify-sms | ❌ | SMS 인증 확인 |
+| `register-worker` | POST /functions/v1/register-worker | ❌ | 근로자 가입 (REQUESTED) |
+| `worker-me` | GET /functions/v1/worker-me | ✅ | 내 정보 조회 |
+| `check-in` | POST /functions/v1/check-in | ❌ | QR 출근 (서명 검증) |
+| `check-out` | POST /functions/v1/check-out | ❌ | QR 퇴근 (서명 검증) |
+| `login` | POST /functions/v1/login | ❌ | 관리자 로그인 |
+
+### 10.2 함수 위치
+
+```
+backend/supabase/functions/
+├── verify-company-code/
+│   └── index.ts
+├── send-sms/
+│   └── index.ts
+├── verify-sms/
+│   └── index.ts
+├── register-worker/
+│   └── index.ts
+├── worker-me/
+│   └── index.ts
+├── check-in/
+│   └── index.ts
+├── check-out/
+│   └── index.ts
+└── login/
+    └── index.ts
+```
+
+### 10.3 보안 기능
+
+**QR 코드 서명 검증**
+```typescript
+// 클라이언트 (앱)
+const signature = await Crypto.digestStringAsync(
+  Crypto.CryptoDigestAlgorithm.SHA256,
+  message + QR_SECRET_KEY
+);
+
+// 서버 (Edge Function)
+const isValid = await verifyQRSignature(qr_payload);
+// → 30초 유효, HMAC-SHA256 서명 검증
+```
+
+**JWT 인증**
+```typescript
+// Authorization 헤더 자동 추가
+apiClient.interceptors.request.use(async (config) => {
+  const token = await getStorageData<string>('accessToken');
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+});
+```
+
+**토큰 자동 갱신**
+```typescript
+// 401 에러 시 자동 갱신
+apiClient.interceptors.response.use(
+  (response) => response,
+  async (error) => {
+    if (error.response?.status === 401 && !error.config._retry) {
+      const newToken = await refreshAccessToken();
+      error.config.headers.Authorization = `Bearer ${newToken}`;
+      return apiClient(error.config);
+    }
+    return Promise.reject(error);
+  }
+);
+```
+
+---
+
+## 11. 향후 개발 계획
 
 ### 10.1 Phase 1 완료 항목
 
@@ -526,15 +632,15 @@ API_BASE_URL=https://api.tongpass.com
 | 타입 정의 | ✅ |
 | API 클라이언트 | ✅ |
 
-### 10.2 Phase 2 예정
+### 10.2 Phase 2
 
-| 기능 | 우선순위 | 설명 |
-|------|:--------:|------|
-| API 연동 | 높음 | 백엔드 실제 연동 |
-| 푸시 알림 | 높음 | FCM 연동 |
-| 출퇴근 기록 조회 | 중간 | 히스토리 화면 |
-| 프로필 수정 | 중간 | 정보 변경 |
-| 오프라인 모드 | 낮음 | 네트워크 없을 때 처리 |
+| 기능 | 우선순위 | 상태 | 설명 |
+|------|:--------:|:----:|------|
+| API 연동 | 높음 | ✅ | Supabase Edge Functions 연동 완료 |
+| 푸시 알림 | 높음 | ⏳ | FCM 연동 |
+| 출퇴근 기록 조회 | 중간 | ⏳ | 히스토리 화면 |
+| 프로필 수정 | 중간 | ⏳ | 정보 변경 |
+| 오프라인 모드 | 낮음 | ⏳ | 네트워크 없을 때 처리 |
 
 ---
 
@@ -542,4 +648,5 @@ API_BASE_URL=https://api.tongpass.com
 
 - [프로젝트 개요](./PROJECT-OVERVIEW.md)
 - [API 명세](./API.md)
+- [백엔드 연동 가이드](./BACKEND-INTEGRATION.md)
 - [개발 가이드](./DEVELOPMENT.md)
