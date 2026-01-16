@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
 import {
   X,
   Upload,
@@ -517,13 +517,14 @@ export default function WorkerExcelUploadModal({ isOpen, onClose, teams }: Worke
                             onEdit={() => setEditingCell({ row: row.rowNumber, field: 'phone' })}
                             onSave={(value) => handleCellEdit(row.rowNumber, 'phone', value)}
                           />
-                          <EditableCell
+                          <TeamSelectCell
                             value={row.teamName}
                             hasError={row.errors.some(e => e.field === 'teamName')}
                             errorMessage={row.errors.find(e => e.field === 'teamName')?.message}
                             isEditing={editingCell?.row === row.rowNumber && editingCell?.field === 'teamName'}
                             onEdit={() => setEditingCell({ row: row.rowNumber, field: 'teamName' })}
                             onSave={(value) => handleCellEdit(row.rowNumber, 'teamName', value)}
+                            teams={teams}
                           />
                           <EditableCell
                             value={row.birthDate}
@@ -699,6 +700,119 @@ function EditableCell({
       </div>
       {hasError && errorMessage && (
         <p className="text-xs text-red-600 mt-0.5">{errorMessage}</p>
+      )}
+    </td>
+  );
+}
+
+// 팀 선택 셀 컴포넌트 (드롭다운)
+function TeamSelectCell({
+  value,
+  hasError,
+  errorMessage,
+  isEditing,
+  onEdit,
+  onSave,
+  teams,
+}: {
+  value: string;
+  hasError: boolean;
+  errorMessage?: string;
+  isEditing: boolean;
+  onEdit: () => void;
+  onSave: (value: string) => void;
+  teams: Team[];
+}) {
+  const [isOpen, setIsOpen] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  // 외부 클릭 시 드롭다운 닫기
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsOpen(false);
+        setSearchTerm('');
+      }
+    };
+
+    if (isOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [isOpen]);
+
+  // 필터링된 팀 목록
+  const filteredTeams = teams.filter(team =>
+    team.name.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  // 팀 선택 핸들러
+  const handleSelectTeam = (teamName: string) => {
+    onSave(teamName);
+    setIsOpen(false);
+    setSearchTerm('');
+  };
+
+  if (isEditing || isOpen) {
+    return (
+      <td className="px-3 py-2 relative" ref={dropdownRef}>
+        <div className="relative">
+          <input
+            type="text"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            onFocus={() => setIsOpen(true)}
+            placeholder="팀 검색..."
+            autoFocus
+            className="w-full px-2 py-1 text-sm border border-orange-400 rounded focus:outline-none focus:ring-2 focus:ring-orange-500"
+          />
+          {isOpen && (
+            <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-48 overflow-y-auto z-20">
+              {filteredTeams.length > 0 ? (
+                filteredTeams.map((team) => (
+                  <button
+                    key={team.id}
+                    onClick={() => handleSelectTeam(team.name)}
+                    className="w-full px-3 py-2 text-left text-sm hover:bg-orange-50 transition-colors flex items-center justify-between"
+                  >
+                    <span className="text-slate-700">{team.name}</span>
+                    {team.name === value && (
+                      <CheckCircle size={14} className="text-green-500" />
+                    )}
+                  </button>
+                ))
+              ) : (
+                <div className="px-3 py-2 text-sm text-slate-500">
+                  일치하는 팀이 없습니다
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      </td>
+    );
+  }
+
+  return (
+    <td
+      className={`px-3 py-2 cursor-pointer group ${hasError ? 'bg-red-100' : ''}`}
+      onClick={() => {
+        onEdit();
+        setIsOpen(true);
+      }}
+      title={errorMessage}
+    >
+      <div className="flex items-center gap-1">
+        <span className={`text-sm ${hasError ? 'text-red-700 font-medium' : 'text-slate-700'}`}>
+          {value || '-'}
+        </span>
+        <Edit3 size={12} className="text-slate-300 opacity-0 group-hover:opacity-100 transition-opacity" />
+      </div>
+      {hasError && errorMessage && (
+        <p className="text-xs text-red-600 mt-0.5">
+          {errorMessage} <span className="text-orange-600 font-medium">- 클릭하여 선택</span>
+        </p>
       )}
     </td>
   );
