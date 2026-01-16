@@ -5,3 +5,51 @@
 body {
   font-family: 'Inter', system-ui, sans-serif;
 }
+
+/* 인쇄 스타일 */
+@media print {
+  /* 페이지 설정 */
+  @page {
+    size: A4;
+    margin: 15mm;
+  }
+
+  /* 전체 레이아웃 */
+  body {
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+
+  /* 불필요한 요소 숨기기 */
+  header,
+  nav,
+  .print\:hidden {
+    display: none !important;
+  }
+
+  /* 여백 조정 */
+  * {
+    box-shadow: none !important;
+  }
+
+  /* 페이지 나누기 */
+  .print\:break-inside-avoid {
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+
+  /* 배경색 유지 */
+  .bg-orange-50,
+  .bg-blue-50,
+  .bg-gray-50,
+  .bg-yellow-100,
+  .bg-orange-100 {
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+
+  /* 링크 스타일 */
+  a[href]:after {
+    content: none !important;
+  }
+}

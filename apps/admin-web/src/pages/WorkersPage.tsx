@@ -19,7 +19,6 @@ import {
 } from 'lucide-react';
 import type { Worker, Team } from '@tong-pass/shared';
 import WorkerAddModal from '@/components/workers/WorkerAddModal';
-import WorkerDetailModal from '@/components/workers/WorkerDetailModal';
 import WorkerExcelUploadModal from '@/components/workers/WorkerExcelUploadModal';
 import CompanyCodeModal from '@/components/workers/CompanyCodeModal';
 import ConfirmDialog from '@/components/common/ConfirmDialog';
@@ -140,7 +139,6 @@ export default function WorkersPage() {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isExcelModalOpen, setIsExcelModalOpen] = useState(false);
   const [isCodeModalOpen, setIsCodeModalOpen] = useState(false);
-  const [selectedWorker, setSelectedWorker] = useState<Worker | null>(null);
 
   // 데이터 로드
   const loadData = useCallback(async () => {
@@ -524,10 +522,10 @@ export default function WorkersPage() {
                       className="w-4 h-4 rounded border-gray-300 text-orange-600 focus:ring-orange-500"
                     />
                   </td>
-                  <td className="px-4 py-4" onClick={() => setSelectedWorker(worker)}>
+                  <td className="px-4 py-4" onClick={() => navigate(`/workers/${worker.id}`)}>
                     <span className="text-sm text-slate-600">{worker.teamName}</span>
                   </td>
-                  <td className="px-4 py-4" onClick={() => setSelectedWorker(worker)}>
+                  <td className="px-4 py-4" onClick={() => navigate(`/workers/${worker.id}`)}>
                     <div className="flex items-center gap-1.5">
                       <span className="font-bold text-slate-800">{worker.name}</span>
                       {/* 현장 관리자: 금색 왕관 */}
@@ -559,22 +557,22 @@ export default function WorkersPage() {
                       {worker.phone}
                     </a>
                   </td>
-                  <td className="px-4 py-4 text-sm text-slate-600" onClick={() => setSelectedWorker(worker)}>
+                  <td className="px-4 py-4 text-sm text-slate-600" onClick={() => navigate(`/workers/${worker.id}`)}>
                     {worker.position || '-'}
                   </td>
-                  <td className="px-4 py-4" onClick={() => setSelectedWorker(worker)}>
+                  <td className="px-4 py-4" onClick={() => navigate(`/workers/${worker.id}`)}>
                     <span className={`text-sm ${worker.isSenior ? 'font-bold text-orange-600' : 'text-slate-600'}`}>
                       {worker.birthDate ? `${worker.birthDate.slice(2).replace(/-/g, '.')} (${worker.age}세)` : `${worker.age}세`}
                     </span>
                   </td>
-                  <td className="px-4 py-4" onClick={() => setSelectedWorker(worker)}>
+                  <td className="px-4 py-4" onClick={() => navigate(`/workers/${worker.id}`)}>
                     <StatusBadge status={worker.status} />
                   </td>
                   <td className="px-4 py-4">
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
-                        setSelectedWorker(worker);
+                        navigate(`/workers/${worker.id}`);
                       }}
                       className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
                     >
@@ -646,12 +644,6 @@ export default function WorkersPage() {
         isOpen={isAddModalOpen}
         onClose={() => setIsAddModalOpen(false)}
         teams={displayTeams}
-      />
-
-      {/* Worker Detail Modal */}
-      <WorkerDetailModal
-        worker={selectedWorker}
-        onClose={() => setSelectedWorker(null)}
       />
 
       {/* Excel Upload Modal */}

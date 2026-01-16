@@ -7,6 +7,7 @@ import { ProtectedRoute } from './components/ProtectedRoute';
 import MainLayout from './layouts/MainLayout';
 import DashboardPage from './pages/DashboardPage';
 import WorkersPage from './pages/WorkersPage';
+import WorkerDetailPage from './pages/WorkerDetailPage';
 import AttendancePage from './pages/AttendancePage';
 import SettingsPage from './pages/SettingsPage';
 import RiskAssessmentPage from './pages/RiskAssessmentPage';
@@ -55,6 +56,7 @@ function App() {
               >
                 <Route index element={<DashboardPage />} />
                 <Route path="workers" element={<WorkersPage />} />
+                <Route path="workers/:id" element={<WorkerDetailPage />} />
                 <Route path="attendance" element={<AttendancePage />} />
                 <Route path="safety/risk" element={<RiskAssessmentPage />} />
                 <Route path="settings" element={<SettingsPage />} />
