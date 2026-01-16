@@ -15,6 +15,8 @@ import { useAuth } from '@/context/AuthContext';
 import { getAttendanceRecords } from '@/api/attendance';
 import { getPartners } from '@/api/partners';
 import { getWorkDate } from '@tong-pass/shared';
+import { useDialog } from '@/hooks/useDialog';
+import ConfirmDialog from '@/components/common/ConfirmDialog';
 
 // 팀별 색상 매핑
 const TEAM_COLORS: Record<string, { bg: string; border: string; text: string }> = {
@@ -247,6 +249,7 @@ function StatusBadge({ status }: { status: AttendanceStatus }) {
 
 export default function AttendancePage() {
   const { user } = useAuth();
+  const { dialogState, showConfirm, showAlert, closeDialog } = useDialog();
 
   // 데이터 상태
   const [attendanceData, setAttendanceData] = useState<AttendanceRecord[]>(mockAttendanceData);
@@ -347,19 +350,48 @@ export default function AttendancePage() {
   }, [filteredData]);
 
   const handleManualCheckout = (_id: number, workerName: string) => {
-    if (confirm(`${workerName}님을 수동 퇴근 처리하시겠습니까?`)) {
-      alert(`${workerName}님이 퇴근 처리되었습니다.`);
-    }
+    showConfirm({
+      title: '수동 퇴근 처리',
+      message: `${workerName}님을 수동 퇴근 처리하시겠습니까?`,
+      confirmText: '퇴근 처리',
+      variant: 'warning',
+      onConfirm: () => {
+        // TODO: 실제 API 호출
+        showAlert({
+          title: '퇴근 처리 완료',
+          message: `${workerName}님이 퇴근 처리되었습니다.`,
+          variant: 'success',
+        });
+      },
+    });
   };
 
   const handleApprove = (_id: number, workerName: string) => {
-    if (confirm(`${workerName}님의 출근을 승인하시겠습니까?`)) {
-      alert(`${workerName}님의 출근이 승인되었습니다.`);
-    }
+    showConfirm({
+      title: '출근 승인',
+      message: `${workerName}님의 출근을 승인하시겠습니까?`,
+      confirmText: '승인',
+      variant: 'info',
+      onConfirm: () => {
+        // TODO: 실제 API 호출
+        showAlert({
+          title: '승인 완료',
+          message: `${workerName}님의 출근이 승인되었습니다.`,
+          variant: 'success',
+        });
+      },
+    });
   };
 
   const handleExport = () => {
-    alert('출퇴근 기록을 엑셀로 다운로드합니다.');
+    showAlert({
+      title: '엑셀 다운로드',
+      message: '출퇴근 기록을 엑셀로 다운로드합니다.',
+      variant: 'info',
+      onConfirm: () => {
+        // TODO: 실제 다운로드 로직
+      },
+    });
   };
 
   const handleRefresh = () => {
@@ -660,6 +692,19 @@ export default function AttendancePage() {
           </p>
         </div>
       </div>
+
+      {/* 공통 다이얼로그 */}
+      <ConfirmDialog
+        isOpen={dialogState.isOpen}
+        onClose={closeDialog}
+        onConfirm={dialogState.onConfirm}
+        title={dialogState.title}
+        message={dialogState.message}
+        confirmText={dialogState.confirmText}
+        cancelText={dialogState.cancelText}
+        variant={dialogState.variant}
+        alertOnly={dialogState.alertOnly}
+      />
     </div>
   );
 }

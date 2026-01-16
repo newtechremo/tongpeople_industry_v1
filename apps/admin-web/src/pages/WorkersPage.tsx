@@ -22,7 +22,9 @@ import WorkerAddModal from '@/components/workers/WorkerAddModal';
 import WorkerDetailModal from '@/components/workers/WorkerDetailModal';
 import WorkerExcelUploadModal from '@/components/workers/WorkerExcelUploadModal';
 import CompanyCodeModal from '@/components/workers/CompanyCodeModal';
+import ConfirmDialog from '@/components/common/ConfirmDialog';
 import { useAuth } from '@/context/AuthContext';
+import { useDialog } from '@/hooks/useDialog';
 import { getWorkers } from '@/api/workers';
 import { getPartners } from '@/api/partners';
 
@@ -118,6 +120,7 @@ export default function WorkersPage() {
   const navigate = useNavigate();
   const locationState = location.state as WorkersLocationState | null;
   const { user } = useAuth();
+  const { dialogState, showAlert, closeDialog } = useDialog();
 
   // 데이터 상태
   const [workers, setWorkers] = useState<Worker[]>(mockWorkers);
@@ -297,7 +300,11 @@ export default function WorkersPage() {
 
   // 일괄 액션 핸들러
   const handleBulkAction = (action: string) => {
-    alert(`${selectedWorkers.length}명 선택됨: ${action} 기능은 준비중입니다.`);
+    showAlert({
+      title: '준비 중',
+      message: `${selectedWorkers.length}명 선택됨: ${action} 기능은 준비중입니다.`,
+      variant: 'info',
+    });
   };
 
   return (
@@ -658,6 +665,19 @@ export default function WorkersPage() {
       <CompanyCodeModal
         isOpen={isCodeModalOpen}
         onClose={() => setIsCodeModalOpen(false)}
+      />
+
+      {/* 공통 다이얼로그 */}
+      <ConfirmDialog
+        isOpen={dialogState.isOpen}
+        onClose={closeDialog}
+        onConfirm={dialogState.onConfirm}
+        title={dialogState.title}
+        message={dialogState.message}
+        confirmText={dialogState.confirmText}
+        cancelText={dialogState.cancelText}
+        variant={dialogState.variant}
+        alertOnly={dialogState.alertOnly}
       />
     </div>
   );

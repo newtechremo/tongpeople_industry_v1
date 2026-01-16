@@ -21,6 +21,8 @@ import {
   RefreshCw,
 } from 'lucide-react';
 import type { Worker, EmergencyContact, HealthInfo, WorkerDocument, DocumentType } from '@tong-pass/shared';
+import { useDialog } from '@/hooks/useDialog';
+import ConfirmDialog from '@/components/common/ConfirmDialog';
 
 interface WorkerDetailModalProps {
   worker: Worker | null;
@@ -61,6 +63,8 @@ const mockDocuments: WorkerDocument[] = [
 const BLOOD_TYPE_OPTIONS = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-', '모름'];
 
 export default function WorkerDetailModal({ worker, onClose }: WorkerDetailModalProps) {
+  const { dialogState, showConfirm, showAlert, closeDialog } = useDialog();
+
   // 수정 모드 상태
   const [editingSection, setEditingSection] = useState<string | null>(null);
   const [showRoleChange, setShowRoleChange] = useState(false);
@@ -92,10 +96,20 @@ export default function WorkerDetailModal({ worker, onClose }: WorkerDetailModal
       ? `${worker.name} 님을 팀장으로 변경합니다.\n\n[권한 안내]\n• 팀원들의 출퇴근 QR 스캔 권한이 부여됩니다.\n• 모바일 앱에서 팀원 관리가 가능합니다.`
       : `${worker.name} 님을 일반 팀원으로 변경합니다.\n\n[권한 안내]\n• QR 스캔 권한이 제거됩니다.\n• 본인 출퇴근만 가능합니다.`;
 
-    if (confirm(message)) {
-      alert(`${worker.name} 님의 직책이 ${newRole === 'TEAM_ADMIN' ? '팀장' : '팀원'}으로 변경되었습니다.`);
-      setShowRoleChange(false);
-    }
+    showConfirm({
+      title: '직책 변경',
+      message,
+      confirmText: '변경',
+      variant: 'warning',
+      onConfirm: () => {
+        showAlert({
+          title: '변경 완료',
+          message: `${worker.name} 님의 직책이 ${newRole === 'TEAM_ADMIN' ? '팀장' : '팀원'}으로 변경되었습니다.`,
+          variant: 'success',
+        });
+        setShowRoleChange(false);
+      },
+    });
   };
 
   // 상태 배지
@@ -119,27 +133,49 @@ export default function WorkerDetailModal({ worker, onClose }: WorkerDetailModal
 
   // 기본정보 저장
   const handleSaveBasicInfo = () => {
-    alert(`기본정보가 저장되었습니다.\n이름: ${editName}\n생년월일: ${editBirthDate}\n직종: ${editPosition}\n국적: ${editNationality}`);
+    showAlert({
+      title: '저장 완료',
+      message: `기본정보가 저장되었습니다.\n이름: ${editName}\n생년월일: ${editBirthDate}\n직종: ${editPosition}\n국적: ${editNationality}`,
+      variant: 'success',
+    });
     setEditingSection(null);
   };
 
   // 비상연락처 저장
   const handleSaveEmergency = () => {
-    alert(`비상연락처가 저장되었습니다.\n${editEmergencyRelation}: ${editEmergencyName} (${editEmergencyPhone})`);
+    showAlert({
+      title: '저장 완료',
+      message: `비상연락처가 저장되었습니다.\n${editEmergencyRelation}: ${editEmergencyName} (${editEmergencyPhone})`,
+      variant: 'success',
+    });
     setEditingSection(null);
   };
 
   // 서류 삭제
   const handleDeleteDocument = (doc: WorkerDocument) => {
-    if (confirm(`"${doc.name}" 파일을 삭제하시겠습니까?\n\n삭제된 파일은 복구할 수 없습니다.`)) {
-      setDocuments(prev => prev.filter(d => d.id !== doc.id));
-      alert(`${doc.name} 파일이 삭제되었습니다.`);
-    }
+    showConfirm({
+      title: '서류 삭제',
+      message: `"${doc.name}" 파일을 삭제하시겠습니까?\n\n삭제된 파일은 복구할 수 없습니다.`,
+      confirmText: '삭제',
+      variant: 'danger',
+      onConfirm: () => {
+        setDocuments(prev => prev.filter(d => d.id !== doc.id));
+        showAlert({
+          title: '삭제 완료',
+          message: `${doc.name} 파일이 삭제되었습니다.`,
+          variant: 'success',
+        });
+      },
+    });
   };
 
   // 전체 다운로드 (ZIP)
   const handleDownloadAll = () => {
-    alert(`${documents.length}개 파일을 ZIP으로 압축하여 다운로드합니다.\n\n${worker.name}_채용서류.zip`);
+    showAlert({
+      title: '다운로드',
+      message: `${documents.length}개 파일을 ZIP으로 압축하여 다운로드합니다.\n\n${worker.name}_채용서류.zip`,
+      variant: 'info',
+    });
   };
 
   // 파일 업로드
@@ -157,7 +193,11 @@ export default function WorkerDetailModal({ worker, onClose }: WorkerDetailModal
     }));
 
     setDocuments(prev => [...prev, ...newDocs]);
-    alert(`${files.length}개 파일이 업로드되었습니다.`);
+    showAlert({
+      title: '업로드 완료',
+      message: `${files.length}개 파일이 업로드되었습니다.`,
+      variant: 'success',
+    });
 
     // 파일 입력 초기화
     if (fileInputRef.current) {
@@ -572,7 +612,22 @@ export default function WorkerDetailModal({ worker, onClose }: WorkerDetailModal
   );
 
   // Portal을 사용하여 body에 직접 렌더링
-  return createPortal(modalContent, document.body);
+  return (
+    <>
+      {createPortal(modalContent, document.body)}
+      <ConfirmDialog
+        isOpen={dialogState.isOpen}
+        onClose={closeDialog}
+        onConfirm={dialogState.onConfirm}
+        title={dialogState.title}
+        message={dialogState.message}
+        confirmText={dialogState.confirmText}
+        cancelText={dialogState.cancelText}
+        variant={dialogState.variant}
+        alertOnly={dialogState.alertOnly}
+      />
+    </>
+  );
 }
 
 // 섹션 컴포넌트 (아코디언 제거, 항상 펼침)

@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react';
 import { Plus, Edit2, Trash2, Users, Building2, Handshake, User } from 'lucide-react';
 import { useSites } from '@/context/SitesContext';
 import TeamAddModal from './TeamAddModal';
+import { useDialog } from '@/hooks/useDialog';
+import ConfirmDialog from '@/components/common/ConfirmDialog';
 
 // Props 타입 정의
 interface TeamManagementProps {
@@ -92,6 +94,7 @@ export default function TeamManagement({
   onModalAutoOpened,
 }: TeamManagementProps) {
   const { sites } = useSites();
+  const { dialogState, showConfirm, showAlert, closeDialog } = useDialog();
   const [teams, setTeams] = useState<Team[]>(mockTeams);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [filterSiteId, setFilterSiteId] = useState<number | 'ALL'>('ALL');
@@ -140,30 +143,60 @@ export default function TeamManagement({
       createdAt: new Date().toISOString().split('T')[0],
     };
     setTeams(prev => [...prev, team]);
-    alert(`"${team.displayName}" 팀이 추가되었습니다.`);
+    showAlert({
+      title: '팀 추가 완료',
+      message: `"${team.displayName}" 팀이 추가되었습니다.`,
+      variant: 'success',
+    });
   };
 
   const handleDeleteTeam = (team: Team) => {
     if (team.isDefault) {
-      alert('기본 팀은 삭제할 수 없습니다.');
+      showAlert({
+        title: '삭제 불가',
+        message: '기본 팀은 삭제할 수 없습니다.',
+        variant: 'warning',
+      });
       return;
     }
     if (team.workerCount > 0) {
-      alert(`이 팀에 소속된 근로자가 ${team.workerCount}명 있습니다.\n먼저 근로자를 다른 팀으로 이동해주세요.`);
+      showAlert({
+        title: '삭제 불가',
+        message: `이 팀에 소속된 근로자가 ${team.workerCount}명 있습니다.\n먼저 근로자를 다른 팀으로 이동해주세요.`,
+        variant: 'warning',
+      });
       return;
     }
-    if (confirm(`"${team.displayName}" 팀을 삭제하시겠습니까?`)) {
-      setTeams(prev => prev.filter(t => t.id !== team.id));
-      alert('팀이 삭제되었습니다.');
-    }
+    showConfirm({
+      title: '팀 삭제',
+      message: `"${team.displayName}" 팀을 삭제하시겠습니까?`,
+      confirmText: '삭제',
+      variant: 'danger',
+      onConfirm: () => {
+        setTeams(prev => prev.filter(t => t.id !== team.id));
+        showAlert({
+          title: '삭제 완료',
+          message: '팀이 삭제되었습니다.',
+          variant: 'success',
+        });
+      },
+    });
   };
 
   const handleEditTeam = (team: Team) => {
     if (team.isDefault) {
-      alert('기본 팀은 수정할 수 없습니다.');
+      showAlert({
+        title: '수정 불가',
+        message: '기본 팀은 수정할 수 없습니다.',
+        variant: 'warning',
+      });
       return;
     }
-    alert('팀 수정 기능은 준비중입니다.');
+    showAlert({
+      title: '준비 중',
+      message: '팀 수정 기능은 준비중입니다.',
+      variant: 'info',
+    });
   };
 
   return (
@@ -331,6 +364,19 @@ export default function TeamManagement({
         onClose={() => setIsAddModalOpen(false)}
         sites={sites}
         onAdd={handleAddTeam}
+      />
+
+      {/* 공통 다이얼로그 */}
+      <ConfirmDialog
+        isOpen={dialogState.isOpen}
+        onClose={closeDialog}
+        onConfirm={dialogState.onConfirm}
+        title={dialogState.title}
+        message={dialogState.message}
+        confirmText={dialogState.confirmText}
+        cancelText={dialogState.cancelText}
+        variant={dialogState.variant}
+        alertOnly={dialogState.alertOnly}
       />
     </div>
   );
