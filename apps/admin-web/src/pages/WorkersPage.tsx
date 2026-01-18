@@ -126,6 +126,7 @@ export default function WorkersPage() {
   const [teams, setTeams] = useState<Team[]>(mockTeams);
   const [isLoading, setIsLoading] = useState(false);
   const [useMockData, setUseMockData] = useState(true);
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
 
   // 필터 상태
   const [searchQuery, setSearchQuery] = useState('');
@@ -196,10 +197,10 @@ export default function WorkersPage() {
     }
   }, [user?.siteId]);
 
-  // 초기 로드
+  // 초기 로드 및 refreshTrigger 변경 시 리로드
   useEffect(() => {
     loadData();
-  }, [loadData]);
+  }, [loadData, refreshTrigger]);
 
   // URL state로 전달된 모달 열기 처리
   useEffect(() => {
@@ -644,6 +645,7 @@ export default function WorkersPage() {
         isOpen={isAddModalOpen}
         onClose={() => setIsAddModalOpen(false)}
         teams={displayTeams}
+        onSuccess={() => setRefreshTrigger(prev => prev + 1)}
       />
 
       {/* Excel Upload Modal */}

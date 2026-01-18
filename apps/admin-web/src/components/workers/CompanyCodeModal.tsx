@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { QRCodeSVG } from 'qrcode.react';
 import {
@@ -11,30 +11,52 @@ import {
   AlertTriangle,
 } from 'lucide-react';
 import { useSites } from '@/context/SitesContext';
+import { useAuth } from '@/context/AuthContext';
+import { getCompanyCode, regenerateCompanyCode, deactivateCompanyCode } from '@/api/companies';
 
 interface CompanyCodeModalProps {
   isOpen: boolean;
   onClose: () => void;
 }
 
-// Mock company code data
-const MOCK_COMPANY_CODE = 'A1B2C3';
 const MOCK_SIGNUP_BASE_URL = 'https://tongpass.app/signup';
 
 export function CompanyCodeModal({ isOpen, onClose }: CompanyCodeModalProps) {
   const { selectedSite } = useSites();
+  const { user } = useAuth();
   const qrRef = useRef<HTMLDivElement>(null);
 
   // State
-  const [companyCode, setCompanyCode] = useState(MOCK_COMPANY_CODE);
+  const [companyCode, setCompanyCode] = useState('');
   const [isCodeActive, setIsCodeActive] = useState(true);
   const [showConfirmDialog, setShowConfirmDialog] = useState<'regenerate' | 'deactivate' | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
 
   // Derived values
   const signupUrl = `${MOCK_SIGNUP_BASE_URL}?code=${companyCode}`;
-  // 회사명만 표시 (현장명 제외)
-  const companyName = '통하는사람들';
+  const companyName = user?.companyName || '통하는사람들';
+
+  // Load company code on modal open
+  useEffect(() => {
+    if (isOpen && user?.companyId) {
+      loadCompanyCode();
+    }
+  }, [isOpen, user?.companyId]);
+
+  const loadCompanyCode = async () => {
+    if (!user?.companyId) return;
+
+    setLoading(true);
+    const result = await getCompanyCode(user.companyId);
+
+    if (result.success && result.code) {
+      setCompanyCode(result.code);
+    } else {
+      showToast('회사코드 조회 중 오류가 발생했습니다.');
+    }
+    setLoading(false);
+  };
 
   // Toast handler
   const showToast = useCallback((message: string) => {
@@ -111,24 +133,38 @@ export function CompanyCodeModal({ isOpen, onClose }: CompanyCodeModalProps) {
   };
 
   // Handle code regeneration
-  const handleRegenerateCode = () => {
-    // Generate new random code (mock)
-    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-    let newCode = '';
-    for (let i = 0; i < 6; i++) {
-      newCode += chars.charAt(Math.floor(Math.random() * chars.length));
+  const handleRegenerateCode = async () => {
+    if (!user?.companyId) return;
+
+    setLoading(true);
+    const result = await regenerateCompanyCode(user.companyId);
+
+    if (result.success && result.code) {
+      setCompanyCode(result.code);
+      setIsCodeActive(true);
+      setShowConfirmDialog(null);
+      showToast('새 코드가 생성되었습니다');
+    } else {
+      showToast('재생성 중 오류가 발생했습니다.');
     }
-    setCompanyCode(newCode);
-    setIsCodeActive(true);
-    setShowConfirmDialog(null);
-    showToast('새 코드가 생성되었습니다');
+    setLoading(false);
   };
 
   // Handle code deactivation
-  const handleDeactivateCode = () => {
-    setIsCodeActive(false);
-    setShowConfirmDialog(null);
-    showToast('코드가 비활성화되었습니다');
+  const handleDeactivateCode = async () => {
+    if (!user?.companyId) return;
+
+    setLoading(true);
+    const result = await deactivateCompanyCode(user.companyId);
+
+    if (result.success) {
+      setIsCodeActive(false);
+      setShowConfirmDialog(null);
+      showToast('코드가 비활성화되었습니다');
+    } else {
+      showToast('비활성화 중 오류가 발생했습니다.');
+    }
+    setLoading(false);
   };
 
   if (!isOpen) return null;
@@ -170,95 +206,105 @@ export function CompanyCodeModal({ isOpen, onClose }: CompanyCodeModalProps) {
             근로자들이 아래 코드로 직접 가입할 수 있습니다
           </p>
 
-          {/* QR Code */}
-          <div
-            ref={qrRef}
-            className={`flex justify-center p-6 bg-gray-50 rounded-xl ${
-              !isCodeActive ? 'opacity-40' : ''
-            }`}
-          >
-            <QRCodeSVG
-              value={signupUrl}
-              size={256}
-              level="H"
-              includeMargin={false}
-              bgColor="#f9fafb"
-              fgColor={isCodeActive ? '#1e293b' : '#94a3b8'}
-            />
-          </div>
+          {loading ? (
+            <div className="text-center py-12">
+              <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-orange-500"></div>
+              <p className="mt-3 text-sm text-slate-500">로딩 중...</p>
+            </div>
+          ) : (
+            <>
+              {/* QR Code */}
+              <div
+                ref={qrRef}
+                className={`flex justify-center p-6 bg-gray-50 rounded-xl ${
+                  !isCodeActive ? 'opacity-40' : ''
+                }`}
+              >
+                <QRCodeSVG
+                  value={signupUrl}
+                  size={256}
+                  level="H"
+                  includeMargin={false}
+                  bgColor="#f9fafb"
+                  fgColor={isCodeActive ? '#1e293b' : '#94a3b8'}
+                />
+              </div>
 
-          {/* Company Code Display */}
-          <div className="text-center space-y-2">
-            <p className="text-sm font-bold text-slate-500 uppercase tracking-widest">
-              회사 코드
-            </p>
-            <div className={`flex justify-center gap-2 ${!isCodeActive ? 'opacity-40' : ''}`}>
-              {companyCode.split('').map((char, index) => (
-                <div
-                  key={index}
-                  className="w-10 h-12 flex items-center justify-center bg-gray-100 border border-gray-200 rounded-lg text-xl font-black text-slate-800 tracking-wider"
-                >
-                  {char}
+              {/* Company Code Display */}
+              <div className="text-center space-y-2">
+                <p className="text-sm font-bold text-slate-500 uppercase tracking-widest">
+                  회사 코드
+                </p>
+                <div className={`flex justify-center gap-2 ${!isCodeActive ? 'opacity-40' : ''}`}>
+                  {companyCode && companyCode.split('').map((char, index) => (
+                    <div
+                      key={index}
+                      className="w-10 h-12 flex items-center justify-center bg-gray-100 border border-gray-200 rounded-lg text-xl font-black text-slate-800 tracking-wider"
+                    >
+                      {char}
+                    </div>
+                  ))}
                 </div>
-              ))}
-            </div>
-            <p className="text-sm text-slate-500">{companyName}</p>
-            {!isCodeActive && (
-              <p className="text-sm font-bold text-red-500">비활성화됨</p>
-            )}
-          </div>
+                <p className="text-sm text-slate-500">{companyName}</p>
+                {!isCodeActive && (
+                  <p className="text-sm font-bold text-red-500">비활성화됨</p>
+                )}
+              </div>
 
-          {/* Action Buttons */}
-          <div className="flex gap-2">
-            <button
-              onClick={handleDownloadQR}
-              disabled={!isCodeActive}
-              className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl font-bold text-sm text-slate-700 bg-gray-100 hover:bg-gray-200 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-            >
-              <Download size={16} />
-              QR 다운로드
-            </button>
-            <button
-              onClick={handleCopyLink}
-              disabled={!isCodeActive}
-              className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl font-bold text-sm text-slate-700 bg-gray-100 hover:bg-gray-200 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-            >
-              <Link2 size={16} />
-              링크 복사
-            </button>
-            <button
-              onClick={handleCopyCode}
-              disabled={!isCodeActive}
-              className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl font-bold text-sm text-slate-700 bg-gray-100 hover:bg-gray-200 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-            >
-              <Copy size={16} />
-              코드 복사
-            </button>
-          </div>
+              {/* Action Buttons */}
+              <div className="flex gap-2">
+                <button
+                  onClick={handleDownloadQR}
+                  disabled={!isCodeActive}
+                  className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl font-bold text-sm text-slate-700 bg-gray-100 hover:bg-gray-200 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                >
+                  <Download size={16} />
+                  QR 다운로드
+                </button>
+                <button
+                  onClick={handleCopyLink}
+                  disabled={!isCodeActive}
+                  className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl font-bold text-sm text-slate-700 bg-gray-100 hover:bg-gray-200 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                >
+                  <Link2 size={16} />
+                  링크 복사
+                </button>
+                <button
+                  onClick={handleCopyCode}
+                  disabled={!isCodeActive}
+                  className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl font-bold text-sm text-slate-700 bg-gray-100 hover:bg-gray-200 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                >
+                  <Copy size={16} />
+                  코드 복사
+                </button>
+              </div>
 
-          {/* Code Management Section */}
-          <div className="pt-4 border-t border-gray-200 space-y-3">
-            <p className="text-sm font-bold text-slate-500 uppercase tracking-widest">
-              코드 관리
-            </p>
-            <div className="flex gap-3">
-              <button
-                onClick={() => setShowConfirmDialog('deactivate')}
-                disabled={!isCodeActive}
-                className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl font-bold text-sm text-slate-600 bg-white border border-gray-200 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-              >
-                <Ban size={16} />
-                코드 비활성화
-              </button>
-              <button
-                onClick={() => setShowConfirmDialog('regenerate')}
-                className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl font-bold text-sm text-white bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 transition-all"
-              >
-                <RefreshCw size={16} />
-                새 코드 생성
-              </button>
-            </div>
-          </div>
+              {/* Code Management Section */}
+              <div className="pt-4 border-t border-gray-200 space-y-3">
+                <p className="text-sm font-bold text-slate-500 uppercase tracking-widest">
+                  코드 관리
+                </p>
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => setShowConfirmDialog('deactivate')}
+                    disabled={!isCodeActive}
+                    className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl font-bold text-sm text-slate-600 bg-white border border-gray-200 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                  >
+                    <Ban size={16} />
+                    코드 비활성화
+                  </button>
+                  <button
+                    onClick={() => setShowConfirmDialog('regenerate')}
+                    disabled={loading}
+                    className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl font-bold text-sm text-white bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <RefreshCw size={16} />
+                    새 코드 생성
+                  </button>
+                </div>
+              </div>
+            </>
+          )}
         </div>
       </div>
 

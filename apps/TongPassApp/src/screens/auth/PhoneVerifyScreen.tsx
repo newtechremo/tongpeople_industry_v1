@@ -132,6 +132,41 @@ const PhoneVerifyScreen: React.FC<PhoneVerifyScreenProps> = ({
       const result = await verifySms(phoneNumber, verifyCode);
       timer.pause();
 
+      // 이직 시나리오 감지
+      if (result.existingUser && result.existingUser.status === 'INACTIVE') {
+        Alert.alert(
+          '이직 확인',
+          `이전 회사: ${result.existingUser.companyName}\n\n새 회사로 이직하시겠습니까?`,
+          [
+            {
+              text: '취소',
+              style: 'cancel',
+              onPress: () => {
+                setLoading(false);
+                // 취소하면 회사코드 입력 화면으로 돌아가기
+                navigation.goBack();
+              },
+            },
+            {
+              text: '이직하기',
+              onPress: () => {
+                setLoading(false);
+                // 기존 유저 정보와 함께 다음 화면으로 이동
+                navigation.navigate('WorkerInfo', {
+                  companyId,
+                  siteId,
+                  phoneNumber,
+                  isTransfer: true,
+                  existingUserId: result.existingUser!.id,
+                });
+              },
+            },
+          ],
+          {cancelable: false},
+        );
+        return;
+      }
+
       // 기존 회원인 경우
       if (result.isRegistered && result.accessToken && result.refreshToken) {
         login(result.accessToken, result.refreshToken);

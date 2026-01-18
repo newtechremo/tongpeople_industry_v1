@@ -47,6 +47,13 @@ export interface VerifySmsResponse {
   refreshToken?: string;
   workerId?: string;
   status?: WorkerStatus;
+
+  // 이직 시나리오 - 기존 유저 정보
+  existingUser?: {
+    id: string;
+    status: 'INACTIVE';
+    companyName: string;
+  };
 }
 
 // 근로자 등록

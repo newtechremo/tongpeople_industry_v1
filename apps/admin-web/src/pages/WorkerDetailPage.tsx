@@ -19,10 +19,14 @@ import {
   Check,
   Upload,
   RefreshCw,
+  LogOut,
+  MoreVertical,
+  History,
 } from 'lucide-react';
 import type { Worker, EmergencyContact, HealthInfo, WorkerDocument, WorkerDocumentType } from '@tong-pass/shared';
 import { useDialog } from '@/hooks/useDialog';
 import ConfirmDialog from '@/components/common/ConfirmDialog';
+import { terminateWorker, getWorkerHistory, type LeaveReason, type WorkerHistory } from '@/api/workers';
 
 // Mock 비상연락처
 const mockEmergencyContact: EmergencyContact = {
@@ -95,6 +99,18 @@ export default function WorkerDetailPage() {
   const [documents, setDocuments] = useState(mockDocuments);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // 퇴사 처리 상태
+  const [showTerminateModal, setShowTerminateModal] = useState(false);
+  const [leaveReason, setLeaveReason] = useState<LeaveReason>('RESIGNED');
+  const [isTerminating, setIsTerminating] = useState(false);
+
+  // 근로자 이력 상태
+  const [history, setHistory] = useState<WorkerHistory[]>([]);
+  const [isLoadingHistory, setIsLoadingHistory] = useState(false);
+
+  // 액션 메뉴 상태
+  const [showActionMenu, setShowActionMenu] = useState(false);
+
   // 근로자 데이터 로드
   useEffect(() => {
     const loadWorker = async () => {
@@ -133,6 +149,42 @@ export default function WorkerDetailPage() {
     }
   }, [id, navigate, showAlert]);
 
+  // 근로자 이력 로드
+  useEffect(() => {
+    const loadHistory = async () => {
+      if (!id) return;
+
+      setIsLoadingHistory(true);
+      try {
+        const result = await getWorkerHistory(id);
+        if (result.success && result.data) {
+          setHistory(result.data);
+        }
+      } catch (error) {
+        console.error('이력 조회 실패:', error);
+      } finally {
+        setIsLoadingHistory(false);
+      }
+    };
+
+    loadHistory();
+  }, [id]);
+
+  // 액션 메뉴 외부 클릭 닫기
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (showActionMenu) {
+        const target = event.target as HTMLElement;
+        if (!target.closest('.action-menu-container')) {
+          setShowActionMenu(false);
+        }
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [showActionMenu]);
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -169,6 +221,38 @@ export default function WorkerDetailPage() {
         setShowRoleChange(false);
       },
     });
+  };
+
+  // 퇴사 처리 핸들러
+  const handleTerminate = async () => {
+    setIsTerminating(true);
+    try {
+      const result = await terminateWorker(worker.id, leaveReason);
+      if (result.success) {
+        showAlert({
+          title: '퇴사 처리 완료',
+          message: `${worker.name}님의 퇴사 처리가 완료되었습니다.`,
+          variant: 'success',
+        });
+        setShowTerminateModal(false);
+        // 목록 페이지로 이동
+        setTimeout(() => navigate('/workers'), 1500);
+      } else {
+        showAlert({
+          title: '퇴사 처리 실패',
+          message: result.error || '퇴사 처리 중 오류가 발생했습니다.',
+          variant: 'danger',
+        });
+      }
+    } catch (error) {
+      showAlert({
+        title: '퇴사 처리 실패',
+        message: '퇴사 처리 중 오류가 발생했습니다.',
+        variant: 'danger',
+      });
+    } finally {
+      setIsTerminating(false);
+    }
   };
 
   // 상태 배지
@@ -274,15 +358,45 @@ export default function WorkerDetailPage() {
   return (
     <div className="space-y-6">
       {/* 헤더 */}
-      <div className="flex items-center gap-3">
-        <button
-          onClick={() => navigate('/workers')}
-          className="p-2 hover:bg-gray-100 rounded-lg transition-colors print:hidden"
-          title="목록으로"
-        >
-          <ArrowLeft size={20} className="text-slate-600" />
-        </button>
-        <h1 className="text-xl font-black tracking-tight text-slate-800">근로자 상세</h1>
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => navigate('/workers')}
+            className="p-2 hover:bg-gray-100 rounded-lg transition-colors print:hidden"
+            title="목록으로"
+          >
+            <ArrowLeft size={20} className="text-slate-600" />
+          </button>
+          <h1 className="text-xl font-black tracking-tight text-slate-800">근로자 상세</h1>
+        </div>
+
+        {/* 액션 메뉴 */}
+        <div className="relative print:hidden action-menu-container">
+          <button
+            onClick={() => setShowActionMenu(!showActionMenu)}
+            className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+            title="더보기"
+          >
+            <MoreVertical size={20} className="text-slate-600" />
+          </button>
+
+          {showActionMenu && (
+            <div className="absolute top-full right-0 mt-1 w-48 bg-white border border-gray-200 rounded-xl shadow-lg z-50">
+              <div className="p-2">
+                <button
+                  onClick={() => {
+                    setShowActionMenu(false);
+                    setShowTerminateModal(true);
+                  }}
+                  className="w-full flex items-center gap-3 px-3 py-2 text-sm font-medium text-left rounded-lg hover:bg-red-50 text-red-600 transition-colors"
+                >
+                  <LogOut size={16} />
+                  퇴사 처리
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* 근로자 기본 정보 */}
@@ -664,7 +778,99 @@ export default function WorkerDetailPage() {
             )}
           </div>
         </Section>
+
+        {/* 근무 이력 */}
+        {history.length > 0 && (
+          <Section
+            title="근무 이력"
+            icon={<History size={16} />}
+            badge={`${history.length}건`}
+          >
+            {isLoadingHistory ? (
+              <div className="flex items-center justify-center py-8">
+                <RefreshCw size={24} className="animate-spin text-orange-500" />
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {history.map((item) => (
+                  <div key={item.id} className="p-4 rounded-xl border border-gray-200 bg-gray-50">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="font-bold text-slate-800">{item.companyName} - {item.siteName}</p>
+                        <p className="text-sm text-slate-600">{item.partnerName} · {item.role}</p>
+                      </div>
+                      <span className={`px-3 py-1 rounded-lg text-sm font-bold ${
+                        item.leaveReason === 'RESIGNED' ? 'bg-blue-100 text-blue-700' :
+                        item.leaveReason === 'TRANSFERRED' ? 'bg-green-100 text-green-700' :
+                        'bg-red-100 text-red-700'
+                      }`}>
+                        {item.leaveReason === 'RESIGNED' ? '자진퇴사' :
+                         item.leaveReason === 'TRANSFERRED' ? '이직' : '해고'}
+                      </span>
+                    </div>
+                    <p className="text-sm text-slate-500 mt-2">
+                      {new Date(item.joinedAt).toLocaleDateString('ko-KR')} ~ {new Date(item.leftAt).toLocaleDateString('ko-KR')}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            )}
+          </Section>
+        )}
       </div>
+
+      {/* 퇴사 처리 모달 */}
+      {showTerminateModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          <div className="absolute inset-0 bg-black/50" onClick={() => setShowTerminateModal(false)} />
+          <div className="relative z-10 bg-white rounded-2xl p-6 w-full max-w-md">
+            <h3 className="text-xl font-black text-slate-800 mb-4">퇴사 처리</h3>
+            <p className="text-base text-slate-600 mb-4">
+              <span className="font-bold text-slate-800">{worker.name}</span>님을 퇴사 처리하시겠습니까?
+            </p>
+
+            <div className="mb-6">
+              <label className="text-sm font-medium text-slate-600 mb-2 block">퇴사 사유</label>
+              <select
+                value={leaveReason}
+                onChange={(e) => setLeaveReason(e.target.value as LeaveReason)}
+                className="w-full px-4 py-3 text-base border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
+              >
+                <option value="RESIGNED">자진 퇴사</option>
+                <option value="TRANSFERRED">이직</option>
+                <option value="FIRED">해고</option>
+              </select>
+            </div>
+
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowTerminateModal(false)}
+                disabled={isTerminating}
+                className="flex-1 py-3 rounded-lg text-base font-bold text-slate-600 bg-gray-100 hover:bg-gray-200 transition-colors disabled:opacity-50"
+              >
+                취소
+              </button>
+              <button
+                onClick={handleTerminate}
+                disabled={isTerminating}
+                className="flex-1 py-3 rounded-lg text-base font-bold text-white bg-red-500 hover:bg-red-600 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+              >
+                {isTerminating ? (
+                  <>
+                    <RefreshCw size={18} className="animate-spin" />
+                    처리 중...
+                  </>
+                ) : (
+                  <>
+                    <LogOut size={18} />
+                    퇴사 처리
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* 다이얼로그 */}
       <ConfirmDialog

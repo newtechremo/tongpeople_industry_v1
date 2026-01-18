@@ -195,3 +195,183 @@ function calculateAge(birthDate: string, baseDate: Date = new Date()): number {
 
   return age;
 }
+
+/**
+ * 근로자 초대 (선등록 방식 A)
+ */
+export async function inviteWorker(data: {
+  teamId: number;
+  name: string;
+  phone: string;
+  birthDate: string;
+  position: string;
+  role: 'WORKER' | 'TEAM_ADMIN';
+  nationality?: string;
+  gender?: 'M' | 'F';
+}): Promise<{
+  success: boolean;
+  message: string;
+  data?: {
+    userId: string;
+    inviteToken: string;
+    inviteLink: string;
+  };
+  error?: string;
+}> {
+  const FUNCTIONS_URL = import.meta.env.VITE_SUPABASE_URL + '/functions/v1';
+
+  try {
+    const session = await supabase.auth.getSession();
+    const token = session.data.session?.access_token;
+
+    if (!token) {
+      return { success: false, message: '', error: '인증 토큰이 없습니다.' };
+    }
+
+    const response = await fetch(`${FUNCTIONS_URL}/invite-worker`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+      },
+      body: JSON.stringify(data),
+    });
+
+    const result = await response.json();
+
+    if (!response.ok) {
+      return {
+        success: false,
+        message: result.error || '근로자 초대에 실패했습니다.',
+        error: result.error,
+      };
+    }
+
+    return result;
+  } catch (error) {
+    console.error('근로자 초대 실패:', error);
+    return {
+      success: false,
+      message: '',
+      error: error instanceof Error ? error.message : '근로자 초대 중 오류가 발생했습니다.'
+    };
+  }
+}
+
+/**
+ * 퇴사 사유 타입
+ */
+export type LeaveReason = 'RESIGNED' | 'TRANSFERRED' | 'FIRED';
+
+/**
+ * 근로자 이력 타입
+ */
+export interface WorkerHistory {
+  id: number;
+  companyId: number;
+  companyName: string;
+  siteId: number;
+  siteName: string;
+  partnerId: number;
+  partnerName: string;
+  role: string;
+  joinedAt: string;
+  leftAt: string;
+  leaveReason: string;
+}
+
+/**
+ * 근로자 퇴사 처리
+ */
+export async function terminateWorker(
+  workerId: string,
+  leaveReason: LeaveReason
+): Promise<{ success: boolean; message: string; error?: string }> {
+  const FUNCTIONS_URL = import.meta.env.VITE_SUPABASE_URL?.replace('supabase.co', 'supabase.co/functions/v1') || '';
+
+  try {
+    const session = await supabase.auth.getSession();
+    const token = session.data.session?.access_token;
+
+    if (!token) {
+      return { success: false, message: '', error: '인증 토큰이 없습니다.' };
+    }
+
+    const response = await fetch(`${FUNCTIONS_URL}/terminate-worker`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+      },
+      body: JSON.stringify({ workerId, leaveReason }),
+    });
+
+    const result = await response.json();
+    return result;
+  } catch (error) {
+    console.error('퇴사 처리 실패:', error);
+    return {
+      success: false,
+      message: '',
+      error: error instanceof Error ? error.message : '퇴사 처리 중 오류가 발생했습니다.'
+    };
+  }
+}
+
+/**
+ * 근로자 이력 조회
+ */
+export async function getWorkerHistory(
+  workerId: string
+): Promise<{
+  success: boolean;
+  data?: WorkerHistory[];
+  error?: string;
+}> {
+  try {
+    const { data, error } = await supabase
+      .from('user_employment_history')
+      .select(`
+        id,
+        company_id,
+        site_id,
+        partner_id,
+        role,
+        joined_at,
+        left_at,
+        leave_reason,
+        companies!inner(name),
+        sites(name),
+        partners(name)
+      `)
+      .eq('user_id', workerId)
+      .order('left_at', { ascending: false });
+
+    if (error) {
+      return { success: false, error: error.message };
+    }
+
+    return {
+      success: true,
+      data: data?.map(item => ({
+        id: item.id,
+        companyId: item.company_id,
+        companyName: Array.isArray(item.companies) ? item.companies[0]?.name : item.companies?.name || '',
+        siteId: item.site_id,
+        siteName: Array.isArray(item.sites) ? item.sites[0]?.name : item.sites?.name || '',
+        partnerId: item.partner_id,
+        partnerName: Array.isArray(item.partners) ? item.partners[0]?.name : item.partners?.name || '',
+        role: item.role,
+        joinedAt: item.joined_at,
+        leftAt: item.left_at,
+        leaveReason: item.leave_reason,
+      })) || []
+    };
+  } catch (error) {
+    console.error('이력 조회 실패:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : '이력 조회 중 오류가 발생했습니다.'
+    };
+  }
+}

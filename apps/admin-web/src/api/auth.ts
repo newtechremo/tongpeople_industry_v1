@@ -74,6 +74,22 @@ export interface SignupRequest {
   password: string;
 }
 
+export interface SignupResponse {
+  success: boolean;
+  message: string;
+  user?: {
+    id: string;
+    name: string;
+    phone: string;
+    role: 'SUPER_ADMIN' | 'SITE_ADMIN' | 'TEAM_ADMIN' | 'WORKER';
+    companyId: number;
+    siteId: number;
+  };
+  accessToken?: string;
+  refreshToken?: string;
+  error?: string;
+}
+
 /**
  * SMS 인증코드 발송
  */
@@ -116,7 +132,7 @@ export async function verifySms(
 /**
  * 관리자 회원가입
  */
-export async function signup(data: SignupRequest): Promise<{ success: boolean; message: string; error?: string }> {
+export async function signup(data: SignupRequest): Promise<SignupResponse> {
   console.log('[signup] 요청 시작:', { ...data, password: '***' });
 
   try {
@@ -137,7 +153,7 @@ export async function signup(data: SignupRequest): Promise<{ success: boolean; m
 
     // JSON 파싱 시도
     try {
-      const result = JSON.parse(responseText);
+      const result: SignupResponse = JSON.parse(responseText);
 
       if (!response.ok) {
         return {
@@ -145,6 +161,23 @@ export async function signup(data: SignupRequest): Promise<{ success: boolean; m
           message: result.error || '회원가입에 실패했습니다.',
           error: result.error,
         };
+      }
+
+      // 역할 확인 및 경고
+      if (result.success && result.user) {
+        console.log('[signup] 사용자 역할:', result.user.role);
+
+        if (result.user.role !== 'SUPER_ADMIN') {
+          console.warn('[signup] 최초 가입자가 SUPER_ADMIN이 아닙니다:', result.user.role);
+        }
+
+        // 토큰이 있으면 세션 설정
+        if (result.accessToken && result.refreshToken) {
+          await supabase.auth.setSession({
+            access_token: result.accessToken,
+            refresh_token: result.refreshToken,
+          });
+        }
       }
 
       return result;

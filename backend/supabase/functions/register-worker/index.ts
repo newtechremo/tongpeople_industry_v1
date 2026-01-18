@@ -125,17 +125,87 @@ Deno.serve(async (req) => {
     // 3. 중복 검사 (휴대폰 번호)
     const { data: existingUser } = await supabase
       .from('users')
-      .select('id, status')
+      .select('id, status, company_id, site_id, partner_id, companies(name)')
       .eq('phone', normalizedPhone)
       .single();
 
     if (existingUser) {
-      // REJECTED 상태는 재가입 허용
+      // REJECTED 상태: 재가입 허용 (기존 로직)
       if (existingUser.status === 'REJECTED') {
-        // 기존 사용자 삭제 후 재가입 처리
         await supabase.from('users').delete().eq('id', existingUser.id);
         console.log('[INFO] 반려된 사용자 재가입:', normalizedPhone);
-      } else {
+      }
+
+      // INACTIVE 상태: 이직 시나리오
+      else if (existingUser.status === 'INACTIVE') {
+        // 같은 회사 복귀
+        if (existingUser.company_id === data.companyId) {
+          await supabase
+            .from('users')
+            .update({
+              status: 'ACTIVE',
+              site_id: data.siteId,
+              partner_id: data.partnerId,
+              role: 'WORKER',
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', existingUser.id);
+
+          console.log('[INFO] 같은 회사 복귀:', normalizedPhone);
+
+          return new Response(
+            JSON.stringify({
+              success: true,
+              message: '계정이 재활성화되었습니다.',
+              data: {
+                userId: existingUser.id,
+                status: 'ACTIVE',
+                isReactivated: true
+              }
+            }),
+            { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        // 다른 회사로 이직
+        else {
+          await supabase
+            .from('users')
+            .update({
+              company_id: data.companyId,
+              site_id: data.siteId,
+              partner_id: data.partnerId,
+              role: 'WORKER',
+              status: 'REQUESTED',  // 새 회사는 승인 필요
+              requested_at: new Date().toISOString(),
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', existingUser.id);
+
+          console.log('[INFO] 다른 회사로 이직:', {
+            phone: normalizedPhone,
+            from: existingUser.company_id,
+            to: data.companyId
+          });
+
+          return new Response(
+            JSON.stringify({
+              success: true,
+              message: '새 회사로 가입 신청되었습니다. 관리자 승인 후 서비스를 이용하실 수 있습니다.',
+              data: {
+                userId: existingUser.id,
+                status: 'REQUESTED',
+                isTransferred: true,
+                previousCompany: existingUser.companies?.name || '이전 회사'
+              }
+            }),
+            { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+      }
+
+      // 그 외 상태: 이미 가입됨
+      else {
         return new Response(
           JSON.stringify({ error: '이미 가입된 휴대폰 번호입니다.' }),
           { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }

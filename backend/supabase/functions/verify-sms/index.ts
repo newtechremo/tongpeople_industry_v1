@@ -90,7 +90,14 @@ Deno.serve(async (req) => {
       .update({ verified: true })
       .eq('id', verification.id);
 
-    // 6. 인증 토큰 생성 (회원가입/비밀번호 재설정 시 사용)
+    // 6. 기존 사용자 조회 (INACTIVE 상태 체크)
+    const { data: existingUser } = await supabase
+      .from('users')
+      .select('id, status, company_id, companies(name)')
+      .eq('phone', normalizedPhone)
+      .single();
+
+    // 7. 인증 토큰 생성 (회원가입/비밀번호 재설정 시 사용)
     // 간단한 토큰: phone + timestamp를 Base64 인코딩
     const verificationToken = btoa(JSON.stringify({
       phone: normalizedPhone,
@@ -104,6 +111,12 @@ Deno.serve(async (req) => {
         success: true,
         message: '인증이 완료되었습니다.',
         verificationToken,
+        // INACTIVE 상태의 기존 사용자 정보 전달 (클라이언트에서 이직 안내 표시)
+        existingUser: existingUser?.status === 'INACTIVE' ? {
+          id: existingUser.id,
+          status: existingUser.status,
+          companyName: existingUser.companies?.name || '이전 회사'
+        } : null
       }),
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
