@@ -125,7 +125,7 @@ export default function WorkersPage() {
   const [workers, setWorkers] = useState<Worker[]>(mockWorkers);
   const [teams, setTeams] = useState<Team[]>(mockTeams);
   const [isLoading, setIsLoading] = useState(false);
-  const [useMockData, setUseMockData] = useState(true);
+  const [useMockData, setUseMockData] = useState(false);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
 
   // 필터 상태
@@ -168,8 +168,8 @@ export default function WorkersPage() {
           teamId: w.partner_id || undefined,
           teamName: w.partnerName || undefined,
           role: w.role as Worker['role'],
-          position: w.position || undefined,
-          status: w.is_active ? 'ACTIVE' : 'INACTIVE',
+          position: w.job_title || undefined,
+          status: (w.status || 'ACTIVE') as Worker['status'],
           totalWorkDays: 0,
           monthlyWorkDays: 0,
           registeredAt: w.created_at || '',

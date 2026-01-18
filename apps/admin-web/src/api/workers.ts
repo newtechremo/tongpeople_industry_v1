@@ -44,8 +44,9 @@ export async function getWorkers(options?: {
     query = query.eq('role', options.role);
   }
 
-  if (options?.isActive !== undefined) {
-    query = query.eq('is_active', options.isActive);
+  // ACTIVE 상태만 조회 (PENDING, REQUESTED는 제외)
+  if (options?.isActive !== undefined && options.isActive) {
+    query = query.eq('status', 'ACTIVE');
   }
 
   if (options?.search) {
@@ -131,7 +132,7 @@ export async function updateWorker(id: string, worker: UserUpdate) {
 export async function deleteWorker(id: string) {
   const { error } = await supabase
     .from('users')
-    .update({ is_active: false })
+    .update({ status: 'INACTIVE' })
     .eq('id', id);
 
   if (error) throw error;
@@ -145,7 +146,7 @@ export async function getWorkerStats(siteId: number) {
     .from('users')
     .select('role, birth_date')
     .eq('site_id', siteId)
-    .eq('is_active', true);
+    .eq('status', 'ACTIVE');
 
   if (error) throw error;
 
