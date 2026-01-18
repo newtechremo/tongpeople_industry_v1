@@ -220,16 +220,22 @@ export async function inviteWorker(data: {
   error?: string;
 }> {
   const FUNCTIONS_URL = import.meta.env.VITE_SUPABASE_URL + '/functions/v1';
+  const endpoint = `${FUNCTIONS_URL}/invite-worker`;
+
+  console.log('[inviteWorker] 요청 URL:', endpoint);
+  console.log('[inviteWorker] 요청 데이터:', data);
 
   try {
     const session = await supabase.auth.getSession();
     const token = session.data.session?.access_token;
 
     if (!token) {
+      console.error('[inviteWorker] 토큰 없음');
       return { success: false, message: '', error: '인증 토큰이 없습니다.' };
     }
 
-    const response = await fetch(`${FUNCTIONS_URL}/invite-worker`, {
+    console.log('[inviteWorker] 요청 시작');
+    const response = await fetch(endpoint, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -238,9 +244,12 @@ export async function inviteWorker(data: {
       body: JSON.stringify(data),
     });
 
+    console.log('[inviteWorker] 응답 상태:', response.status);
     const result = await response.json();
+    console.log('[inviteWorker] 응답 데이터:', result);
 
     if (!response.ok) {
+      console.error('[inviteWorker] API 에러:', result);
       return {
         success: false,
         message: result.error || '근로자 초대에 실패했습니다.',
@@ -250,7 +259,7 @@ export async function inviteWorker(data: {
 
     return result;
   } catch (error) {
-    console.error('근로자 초대 실패:', error);
+    console.error('[inviteWorker] 네트워크 에러:', error);
     return {
       success: false,
       message: '',
