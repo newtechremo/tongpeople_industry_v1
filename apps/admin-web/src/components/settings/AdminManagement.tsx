@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
-import { Crown, Search, UserPlus, Building2, Trash2, Edit2 } from 'lucide-react';
+import { Crown, Search, UserPlus, Building2, Trash2, Edit2, Eye, EyeOff } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
-import { getAdminUsers, deleteAdminUser } from '@/api/users';
+import { getAdminUsers, deleteAdminUser, updateUserExcludeFromList } from '@/api/users';
 import type { AdminUser } from '@/api/users';
 import AdminAddModal from './AdminAddModal';
 
@@ -80,6 +80,23 @@ export default function AdminManagement({
     }
   };
 
+  const handleToggleExcludeFromList = async (admin: AdminUser) => {
+    const newValue = !admin.exclude_from_list;
+    try {
+      const result = await updateUserExcludeFromList(admin.id, newValue);
+      if (result.success) {
+        setAdmins(prev => prev.map(a =>
+          a.id === admin.id ? { ...a, exclude_from_list: newValue } : a
+        ));
+      } else {
+        alert('설정 변경에 실패했습니다: ' + result.error);
+      }
+    } catch (err) {
+      console.error('Failed to toggle exclude_from_list:', err);
+      alert('설정 변경 중 오류가 발생했습니다.');
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -142,6 +159,7 @@ export default function AdminManagement({
               <th className="px-4 py-3 text-xs font-black uppercase tracking-widest text-slate-500">권한</th>
               <th className="px-4 py-3 text-xs font-black uppercase tracking-widest text-slate-500">담당 현장</th>
               <th className="px-4 py-3 text-xs font-black uppercase tracking-widest text-slate-500">상태</th>
+              <th className="px-4 py-3 text-xs font-black uppercase tracking-widest text-slate-500">근로자 목록</th>
               <th className="px-4 py-3 w-16"></th>
             </tr>
           </thead>
@@ -195,6 +213,29 @@ export default function AdminManagement({
                   )}
                 </td>
                 <td className="px-4 py-4">
+                  <button
+                    onClick={() => handleToggleExcludeFromList(admin)}
+                    className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                      admin.exclude_from_list
+                        ? 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                        : 'bg-green-100 text-green-700 hover:bg-green-200'
+                    }`}
+                    title={admin.exclude_from_list ? '근로자 목록에서 숨김' : '근로자 목록에 표시'}
+                  >
+                    {admin.exclude_from_list ? (
+                      <>
+                        <EyeOff size={12} />
+                        숨김
+                      </>
+                    ) : (
+                      <>
+                        <Eye size={12} />
+                        표시
+                      </>
+                    )}
+                  </button>
+                </td>
+                <td className="px-4 py-4">
                   <div className="flex items-center gap-1">
                     <button
                       onClick={() => alert('수정 기능 준비중')}
@@ -229,13 +270,22 @@ export default function AdminManagement({
 
       {/* Info Box */}
       {!loading && !error && (
-        <div className="p-4 bg-blue-50 rounded-xl border border-blue-200">
-        <h4 className="font-bold text-blue-800 mb-2">권한 안내</h4>
-        <ul className="text-sm text-blue-700 space-y-1">
-          <li>• <strong>최고 관리자 (본사)</strong>: 모든 현장과 결제 정보 관리, 관리자 추가/삭제</li>
-          <li>• <strong>현장 관리자 (소장)</strong>: 담당 현장의 데이터 조회 및 관리</li>
-          <li>• 팀 관리자(팀장)와 근로자는 <a href="/workers" className="underline font-bold">[근로자 관리]</a>에서 관리합니다.</li>
-        </ul>
+        <div className="space-y-4">
+          <div className="p-4 bg-blue-50 rounded-xl border border-blue-200">
+            <h4 className="font-bold text-blue-800 mb-2">권한 안내</h4>
+            <ul className="text-sm text-blue-700 space-y-1">
+              <li>• <strong>최고 관리자 (본사)</strong>: 모든 현장과 결제 정보 관리, 관리자 추가/삭제</li>
+              <li>• <strong>현장 관리자 (소장)</strong>: 담당 현장의 데이터 조회 및 관리</li>
+              <li>• 팀 관리자(팀장)와 근로자는 <a href="/workers" className="underline font-bold">[근로자 관리]</a>에서 관리합니다.</li>
+            </ul>
+          </div>
+          <div className="p-4 bg-orange-50 rounded-xl border border-orange-200">
+            <h4 className="font-bold text-orange-800 mb-2">근로자 목록 표시 설정</h4>
+            <p className="text-sm text-orange-700">
+              <strong>"표시"</strong>로 설정하면 해당 관리자가 <a href="/workers" className="underline font-bold">[근로자 관리]</a> 화면에 표시됩니다.
+              출퇴근 관리가 필요 없는 대표나 관리자는 <strong>"숨김"</strong>으로 설정하세요.
+            </p>
+          </div>
         </div>
       )}
 

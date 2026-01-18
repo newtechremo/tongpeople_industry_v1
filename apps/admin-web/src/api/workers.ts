@@ -15,6 +15,8 @@ export interface WorkerWithDetails extends User {
 
 /**
  * 근로자 목록 조회
+ * exclude_from_list=false(표시)로 설정된 사용자는 role에 관계없이 표시
+ * exclude_from_list=true(숨김)로 설정된 사용자는 제외
  */
 export async function getWorkers(options?: {
   siteId?: number;
@@ -22,6 +24,7 @@ export async function getWorkers(options?: {
   role?: UserRole;
   isActive?: boolean;
   search?: string;
+  includeExcluded?: boolean; // 목록 제외된 사용자 포함 여부
 }) {
   let query = supabase
     .from('users')
@@ -40,13 +43,25 @@ export async function getWorkers(options?: {
     query = query.eq('partner_id', options.partnerId);
   }
 
+  // role 필터
   if (options?.role) {
     query = query.eq('role', options.role);
   }
+  // role 필터 없으면 모든 role 포함 (exclude_from_list로 필터링됨)
 
-  // ACTIVE 상태만 조회 (PENDING, REQUESTED는 제외)
+  // status 필터: 기본적으로 ACTIVE 또는 null인 사용자만 조회
+  // PENDING(동의대기), REQUESTED(승인대기), INACTIVE(비활성), BLOCKED(차단) 제외
   if (options?.isActive !== undefined && options.isActive) {
     query = query.eq('status', 'ACTIVE');
+  } else {
+    // isActive 옵션이 없으면 기본적으로 활성 사용자만 (ACTIVE 또는 null)
+    query = query.or('status.eq.ACTIVE,status.is.null');
+  }
+
+  // 근로자 목록에서 제외된 사용자 필터링 (기본: 제외)
+  // exclude_from_list=false 또는 null인 사용자만 표시
+  if (!options?.includeExcluded) {
+    query = query.or('exclude_from_list.is.null,exclude_from_list.eq.false');
   }
 
   if (options?.search) {
@@ -382,6 +397,33 @@ export async function getWorkerHistory(
     return {
       success: false,
       error: error instanceof Error ? error.message : '이력 조회 중 오류가 발생했습니다.'
+    };
+  }
+}
+
+/**
+ * 현재 사용자의 근로자 목록 제외 설정 업데이트
+ */
+export async function updateExcludeFromList(
+  userId: string,
+  excludeFromList: boolean
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const { error } = await supabase
+      .from('users')
+      .update({ exclude_from_list: excludeFromList })
+      .eq('id', userId);
+
+    if (error) {
+      return { success: false, error: error.message };
+    }
+
+    return { success: true };
+  } catch (error) {
+    console.error('근로자 목록 제외 설정 업데이트 실패:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : '설정 업데이트 중 오류가 발생했습니다.'
     };
   }
 }

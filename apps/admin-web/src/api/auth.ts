@@ -14,6 +14,7 @@ export interface AuthUser {
   siteName: string | null;
   partnerId: number | null;
   partnerName: string | null;
+  excludeFromList: boolean;
 }
 
 export interface LoginResponse {
@@ -305,6 +306,7 @@ export async function getCurrentUser(): Promise<AuthUser | null> {
       company_id,
       site_id,
       partner_id,
+      exclude_from_list,
       companies!inner(id, name),
       sites(id, name),
       partners(id, name)
@@ -328,6 +330,7 @@ export async function getCurrentUser(): Promise<AuthUser | null> {
     siteName: Array.isArray(profile.sites) ? profile.sites[0]?.name : profile.sites?.name || null,
     partnerId: profile.partner_id,
     partnerName: Array.isArray(profile.partners) ? profile.partners[0]?.name : profile.partners?.name || null,
+    excludeFromList: profile.exclude_from_list || false,
   };
 }
 
