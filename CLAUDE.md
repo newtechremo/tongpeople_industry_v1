@@ -99,7 +99,7 @@ type WorkerStatus = 'PENDING' | 'REQUESTED' | 'ACTIVE' | 'INACTIVE' | 'BLOCKED';
                                                 │
                                        ┌────────▼────────┐
                                        │   근로자 앱      │
-                                       │ (worker-mobile) │
+                                       │  (TongPassApp)  │
                                        └─────────────────┘
 ```
 
@@ -161,7 +161,7 @@ tong-pass/
 │   ├── admin-web/          # 관리자 웹 대시보드
 │   │   ├── src/
 │   │   └── package.json
-│   └── worker-mobile/      # 근로자 모바일 앱
+│   └── TongPassApp/        # 근로자 모바일 앱 (React Native CLI)
 │       ├── src/
 │       └── package.json
 ├── backend/                # API 서버 (Supabase 또는 Node.js)
@@ -188,9 +188,11 @@ packages:
   "private": true,
   "scripts": {
     "dev:admin": "pnpm --filter admin-web dev",
-    "dev:mobile": "pnpm --filter worker-mobile start",
+    "dev:mobile": "cd apps/TongPassApp && yarn start",
     "build:admin": "pnpm --filter admin-web build",
-    "build:mobile": "pnpm --filter worker-mobile build"
+    "build:mobile": "cd apps/TongPassApp && yarn android:build",
+    "ios": "cd apps/TongPassApp && yarn ios",
+    "android": "cd apps/TongPassApp && yarn android"
   }
 }
 ```
@@ -198,7 +200,7 @@ packages:
 ### 공통 패키지 사용법
 
 ```typescript
-// apps/admin-web 또는 apps/worker-mobile에서
+// apps/admin-web 또는 apps/TongPassApp에서
 import { AttendanceRecord, CheckoutPolicy } from '@tong-pass/shared/types';
 import { WORK_DAY_START_HOUR } from '@tong-pass/shared/constants';
 import { calculateAge, isSenior } from '@tong-pass/shared/utils';
@@ -214,12 +216,14 @@ import { calculateAge, isSenior } from '@tong-pass/shared/utils';
 - Lucide React (아이콘)
 - date-fns 4.1 (날짜 처리)
 
-### 근로자 모바일 (worker-mobile)
-- React Native + Expo
-- TypeScript
-- NativeWind (Tailwind for RN)
+### 근로자 모바일 (TongPassApp)
+- React Native 0.74.6 (CLI)
+- TypeScript 5.0.4
+- Recoil 0.7.7 (상태 관리)
+- React Navigation 6.x (네비게이션)
 - react-native-qrcode-svg (QR 생성)
-- expo-camera (QR 스캔)
+- react-native-signature-canvas (전자서명)
+- Axios (API 통신)
 
 ### 백엔드
 - Supabase (PostgreSQL, Auth, Realtime)
@@ -233,14 +237,22 @@ pnpm install
 
 # 개발 서버 실행
 pnpm dev:admin          # 관리자 웹 (localhost:5173)
-pnpm dev:mobile         # 모바일 앱 (Expo)
+pnpm dev:mobile         # 모바일 앱 (Metro)
+
+# 모바일 앱 실행
+pnpm ios                # iOS 시뮬레이터
+pnpm android            # Android 에뮬레이터
 
 # 빌드
 pnpm build:admin        # 관리자 웹 프로덕션 빌드
-pnpm build:mobile       # 모바일 앱 빌드
+pnpm build:mobile       # 모바일 앱 Android 릴리스 빌드
 
 # 공통 패키지 빌드 (타입 변경 시)
 pnpm --filter @tong-pass/shared build
+
+# 모바일 앱 의존성 설치 (별도)
+cd apps/TongPassApp && yarn install
+cd apps/TongPassApp/ios && pod install  # iOS만
 ```
 
 ## 디자인 시스템

@@ -15,6 +15,8 @@ import { useAuth } from '@/context/AuthContext';
 import { getAttendanceRecords } from '@/api/attendance';
 import { getPartners } from '@/api/partners';
 import { getWorkDate } from '@tong-pass/shared';
+import { useDialog } from '@/hooks/useDialog';
+import ConfirmDialog from '@/components/common/ConfirmDialog';
 
 // 팀별 색상 매핑
 const TEAM_COLORS: Record<string, { bg: string; border: string; text: string }> = {
@@ -180,41 +182,24 @@ function getAvatarText(name: string): string {
   return name.slice(0, 3);
 }
 
-// 아바타 컴포넌트
+// 아바타 컴포넌트 (체크박스 사이즈로 축소)
 function SmartAvatar({
   name,
   teamName,
   isSenior,
-  photoUrl,
 }: {
   name: string;
   teamName: string;
   isSenior: boolean;
-  photoUrl?: string;
 }) {
   const teamColor = TEAM_COLORS[teamName] || { bg: 'bg-slate-500', border: 'border-slate-400', text: 'text-slate-600' };
-  const avatarText = getAvatarText(name);
-
-  if (photoUrl) {
-    return (
-      <div
-        className={`w-10 h-10 rounded-full overflow-hidden border-2 ${
-          isSenior ? 'border-orange-400' : teamColor.border
-        }`}
-      >
-        <img src={photoUrl} alt={name} className="w-full h-full object-cover" />
-      </div>
-    );
-  }
 
   return (
     <div
-      className={`w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-sm ${
+      className={`w-5 h-5 rounded-full flex items-center justify-center ${
         teamColor.bg
-      } ${isSenior ? 'ring-2 ring-orange-400 ring-offset-1' : ''}`}
-    >
-      {avatarText}
-    </div>
+      } ${isSenior ? 'ring-2 ring-orange-400' : ''}`}
+    />
   );
 }
 
@@ -247,6 +232,7 @@ function StatusBadge({ status }: { status: AttendanceStatus }) {
 
 export default function AttendancePage() {
   const { user } = useAuth();
+  const { dialogState, showConfirm, showAlert, closeDialog } = useDialog();
 
   // 데이터 상태
   const [attendanceData, setAttendanceData] = useState<AttendanceRecord[]>(mockAttendanceData);
@@ -320,9 +306,12 @@ export default function AttendancePage() {
   const displayData = useMockData ? mockAttendanceData : attendanceData;
   const displayTeams = useMockData ? teams : teamList;
 
-  // 필터링된 데이터
+  // 팀 순서 정의
+  const teamOrder = ['A업체(전기팀)', 'B업체(미장팀)', 'C업체(설비팀)', '관리팀'];
+
+  // 필터링 및 정렬된 데이터
   const filteredData = useMemo(() => {
-    return displayData.filter((record) => {
+    const filtered = displayData.filter((record) => {
       if (selectedTeam !== '전체 팀' && record.teamName !== selectedTeam) {
         return false;
       }
@@ -331,7 +320,21 @@ export default function AttendancePage() {
       }
       return true;
     });
-  }, [selectedTeam, searchTerm]);
+
+    // 팀 생성 순서로 정렬 (같은 팀 내에서는 이름순)
+    return filtered.sort((a, b) => {
+      const teamIndexA = teamOrder.indexOf(a.teamName);
+      const teamIndexB = teamOrder.indexOf(b.teamName);
+
+      // 팀 순서가 다르면 팀 순서로 정렬
+      if (teamIndexA !== teamIndexB) {
+        return (teamIndexA === -1 ? Infinity : teamIndexA) - (teamIndexB === -1 ? Infinity : teamIndexB);
+      }
+
+      // 같은 팀이면 이름순 정렬
+      return a.workerName.localeCompare(b.workerName, 'ko');
+    });
+  }, [displayData, selectedTeam, searchTerm]);
 
   // 통계 계산
   const stats = useMemo(() => {
@@ -347,19 +350,48 @@ export default function AttendancePage() {
   }, [filteredData]);
 
   const handleManualCheckout = (_id: number, workerName: string) => {
-    if (confirm(`${workerName}님을 수동 퇴근 처리하시겠습니까?`)) {
-      alert(`${workerName}님이 퇴근 처리되었습니다.`);
-    }
+    showConfirm({
+      title: '수동 퇴근 처리',
+      message: `${workerName}님을 수동 퇴근 처리하시겠습니까?`,
+      confirmText: '퇴근 처리',
+      variant: 'warning',
+      onConfirm: () => {
+        // TODO: 실제 API 호출
+        showAlert({
+          title: '퇴근 처리 완료',
+          message: `${workerName}님이 퇴근 처리되었습니다.`,
+          variant: 'success',
+        });
+      },
+    });
   };
 
   const handleApprove = (_id: number, workerName: string) => {
-    if (confirm(`${workerName}님의 출근을 승인하시겠습니까?`)) {
-      alert(`${workerName}님의 출근이 승인되었습니다.`);
-    }
+    showConfirm({
+      title: '출근 승인',
+      message: `${workerName}님의 출근을 승인하시겠습니까?`,
+      confirmText: '승인',
+      variant: 'info',
+      onConfirm: () => {
+        // TODO: 실제 API 호출
+        showAlert({
+          title: '승인 완료',
+          message: `${workerName}님의 출근이 승인되었습니다.`,
+          variant: 'success',
+        });
+      },
+    });
   };
 
   const handleExport = () => {
-    alert('출퇴근 기록을 엑셀로 다운로드합니다.');
+    showAlert({
+      title: '엑셀 다운로드',
+      message: '출퇴근 기록을 엑셀로 다운로드합니다.',
+      variant: 'info',
+      onConfirm: () => {
+        // TODO: 실제 다운로드 로직
+      },
+    });
   };
 
   const handleRefresh = () => {
@@ -567,7 +599,6 @@ export default function AttendancePage() {
                         name={record.workerName}
                         teamName={record.teamName}
                         isSenior={record.isSenior}
-                        photoUrl={record.photoUrl}
                       />
                       <div className="flex items-center gap-1.5">
                         <span className="font-bold text-slate-800">{record.workerName}</span>
@@ -660,6 +691,19 @@ export default function AttendancePage() {
           </p>
         </div>
       </div>
+
+      {/* 공통 다이얼로그 */}
+      <ConfirmDialog
+        isOpen={dialogState.isOpen}
+        onClose={closeDialog}
+        onConfirm={dialogState.onConfirm}
+        title={dialogState.title}
+        message={dialogState.message}
+        confirmText={dialogState.confirmText}
+        cancelText={dialogState.cancelText}
+        variant={dialogState.variant}
+        alertOnly={dialogState.alertOnly}
+      />
     </div>
   );
 }

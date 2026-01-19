@@ -18,9 +18,12 @@ import {
   RefreshCw,
 } from 'lucide-react';
 import KpiCard from '@/components/KpiCard';
+import ConfirmDialog from '@/components/common/ConfirmDialog';
 import { SENIOR_AGE_THRESHOLD, getWorkDate } from '@tong-pass/shared';
 import { useAuth } from '@/context/AuthContext';
+import { useDialog } from '@/hooks/useDialog';
 import { getDashboardSummary, getAttendanceByPartner } from '@/api/attendance';
+import { getCompanyById } from '@/api/companies';
 
 // 공지사항 데이터
 const notices = [
@@ -61,6 +64,7 @@ interface DashboardData {
 export default function DashboardPage() {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { dialogState, showAlert, closeDialog } = useDialog();
 
   // State
   const [data, setData] = useState<DashboardData>(mockData);
@@ -82,18 +86,20 @@ export default function DashboardPage() {
 
     setIsLoading(true);
     try {
-      const workDate = getWorkDate();
-      const summary = await getDashboardSummary(user.siteId, workDate);
-
-      // 데이터가 있으면 실제 데이터 사용
-      if (summary.totalWorkers > 0) {
-        setData(summary);
-        setUseMockData(false);
-      } else {
-        // 데이터 없으면 목업 사용
-        setUseMockData(true);
+      // 회사 정보 로드
+      if (user.companyId) {
+        const company = await getCompanyById(user.companyId);
+        if (company) {
+          setCompanyInfo({
+            name: company.name,
+            address: company.address || '주소 정보 없음',
+            businessNumber: company.business_number || '-',
+          });
+        }
       }
 
+      // 출퇴근 현황은 그대로 목업 사용 (사용자 요청)
+      setUseMockData(true);
       setLastUpdated(new Date());
     } catch (error) {
       console.error('대시보드 데이터 로드 실패:', error);
@@ -101,7 +107,7 @@ export default function DashboardPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [user?.siteId]);
+  }, [user?.siteId, user?.companyId]);
 
   // 초기 로드
   useEffect(() => {
@@ -154,13 +160,17 @@ export default function DashboardPage() {
               </div>
             </div>
             <div className="flex items-center gap-3">
-              <Link
-                to="/subscription"
+              <button
+                onClick={() => showAlert({
+                  title: '준비 중',
+                  message: '구독 플랜 페이지는 준비중입니다.',
+                  variant: 'info',
+                })}
                 className="px-5 py-2.5 bg-white text-orange-600 rounded-xl font-bold text-sm
                            hover:bg-orange-50 transition-colors"
               >
                 구독 플랜 보기
-              </Link>
+              </button>
               <button
                 onClick={() => setShowTrialBanner(false)}
                 className="p-2 hover:bg-white/20 rounded-lg transition-colors"
@@ -195,13 +205,17 @@ export default function DashboardPage() {
               />
             ))}
           </div>
-          <Link
-            to="/notice"
+          <button
+            onClick={() => showAlert({
+              title: '준비 중',
+              message: '공지사항 페이지는 준비중입니다.',
+              variant: 'info',
+            })}
             className="text-xs text-slate-400 hover:text-white ml-2 flex items-center gap-1"
           >
             전체보기
             <ChevronRight size={14} />
-          </Link>
+          </button>
         </div>
       </div>
 
@@ -357,6 +371,19 @@ export default function DashboardPage() {
           </div>
         </div>
       </div>
+
+      {/* 공통 다이얼로그 */}
+      <ConfirmDialog
+        isOpen={dialogState.isOpen}
+        onClose={closeDialog}
+        onConfirm={dialogState.onConfirm}
+        title={dialogState.title}
+        message={dialogState.message}
+        confirmText={dialogState.confirmText}
+        cancelText={dialogState.cancelText}
+        variant={dialogState.variant}
+        alertOnly={dialogState.alertOnly}
+      />
     </div>
   );
 }

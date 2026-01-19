@@ -19,7 +19,7 @@ interface TermsState {
 // Step1Personal Component
 export function Step1Personal() {
   const navigate = useNavigate();
-  const { data, setStep1, nextStep } = useOnboarding();
+  const { data, setStep1, nextStep, reset } = useOnboarding();
 
   // Form state
   const [name, setName] = useState(data.step1?.name || '');
@@ -55,6 +55,7 @@ export function Step1Personal() {
       setVerificationCode('');
       setVerificationToken('');
     }
+    setCodeError(null);
   };
 
   const handleSendCode = async () => {
@@ -70,7 +71,8 @@ export function Step1Personal() {
       const result = await sendSms(phone, 'SIGNUP');
 
       if (!result.success) {
-        setCodeError(result.error || '인증번호 발송에 실패했습니다.');
+        const errorMsg = result.error || '인증번호 발송에 실패했습니다.';
+        setCodeError(errorMsg);
         return;
       }
 
@@ -264,23 +266,6 @@ export function Step1Personal() {
               <span className="text-sm font-bold text-green-700">인증이 완료되었습니다</span>
             </div>
           )}
-          {/* 개발 환경에서만 표시되는 개발용 인증 우회 버튼 */}
-          {IS_DEV && !isVerified && isValidPhone(phone) && (
-            <button
-              type="button"
-              onClick={() => {
-                // 개발용 토큰 생성
-                const devToken = `DEV_TOKEN_${phone.replace(/[^0-9]/g, '')}_${Date.now()}`;
-                setVerificationToken(devToken);
-                setIsVerified(true);
-                console.log('[DEV] 개발용 인증 토큰 생성:', devToken);
-              }}
-              className="flex items-center justify-center gap-2 w-full px-4 py-3 rounded-xl font-bold text-amber-700 bg-amber-50 border-2 border-amber-200 hover:bg-amber-100 transition-colors"
-            >
-              <Zap className="w-4 h-4" />
-              <span>[DEV] 인증 우회</span>
-            </button>
-          )}
         </div>
 
         {/* Verification Code Field */}
@@ -317,12 +302,14 @@ export function Step1Personal() {
                 {verifyingCode ? <Loader2 className="w-5 h-5 animate-spin" /> : '확인'}
               </button>
             </div>
-            {codeError && (
-              <div className="flex items-center gap-2 text-sm font-medium text-red-600">
-                <AlertCircle className="w-4 h-4" />
-                {codeError}
-              </div>
-            )}
+          </div>
+        )}
+
+        {/* Error Messages */}
+        {codeError && (
+          <div className="flex items-center gap-2 text-sm font-medium text-red-600">
+            <AlertCircle className="w-4 h-4" />
+            {codeError}
           </div>
         )}
 

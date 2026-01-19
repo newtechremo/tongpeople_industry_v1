@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router-dom';
-import { UserPlus, Users, LayoutDashboard, PartyPopper, Sparkles, CheckCircle2, ArrowRight } from 'lucide-react';
+import { UserPlus, Users, LayoutDashboard, PartyPopper, Sparkles, CheckCircle2, ArrowRight, Briefcase } from 'lucide-react';
 import { useOnboarding } from '@/hooks/useOnboarding';
 
 // Action card component
@@ -65,16 +65,16 @@ export function Step6Complete() {
   const { reset } = useOnboarding();
 
   // Handlers
+  const handleCreateTeam = () => {
+    // Clear onboarding data and navigate to settings page with teams tab
+    reset();
+    navigate('/settings', { state: { tab: 'teams', openModal: 'add' } });
+  };
+
   const handleInviteWorkers = () => {
     // Clear onboarding data and navigate to workers page with invite modal
     reset();
     navigate('/workers', { state: { openModal: 'add' } });
-  };
-
-  const handleAddAdmin = () => {
-    // Clear onboarding data and navigate to settings with admin section
-    reset();
-    navigate('/settings', { state: { tab: 'admins', openModal: 'add' } });
   };
 
   const handleGoToDashboard = () => {
@@ -127,23 +127,23 @@ export function Step6Complete() {
         통패스 시작 준비 완료!
       </h1>
       <p className="text-slate-500 mb-10 max-w-xs mx-auto">
-        이제 현장 근로자를 초대하고 출퇴근 관리를 시작하세요
+        이제 팀을 생성하고 근로자를 초대해보세요
       </p>
 
       {/* Action Buttons */}
       <div className="w-full max-w-sm space-y-3">
         <ActionCard
-          icon={UserPlus}
-          title="근로자 초대하기"
-          description="SMS로 앱 설치 링크 발송"
-          onClick={handleInviteWorkers}
+          icon={Briefcase}
+          title="팀(업체) 생성하기"
+          description="협력업체 및 소속팀 추가"
+          onClick={handleCreateTeam}
           primary
         />
         <ActionCard
-          icon={Users}
-          title="관리자 추가하기"
-          description="현장 관리자 권한 부여"
-          onClick={handleAddAdmin}
+          icon={UserPlus}
+          title="근로자 초대하기"
+          description="팀원 추가 및 SMS 초대"
+          onClick={handleInviteWorkers}
         />
         <ActionCard
           icon={LayoutDashboard}
@@ -160,8 +160,8 @@ export function Step6Complete() {
             <span className="text-sm font-bold text-white">Tip</span>
           </div>
           <p className="text-sm text-blue-700">
-            근로자를 초대하면 SMS로 앱 설치 링크가 발송됩니다.
-            근로자는 앱 설치 후 바로 출퇴근 QR을 사용할 수 있습니다.
+            먼저 팀(협력업체)을 생성한 후 근로자를 초대하세요.
+            각 팀에 소속된 근로자들의 출퇴근을 관리할 수 있습니다.
           </p>
         </div>
       </div>

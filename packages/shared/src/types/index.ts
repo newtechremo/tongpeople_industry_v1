@@ -30,12 +30,14 @@ export const USER_ROLE_LABELS: Record<UserRole, string> = {
 // ============================================
 export interface Site {
   id: number;
+  companyId: number;               // 소속 회사 ID
   name: string;                    // 현장명 (필수)
   address?: string;                // 현장 주소
-  managerName?: string;            // 현장 책임자
-  managerPhone?: string;           // 현장 대표번호
   checkoutPolicy: CheckoutPolicy;  // 퇴근 모드
   autoHours: number;               // 자동 퇴근 기준 시간 (기본값 8)
+  workDayStartHour?: number;       // 근무일 시작 시간 (기본 4)
+  seniorAgeThreshold?: number;     // 고령자 기준 나이 (기본 65)
+  isActive?: boolean;              // 활성화 여부
   createdAt?: string;
   updatedAt?: string;
 }
@@ -72,13 +74,15 @@ export type WorkerStatus =
   | 'PENDING'     // 관리자 선등록 후 동의 대기
   | 'REQUESTED'   // 근로자 직접 가입 후 승인 대기
   | 'ACTIVE'      // 활성
+  | 'REJECTED'    // 관리자 반려 (재가입 가능)
   | 'INACTIVE'    // 비활성 (퇴사 등)
-  | 'BLOCKED';    // 관리자 차단
+  | 'BLOCKED';    // 관리자 차단 (재가입 불가)
 
 export const WORKER_STATUS_LABELS: Record<WorkerStatus, string> = {
   PENDING: '동의 대기',
   REQUESTED: '승인 대기',
   ACTIVE: '정상',
+  REJECTED: '반려',
   INACTIVE: '비활성',
   BLOCKED: '차단',
 };
@@ -152,9 +156,9 @@ export interface HealthInfo {
 }
 
 // ============================================
-// 채용 서류 (최대 10개)
+// 근로자 서류 타입 (채용 시 제출 서류)
 // ============================================
-export type DocumentType =
+export type WorkerDocumentType =
   | 'SAFETY_PLEDGE'              // 안전관리서약서
   | 'TRAINING_CERT'              // 교육이수및보호구수령확인서
   | 'PRIVACY_CONSENT'            // 개인정보수집이용동의서
@@ -166,13 +170,13 @@ export type DocumentType =
 export interface WorkerDocument {
   id?: number;
   workerId: string;
-  type: DocumentType;
+  type: WorkerDocumentType;
   name: string;                  // 파일명
   url: string;                   // 파일 URL
   uploadedAt?: string;
 }
 
-export const DOCUMENT_TYPE_LABELS: Record<DocumentType, string> = {
+export const WORKER_DOCUMENT_TYPE_LABELS: Record<WorkerDocumentType, string> = {
   SAFETY_PLEDGE: '안전관리서약서',
   TRAINING_CERT: '교육이수및보호구수령확인서',
   PRIVACY_CONSENT: '개인정보수집이용동의서',
@@ -181,6 +185,12 @@ export const DOCUMENT_TYPE_LABELS: Record<DocumentType, string> = {
   LICENSE: '자격증',
   OTHER: '기타',
 };
+
+// 하위 호환성을 위한 별칭 (deprecated)
+/** @deprecated Use WorkerDocumentType instead */
+export type DocumentType = WorkerDocumentType;
+/** @deprecated Use WORKER_DOCUMENT_TYPE_LABELS instead */
+export const DOCUMENT_TYPE_LABELS = WORKER_DOCUMENT_TYPE_LABELS;
 
 // ============================================
 // 출퇴근 기록 (Attendance)
@@ -239,3 +249,8 @@ export interface QRPayload {
 // 인증 관련 타입 (auth.ts)
 // ============================================
 export * from './auth';
+
+// ============================================
+// 결재 관련 타입 (approval.ts)
+// ============================================
+export * from './approval';

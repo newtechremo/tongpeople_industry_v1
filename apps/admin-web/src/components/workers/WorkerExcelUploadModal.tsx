@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
 import {
   X,
   Upload,
@@ -11,6 +11,7 @@ import {
   Send,
   Edit3,
 } from 'lucide-react';
+import * as XLSX from 'xlsx';
 import type { Team } from '@tong-pass/shared';
 
 interface WorkerExcelUploadModalProps {
@@ -107,10 +108,71 @@ export default function WorkerExcelUploadModal({ isOpen, onClose, teams }: Worke
   }, [processFile]);
 
   // 양식 다운로드
-  const downloadTemplate = () => {
-    // 실제로는 팀 목록이 포함된 엑셀 파일 생성
-    alert('엑셀 양식이 다운로드됩니다. (현재 시스템에 등록된 팀 목록이 포함됨)');
-  };
+  const downloadTemplate = useCallback(() => {
+    // 근로자 등록 양식 시트 생성
+    const templateData = [
+      ['성명', '휴대폰번호', '소속팀', '생년월일', '역할', '직종', '성별', '국적'],
+      ['홍길동', '01012345678', '', '19850101', '근로자', '전기기사', '남성', '대한민국'],
+      ['김영희', '01098765432', '', '19900515', '팀 관리자', '안전관리자', '여성', '대한민국'],
+    ];
+
+    // 팀 목록 시트 생성
+    const teamListData = [
+      ['등록된 소속팀 목록'],
+      ['(아래 팀명을 복사하여 사용하세요)'],
+      [''],
+      ...teams.map(team => [team.name]),
+    ];
+
+    // 입력 안내 시트 생성
+    const guideData = [
+      ['컬럼명', '필수여부', '형식', '설명'],
+      ['성명', '필수', '텍스트', '근로자 이름'],
+      ['휴대폰번호', '필수', '숫자 11자리', '하이픈(-) 없이 입력 (예: 01012345678)'],
+      ['소속팀', '필수', '텍스트', '시스템에 등록된 팀명과 정확히 일치해야 함'],
+      ['생년월일', '필수', '숫자 8자리', '하이픈(-) 없이 입력 (예: 19850101)'],
+      ['역할', '필수', '텍스트', '"근로자" 또는 "팀 관리자"'],
+      ['직종', '선택', '텍스트', '직종/직책 (예: 전기기사, 용접공)'],
+      ['성별', '선택', '텍스트', '"남성" 또는 "여성"'],
+      ['국적', '선택', '텍스트', '국적 (기본값: 대한민국)'],
+    ];
+
+    // 워크북 생성
+    const workbook = XLSX.utils.book_new();
+
+    // 시트 추가
+    const templateSheet = XLSX.utils.aoa_to_sheet(templateData);
+    const teamSheet = XLSX.utils.aoa_to_sheet(teamListData);
+    const guideSheet = XLSX.utils.aoa_to_sheet(guideData);
+
+    // 열 너비 설정
+    templateSheet['!cols'] = [
+      { wch: 12 }, // 성명
+      { wch: 15 }, // 휴대폰번호
+      { wch: 20 }, // 소속팀
+      { wch: 12 }, // 생년월일
+      { wch: 12 }, // 역할
+      { wch: 15 }, // 직종
+      { wch: 8 },  // 성별
+      { wch: 12 }, // 국적
+    ];
+
+    teamSheet['!cols'] = [{ wch: 30 }];
+    guideSheet['!cols'] = [
+      { wch: 15 },
+      { wch: 10 },
+      { wch: 20 },
+      { wch: 40 },
+    ];
+
+    XLSX.utils.book_append_sheet(workbook, templateSheet, '근로자등록');
+    XLSX.utils.book_append_sheet(workbook, teamSheet, '팀목록');
+    XLSX.utils.book_append_sheet(workbook, guideSheet, '입력안내');
+
+    // 파일 다운로드
+    const fileName = `통패스_근로자등록_양식_${new Date().toISOString().slice(0, 10)}.xlsx`;
+    XLSX.writeFile(workbook, fileName);
+  }, [teams]);
 
   // 셀 수정
   const handleCellEdit = (rowNumber: number, field: keyof ExcelRow, value: string) => {
@@ -375,19 +437,19 @@ export default function WorkerExcelUploadModal({ isOpen, onClose, teams }: Worke
                     재검증
                   </button>
                 </div>
-                <div className="overflow-x-auto">
+                <div className="overflow-auto max-h-[400px]">
                   <table className="w-full min-w-[900px]">
-                    <thead>
+                    <thead className="sticky top-0 z-10">
                       <tr className="bg-gray-50 text-left border-b border-gray-200">
-                        <th className="px-3 py-2 text-xs font-bold text-slate-500 w-12">#</th>
-                        <th className="px-3 py-2 text-xs font-bold text-slate-500">상태</th>
-                        <th className="px-3 py-2 text-xs font-bold text-slate-500">성명</th>
-                        <th className="px-3 py-2 text-xs font-bold text-slate-500">휴대폰번호</th>
-                        <th className="px-3 py-2 text-xs font-bold text-slate-500">소속팀</th>
-                        <th className="px-3 py-2 text-xs font-bold text-slate-500">생년월일</th>
-                        <th className="px-3 py-2 text-xs font-bold text-slate-500">역할</th>
-                        <th className="px-3 py-2 text-xs font-bold text-slate-500">직종</th>
-                        <th className="px-3 py-2 text-xs font-bold text-slate-500 w-20">관리</th>
+                        <th className="px-3 py-2 text-xs font-bold text-slate-500 w-12 bg-gray-50">#</th>
+                        <th className="px-3 py-2 text-xs font-bold text-slate-500 bg-gray-50">상태</th>
+                        <th className="px-3 py-2 text-xs font-bold text-slate-500 bg-gray-50">성명</th>
+                        <th className="px-3 py-2 text-xs font-bold text-slate-500 bg-gray-50">휴대폰번호</th>
+                        <th className="px-3 py-2 text-xs font-bold text-slate-500 bg-gray-50">소속팀</th>
+                        <th className="px-3 py-2 text-xs font-bold text-slate-500 bg-gray-50">생년월일</th>
+                        <th className="px-3 py-2 text-xs font-bold text-slate-500 bg-gray-50">역할</th>
+                        <th className="px-3 py-2 text-xs font-bold text-slate-500 bg-gray-50">직종</th>
+                        <th className="px-3 py-2 text-xs font-bold text-slate-500 w-20 bg-gray-50">관리</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -455,13 +517,14 @@ export default function WorkerExcelUploadModal({ isOpen, onClose, teams }: Worke
                             onEdit={() => setEditingCell({ row: row.rowNumber, field: 'phone' })}
                             onSave={(value) => handleCellEdit(row.rowNumber, 'phone', value)}
                           />
-                          <EditableCell
+                          <TeamSelectCell
                             value={row.teamName}
                             hasError={row.errors.some(e => e.field === 'teamName')}
                             errorMessage={row.errors.find(e => e.field === 'teamName')?.message}
                             isEditing={editingCell?.row === row.rowNumber && editingCell?.field === 'teamName'}
                             onEdit={() => setEditingCell({ row: row.rowNumber, field: 'teamName' })}
                             onSave={(value) => handleCellEdit(row.rowNumber, 'teamName', value)}
+                            teams={teams}
                           />
                           <EditableCell
                             value={row.birthDate}
@@ -637,6 +700,119 @@ function EditableCell({
       </div>
       {hasError && errorMessage && (
         <p className="text-xs text-red-600 mt-0.5">{errorMessage}</p>
+      )}
+    </td>
+  );
+}
+
+// 팀 선택 셀 컴포넌트 (드롭다운)
+function TeamSelectCell({
+  value,
+  hasError,
+  errorMessage,
+  isEditing,
+  onEdit,
+  onSave,
+  teams,
+}: {
+  value: string;
+  hasError: boolean;
+  errorMessage?: string;
+  isEditing: boolean;
+  onEdit: () => void;
+  onSave: (value: string) => void;
+  teams: Team[];
+}) {
+  const [isOpen, setIsOpen] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  // 외부 클릭 시 드롭다운 닫기
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsOpen(false);
+        setSearchTerm('');
+      }
+    };
+
+    if (isOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [isOpen]);
+
+  // 필터링된 팀 목록
+  const filteredTeams = teams.filter(team =>
+    team.name.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  // 팀 선택 핸들러
+  const handleSelectTeam = (teamName: string) => {
+    onSave(teamName);
+    setIsOpen(false);
+    setSearchTerm('');
+  };
+
+  if (isEditing || isOpen) {
+    return (
+      <td className="px-3 py-2 relative" ref={dropdownRef}>
+        <div className="relative">
+          <input
+            type="text"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            onFocus={() => setIsOpen(true)}
+            placeholder="팀 검색..."
+            autoFocus
+            className="w-full px-2 py-1 text-sm border border-orange-400 rounded focus:outline-none focus:ring-2 focus:ring-orange-500"
+          />
+          {isOpen && (
+            <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-48 overflow-y-auto z-20">
+              {filteredTeams.length > 0 ? (
+                filteredTeams.map((team) => (
+                  <button
+                    key={team.id}
+                    onClick={() => handleSelectTeam(team.name)}
+                    className="w-full px-3 py-2 text-left text-sm hover:bg-orange-50 transition-colors flex items-center justify-between"
+                  >
+                    <span className="text-slate-700">{team.name}</span>
+                    {team.name === value && (
+                      <CheckCircle size={14} className="text-green-500" />
+                    )}
+                  </button>
+                ))
+              ) : (
+                <div className="px-3 py-2 text-sm text-slate-500">
+                  일치하는 팀이 없습니다
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      </td>
+    );
+  }
+
+  return (
+    <td
+      className={`px-3 py-2 cursor-pointer group ${hasError ? 'bg-red-100' : ''}`}
+      onClick={() => {
+        onEdit();
+        setIsOpen(true);
+      }}
+      title={errorMessage}
+    >
+      <div className="flex items-center gap-1">
+        <span className={`text-sm ${hasError ? 'text-red-700 font-medium' : 'text-slate-700'}`}>
+          {value || '-'}
+        </span>
+        <Edit3 size={12} className="text-slate-300 opacity-0 group-hover:opacity-100 transition-opacity" />
+      </div>
+      {hasError && errorMessage && (
+        <p className="text-xs text-red-600 mt-0.5">
+          {errorMessage} <span className="text-orange-600 font-medium">- 클릭하여 선택</span>
+        </p>
       )}
     </td>
   );

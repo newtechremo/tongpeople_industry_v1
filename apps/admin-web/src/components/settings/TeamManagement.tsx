@@ -1,7 +1,13 @@
 import { useState, useEffect } from 'react';
 import { Plus, Edit2, Trash2, Users, Building2, Handshake, User } from 'lucide-react';
 import { useSites } from '@/context/SitesContext';
+import { useAuth } from '@/context/AuthContext';
 import TeamAddModal from './TeamAddModal';
+import TeamEditModal from './TeamEditModal';
+import { useDialog } from '@/hooks/useDialog';
+import ConfirmDialog from '@/components/common/ConfirmDialog';
+import { getPartnersWithWorkerCount, deletePartner, createPartner, updatePartner } from '@/api/partners';
+import type { PartnerWithWorkerCount } from '@/api/partners';
 
 // Props 타입 정의
 interface TeamManagementProps {
@@ -18,83 +24,72 @@ interface Team {
   teamName: string;
   displayName: string;
   isPartner: boolean;
-  isDefault: boolean; // 기본 팀 여부 (관리자팀, 일반근로자팀)
   workerCount: number;
   createdAt: string;
 }
-
-// Mock 팀 데이터
-const mockTeams: Team[] = [
-  {
-    id: 1,
-    siteId: 1,
-    siteName: '서울본사',
-    companyName: '통하는사람들',
-    teamName: '관리자',
-    displayName: '통하는사람들 (관리자)',
-    isPartner: false,
-    isDefault: true,
-    workerCount: 3,
-    createdAt: '2024-01-01',
-  },
-  {
-    id: 2,
-    siteId: 1,
-    siteName: '서울본사',
-    companyName: '통하는사람들',
-    teamName: '일반근로자',
-    displayName: '통하는사람들 (일반근로자)',
-    isPartner: false,
-    isDefault: true,
-    workerCount: 5,
-    createdAt: '2024-01-01',
-  },
-  {
-    id: 3,
-    siteId: 1,
-    siteName: '서울본사',
-    companyName: '(주)대한전기',
-    teamName: '전기1팀',
-    displayName: '[협력사] (주)대한전기 (전기1팀)',
-    isPartner: true,
-    isDefault: false,
-    workerCount: 8,
-    createdAt: '2024-03-15',
-  },
-  {
-    id: 4,
-    siteId: 1,
-    siteName: '서울본사',
-    companyName: 'XX건설',
-    teamName: '미장팀',
-    displayName: '[협력사] XX건설 (미장팀)',
-    isPartner: true,
-    isDefault: false,
-    workerCount: 12,
-    createdAt: '2024-04-20',
-  },
-  {
-    id: 5,
-    siteId: 2,
-    siteName: '부산공장',
-    companyName: '통하는사람들',
-    teamName: '관리자',
-    displayName: '통하는사람들 (관리자)',
-    isPartner: false,
-    isDefault: true,
-    workerCount: 2,
-    createdAt: '2024-02-01',
-  },
-];
 
 export default function TeamManagement({
   autoOpenModal = false,
   onModalAutoOpened,
 }: TeamManagementProps) {
   const { sites } = useSites();
-  const [teams, setTeams] = useState<Team[]>(mockTeams);
+  const { user } = useAuth();
+  const { dialogState, showConfirm, showAlert, closeDialog } = useDialog();
+  const [teams, setTeams] = useState<Team[]>([]);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [selectedTeam, setSelectedTeam] = useState<Team | null>(null);
   const [filterSiteId, setFilterSiteId] = useState<number | 'ALL'>('ALL');
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  // 팀 데이터 로드
+  useEffect(() => {
+    async function loadTeams() {
+      if (sites.length === 0) return;
+
+      try {
+        setLoading(true);
+        setError(null);
+
+        // 필터링된 현장 또는 모든 현장의 팀 로드
+        const siteIds = filterSiteId === 'ALL' ? sites.map(s => s.id) : [filterSiteId];
+
+        const allTeams: Team[] = [];
+
+        for (const siteId of siteIds) {
+          const site = sites.find(s => s.id === siteId);
+          if (!site) continue;
+
+          const partners = await getPartnersWithWorkerCount(siteId);
+
+          // Partner 데이터를 Team 형식으로 변환
+          const teamData: Team[] = partners.map(partner => ({
+            id: partner.id,
+            siteId: partner.site_id || siteId,
+            siteName: site.name,
+            companyName: partner.company_name || partner.name,
+            teamName: partner.team_name || '',
+            displayName: partner.name,
+            isPartner: partner.is_partner || false,
+            workerCount: partner.workerCount,
+            createdAt: partner.created_at || '',
+          }));
+
+          allTeams.push(...teamData);
+        }
+
+        setTeams(allTeams);
+      } catch (err) {
+        console.error('Failed to load teams:', err);
+        setError('팀 목록을 불러오는데 실패했습니다.');
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    loadTeams();
+  }, [sites, filterSiteId]);
 
   // autoOpenModal prop이 true이면 모달 자동 열기
   useEffect(() => {
@@ -119,51 +114,146 @@ export default function TeamManagement({
     return acc;
   }, {} as Record<string, Team[]>);
 
-  const handleAddTeam = (newTeam: {
+  const handleAddTeam = async (newTeam: {
     siteId: number;
     companyName: string;
     teamName: string;
     isPartner: boolean;
     displayName: string;
   }) => {
-    const site = sites.find(s => s.id === newTeam.siteId);
-    const team: Team = {
-      id: Date.now(),
-      siteId: newTeam.siteId,
-      siteName: site?.name || '',
-      companyName: newTeam.companyName,
-      teamName: newTeam.teamName,
-      displayName: newTeam.displayName,
-      isPartner: newTeam.isPartner,
-      isDefault: false,
-      workerCount: 0,
-      createdAt: new Date().toISOString().split('T')[0],
-    };
-    setTeams(prev => [...prev, team]);
-    alert(`"${team.displayName}" 팀이 추가되었습니다.`);
+    if (!user?.companyId) {
+      showAlert({
+        title: '오류',
+        message: '회사 정보를 찾을 수 없습니다.',
+        variant: 'danger',
+      });
+      return;
+    }
+
+    try {
+      const site = sites.find(s => s.id === newTeam.siteId);
+
+      // API로 팀 생성
+      const partner = await createPartner({
+        company_id: user.companyId,
+        site_id: newTeam.siteId,
+        name: newTeam.displayName,  // 표시명 저장
+        is_partner: newTeam.isPartner,
+        company_name: newTeam.companyName,
+        team_name: newTeam.teamName || null,
+        is_active: true,
+      });
+
+      // 로컬 상태에 추가
+      const team: Team = {
+        id: partner.id,
+        siteId: newTeam.siteId,
+        siteName: site?.name || '',
+        companyName: newTeam.companyName,
+        teamName: newTeam.teamName,
+        displayName: newTeam.displayName,
+        isPartner: newTeam.isPartner,
+        workerCount: 0,
+        createdAt: partner.created_at || new Date().toISOString(),
+      };
+      setTeams(prev => [...prev, team]);
+
+      showAlert({
+        title: '팀 추가 완료',
+        message: `"${team.displayName}" 팀이 추가되었습니다.`,
+        variant: 'success',
+      });
+    } catch (error) {
+      console.error('Failed to create team:', error);
+      showAlert({
+        title: '팀 추가 실패',
+        message: '팀 추가 중 오류가 발생했습니다.',
+        variant: 'danger',
+      });
+    }
   };
 
   const handleDeleteTeam = (team: Team) => {
-    if (team.isDefault) {
-      alert('기본 팀은 삭제할 수 없습니다.');
-      return;
-    }
     if (team.workerCount > 0) {
-      alert(`이 팀에 소속된 근로자가 ${team.workerCount}명 있습니다.\n먼저 근로자를 다른 팀으로 이동해주세요.`);
+      showAlert({
+        title: '삭제 불가',
+        message: `이 팀에 소속된 근로자가 ${team.workerCount}명 있습니다.\n먼저 근로자를 다른 팀으로 이동해주세요.`,
+        variant: 'warning',
+      });
       return;
     }
-    if (confirm(`"${team.displayName}" 팀을 삭제하시겠습니까?`)) {
-      setTeams(prev => prev.filter(t => t.id !== team.id));
-      alert('팀이 삭제되었습니다.');
-    }
+    showConfirm({
+      title: '팀 삭제',
+      message: `"${team.displayName}" 팀을 삭제하시겠습니까?`,
+      confirmText: '삭제',
+      variant: 'danger',
+      onConfirm: async () => {
+        try {
+          await deletePartner(team.id);
+          // 로컬 상태 업데이트
+          setTeams(prev => prev.filter(t => t.id !== team.id));
+          showAlert({
+            title: '삭제 완료',
+            message: '팀이 삭제되었습니다.',
+            variant: 'success',
+          });
+        } catch (error) {
+          console.error('Failed to delete team:', error);
+          showAlert({
+            title: '삭제 실패',
+            message: '팀 삭제 중 오류가 발생했습니다.',
+            variant: 'danger',
+          });
+        }
+      },
+    });
   };
 
   const handleEditTeam = (team: Team) => {
-    if (team.isDefault) {
-      alert('기본 팀은 수정할 수 없습니다.');
-      return;
+    setSelectedTeam(team);
+    setIsEditModalOpen(true);
+  };
+
+  const handleUpdateTeam = async (teamId: number, updates: {
+    isPartner: boolean;
+    companyName: string;
+    teamName: string;
+    displayName: string;
+  }) => {
+    try {
+      await updatePartner(teamId, {
+        name: updates.displayName,
+        is_partner: updates.isPartner,
+        company_name: updates.companyName,
+        team_name: updates.teamName || null,
+      });
+
+      // 로컬 상태 업데이트
+      setTeams(prev => prev.map(t =>
+        t.id === teamId
+          ? {
+              ...t,
+              displayName: updates.displayName,
+              companyName: updates.companyName,
+              teamName: updates.teamName,
+              isPartner: updates.isPartner,
+            }
+          : t
+      ));
+
+      showAlert({
+        title: '수정 완료',
+        message: '팀 정보가 변경되었습니다.',
+        variant: 'success',
+      });
+    } catch (error) {
+      console.error('Failed to update team:', error);
+      showAlert({
+        title: '수정 실패',
+        message: '팀 수정 중 오류가 발생했습니다.',
+        variant: 'danger',
+      });
     }
-    alert('팀 수정 기능은 준비중입니다.');
   };
 
   return (
@@ -224,14 +314,31 @@ export default function TeamManagement({
       {/* 안내 박스 */}
       <div className="p-4 bg-blue-50 rounded-xl border border-blue-200">
         <p className="text-sm text-blue-700">
-          <strong>안내:</strong> 현장을 생성하면 <strong>관리자 팀</strong>과 <strong>일반 근로자 팀</strong>이 자동으로 생성됩니다.
-          기본 팀은 삭제할 수 없습니다.
+          <strong>안내:</strong> 협력업체 및 팀을 등록하여 근로자를 관리하세요.
         </p>
       </div>
 
+      {/* 로딩 상태 */}
+      {loading && (
+        <div className="flex items-center justify-center py-12">
+          <div className="text-center">
+            <div className="w-12 h-12 border-4 border-orange-200 border-t-orange-500 rounded-full animate-spin mx-auto mb-4"></div>
+            <p className="text-sm text-slate-500">팀 목록을 불러오는 중...</p>
+          </div>
+        </div>
+      )}
+
+      {/* 에러 상태 */}
+      {error && !loading && (
+        <div className="p-4 bg-red-50 rounded-xl border border-red-200">
+          <p className="text-sm text-red-600">{error}</p>
+        </div>
+      )}
+
       {/* 팀 목록 (현장별 그룹핑) */}
-      <div className="space-y-6">
-        {Object.entries(groupedTeams).map(([siteName, siteTeams]) => (
+      {!loading && !error && (
+        <div className="space-y-6">
+          {Object.entries(groupedTeams).map(([siteName, siteTeams]) => (
           <div key={siteName} className="space-y-3">
             {/* 현장 헤더 */}
             <div className="flex items-center gap-2">
@@ -245,85 +352,58 @@ export default function TeamManagement({
               {siteTeams.map(team => (
                 <div
                   key={team.id}
-                  className={`bg-white border rounded-xl p-4 hover:shadow-md transition-all ${
-                    team.isDefault
-                      ? 'border-gray-200 bg-gray-50'
-                      : team.isPartner
-                        ? 'border-blue-200 hover:border-blue-300'
-                        : 'border-gray-200 hover:border-orange-300'
-                  }`}
+                  className="bg-white border border-gray-200 hover:border-orange-300 rounded-xl p-4 hover:shadow-md transition-all"
                 >
                   <div className="flex items-start justify-between">
                     <div className="flex items-start gap-3">
-                      <div className={`p-2.5 rounded-lg ${
-                        team.isDefault
-                          ? 'bg-gray-200'
-                          : team.isPartner
-                            ? 'bg-blue-100'
-                            : 'bg-orange-100'
-                      }`}>
-                        {team.isPartner ? (
-                          <Handshake size={20} className="text-blue-600" />
-                        ) : (
-                          <Users size={20} className={team.isDefault ? 'text-gray-500' : 'text-orange-600'} />
-                        )}
+                      <div className="p-2.5 rounded-lg bg-orange-100">
+                        <Users size={20} className="text-orange-600" />
                       </div>
                       <div>
                         <div className="flex items-center gap-2">
                           <h4 className="font-bold text-slate-800">{team.displayName}</h4>
-                          {team.isDefault && (
-                            <span className="px-1.5 py-0.5 text-xs font-bold text-gray-500 bg-gray-200 rounded">
-                              기본
-                            </span>
-                          )}
                         </div>
                         <div className="flex items-center gap-3 mt-1.5 text-sm text-slate-500">
                           <span className="flex items-center gap-1">
                             <User size={12} />
                             {team.workerCount}명
                           </span>
-                          {team.isPartner && (
-                            <span className="px-1.5 py-0.5 text-xs font-medium text-blue-600 bg-blue-100 rounded">
-                              협력사
-                            </span>
-                          )}
                         </div>
                       </div>
                     </div>
 
-                    {!team.isDefault && (
-                      <div className="flex items-center gap-1">
-                        <button
-                          onClick={() => handleEditTeam(team)}
-                          className="p-2 text-slate-400 hover:text-orange-600 hover:bg-orange-50 rounded-lg transition-colors"
-                          title="수정"
-                        >
-                          <Edit2 size={16} />
-                        </button>
-                        <button
-                          onClick={() => handleDeleteTeam(team)}
-                          className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                          title="삭제"
-                        >
-                          <Trash2 size={16} />
-                        </button>
-                      </div>
-                    )}
+                    <div className="flex items-center gap-1">
+                      <button
+                        onClick={() => handleEditTeam(team)}
+                        className="p-2 text-slate-400 hover:text-orange-600 hover:bg-orange-50 rounded-lg transition-colors"
+                        title="수정"
+                      >
+                        <Edit2 size={16} />
+                      </button>
+                      <button
+                        onClick={() => handleDeleteTeam(team)}
+                        className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                        title="삭제"
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    </div>
                   </div>
                 </div>
               ))}
             </div>
           </div>
-        ))}
+          ))}
 
-        {filteredTeams.length === 0 && (
-          <div className="text-center py-12 text-slate-400">
-            <Users size={48} className="mx-auto mb-4 opacity-50" />
-            <p className="font-medium">등록된 팀이 없습니다</p>
-            <p className="text-sm mt-1">새 팀을 추가해주세요</p>
-          </div>
-        )}
-      </div>
+          {filteredTeams.length === 0 && (
+            <div className="text-center py-12 text-slate-400">
+              <Users size={48} className="mx-auto mb-4 opacity-50" />
+              <p className="font-medium">등록된 팀이 없습니다</p>
+              <p className="text-sm mt-1">새 팀을 추가해주세요</p>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* 팀 추가 모달 */}
       <TeamAddModal
@@ -331,6 +411,30 @@ export default function TeamManagement({
         onClose={() => setIsAddModalOpen(false)}
         sites={sites}
         onAdd={handleAddTeam}
+      />
+
+      {/* 팀 수정 모달 */}
+      <TeamEditModal
+        isOpen={isEditModalOpen}
+        onClose={() => {
+          setIsEditModalOpen(false);
+          setSelectedTeam(null);
+        }}
+        team={selectedTeam}
+        onUpdate={handleUpdateTeam}
+      />
+
+      {/* 공통 다이얼로그 */}
+      <ConfirmDialog
+        isOpen={dialogState.isOpen}
+        onClose={closeDialog}
+        onConfirm={dialogState.onConfirm}
+        title={dialogState.title}
+        message={dialogState.message}
+        confirmText={dialogState.confirmText}
+        cancelText={dialogState.cancelText}
+        variant={dialogState.variant}
+        alertOnly={dialogState.alertOnly}
       />
     </div>
   );

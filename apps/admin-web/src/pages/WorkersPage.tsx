@@ -15,12 +15,15 @@ import {
   RotateCcw,
   FileSpreadsheet,
   RefreshCw,
+  QrCode,
 } from 'lucide-react';
 import type { Worker, Team } from '@tong-pass/shared';
 import WorkerAddModal from '@/components/workers/WorkerAddModal';
-import WorkerDetailModal from '@/components/workers/WorkerDetailModal';
 import WorkerExcelUploadModal from '@/components/workers/WorkerExcelUploadModal';
+import CompanyCodeModal from '@/components/workers/CompanyCodeModal';
+import ConfirmDialog from '@/components/common/ConfirmDialog';
 import { useAuth } from '@/context/AuthContext';
+import { useDialog } from '@/hooks/useDialog';
 import { getWorkers } from '@/api/workers';
 import { getPartners } from '@/api/partners';
 
@@ -66,12 +69,14 @@ const ROLE_FILTER_OPTIONS: { value: RoleFilter; label: string }[] = [
   { value: 'REPRESENTATIVE', label: '근로자 대표' },
 ];
 
-// 상태 필터 옵션 (승인대기, 비활성만)
-type StatusFilter = 'ALL' | 'PENDING' | 'INACTIVE';
+// 상태 필터 옵션
+type StatusFilter = 'ALL' | 'PENDING' | 'REQUESTED' | 'INACTIVE' | 'BLOCKED';
 const STATUS_FILTER_OPTIONS: { value: StatusFilter; label: string }[] = [
   { value: 'ALL', label: '전체 상태' },
-  { value: 'PENDING', label: '승인대기' },
+  { value: 'PENDING', label: '동의대기' },
+  { value: 'REQUESTED', label: '승인대기' },
   { value: 'INACTIVE', label: '비활성' },
+  { value: 'BLOCKED', label: '차단' },
 ];
 
 const ITEMS_PER_PAGE = 10;
@@ -81,14 +86,28 @@ function StatusBadge({ status }: { status: Worker['status'] }) {
   if (status === 'PENDING') {
     return (
       <span className="px-2 py-0.5 text-xs font-medium text-yellow-700 bg-yellow-100 rounded-full">
+        동의대기
+      </span>
+    );
+  }
+  if (status === 'REQUESTED') {
+    return (
+      <span className="px-2 py-0.5 text-xs font-medium text-red-700 bg-red-100 rounded-full">
         승인대기
       </span>
     );
   }
   if (status === 'INACTIVE') {
     return (
-      <span className="px-2 py-0.5 text-xs font-medium text-red-700 bg-red-100 rounded-full">
+      <span className="px-2 py-0.5 text-xs font-medium text-gray-700 bg-gray-100 rounded-full">
         비활성
+      </span>
+    );
+  }
+  if (status === 'BLOCKED') {
+    return (
+      <span className="px-2 py-0.5 text-xs font-medium text-white bg-slate-800 rounded-full">
+        차단
       </span>
     );
   }
@@ -100,6 +119,7 @@ export default function WorkersPage() {
   const navigate = useNavigate();
   const locationState = location.state as WorkersLocationState | null;
   const { user } = useAuth();
+  const { dialogState, showAlert, closeDialog } = useDialog();
 
   // 데이터 상태
   const [workers, setWorkers] = useState<Worker[]>(mockWorkers);
@@ -118,7 +138,7 @@ export default function WorkersPage() {
   const [selectedWorkers, setSelectedWorkers] = useState<string[]>([]);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isExcelModalOpen, setIsExcelModalOpen] = useState(false);
-  const [selectedWorker, setSelectedWorker] = useState<Worker | null>(null);
+  const [isCodeModalOpen, setIsCodeModalOpen] = useState(false);
 
   // 데이터 로드
   const loadData = useCallback(async () => {
@@ -223,7 +243,9 @@ export default function WorkersPage() {
         // 상태 필터
         if (statusFilter !== 'ALL') {
           if (statusFilter === 'PENDING' && worker.status !== 'PENDING') return false;
+          if (statusFilter === 'REQUESTED' && worker.status !== 'REQUESTED') return false;
           if (statusFilter === 'INACTIVE' && worker.status !== 'INACTIVE') return false;
+          if (statusFilter === 'BLOCKED' && worker.status !== 'BLOCKED') return false;
         }
 
         return true;
@@ -276,7 +298,11 @@ export default function WorkersPage() {
 
   // 일괄 액션 핸들러
   const handleBulkAction = (action: string) => {
-    alert(`${selectedWorkers.length}명 선택됨: ${action} 기능은 준비중입니다.`);
+    showAlert({
+      title: '준비 중',
+      message: `${selectedWorkers.length}명 선택됨: ${action} 기능은 준비중입니다.`,
+      variant: 'info',
+    });
   };
 
   return (
@@ -305,6 +331,15 @@ export default function WorkersPage() {
           </button>
         </div>
         <div className="flex items-center gap-2">
+          <button
+            onClick={() => setIsCodeModalOpen(true)}
+            className="flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold text-orange-600
+                       bg-orange-50 border border-orange-200
+                       hover:bg-orange-100 transition-all"
+          >
+            <QrCode size={18} />
+            QR/코드 공유
+          </button>
           <button
             onClick={() => setIsExcelModalOpen(true)}
             className="flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold text-orange-600
@@ -487,10 +522,10 @@ export default function WorkersPage() {
                       className="w-4 h-4 rounded border-gray-300 text-orange-600 focus:ring-orange-500"
                     />
                   </td>
-                  <td className="px-4 py-4" onClick={() => setSelectedWorker(worker)}>
+                  <td className="px-4 py-4" onClick={() => navigate(`/workers/${worker.id}`)}>
                     <span className="text-sm text-slate-600">{worker.teamName}</span>
                   </td>
-                  <td className="px-4 py-4" onClick={() => setSelectedWorker(worker)}>
+                  <td className="px-4 py-4" onClick={() => navigate(`/workers/${worker.id}`)}>
                     <div className="flex items-center gap-1.5">
                       <span className="font-bold text-slate-800">{worker.name}</span>
                       {/* 현장 관리자: 금색 왕관 */}
@@ -522,22 +557,22 @@ export default function WorkersPage() {
                       {worker.phone}
                     </a>
                   </td>
-                  <td className="px-4 py-4 text-sm text-slate-600" onClick={() => setSelectedWorker(worker)}>
+                  <td className="px-4 py-4 text-sm text-slate-600" onClick={() => navigate(`/workers/${worker.id}`)}>
                     {worker.position || '-'}
                   </td>
-                  <td className="px-4 py-4" onClick={() => setSelectedWorker(worker)}>
+                  <td className="px-4 py-4" onClick={() => navigate(`/workers/${worker.id}`)}>
                     <span className={`text-sm ${worker.isSenior ? 'font-bold text-orange-600' : 'text-slate-600'}`}>
                       {worker.birthDate ? `${worker.birthDate.slice(2).replace(/-/g, '.')} (${worker.age}세)` : `${worker.age}세`}
                     </span>
                   </td>
-                  <td className="px-4 py-4" onClick={() => setSelectedWorker(worker)}>
+                  <td className="px-4 py-4" onClick={() => navigate(`/workers/${worker.id}`)}>
                     <StatusBadge status={worker.status} />
                   </td>
                   <td className="px-4 py-4">
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
-                        setSelectedWorker(worker);
+                        navigate(`/workers/${worker.id}`);
                       }}
                       className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
                     >
@@ -611,17 +646,30 @@ export default function WorkersPage() {
         teams={displayTeams}
       />
 
-      {/* Worker Detail Modal */}
-      <WorkerDetailModal
-        worker={selectedWorker}
-        onClose={() => setSelectedWorker(null)}
-      />
-
       {/* Excel Upload Modal */}
       <WorkerExcelUploadModal
         isOpen={isExcelModalOpen}
         onClose={() => setIsExcelModalOpen(false)}
         teams={displayTeams}
+      />
+
+      {/* Company Code Modal */}
+      <CompanyCodeModal
+        isOpen={isCodeModalOpen}
+        onClose={() => setIsCodeModalOpen(false)}
+      />
+
+      {/* 공통 다이얼로그 */}
+      <ConfirmDialog
+        isOpen={dialogState.isOpen}
+        onClose={closeDialog}
+        onConfirm={dialogState.onConfirm}
+        title={dialogState.title}
+        message={dialogState.message}
+        confirmText={dialogState.confirmText}
+        cancelText={dialogState.cancelText}
+        variant={dialogState.variant}
+        alertOnly={dialogState.alertOnly}
       />
     </div>
   );
