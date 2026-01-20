@@ -61,7 +61,7 @@ const CompanyCodeScreen: React.FC<CompanyCodeScreenProps> = ({navigation}) => {
 
       setCompany(result.company);
 
-      // 현장이 1개면 자동 선택
+      // 현장이 1개면 자동 선택 후 전화번호 인증 화면으로 이동
       if (result.sites.length === 1) {
         setSite(result.sites[0]);
         navigation.navigate('PhoneVerify', {
@@ -69,11 +69,11 @@ const CompanyCodeScreen: React.FC<CompanyCodeScreenProps> = ({navigation}) => {
           siteId: result.sites[0].id,
         });
       } else {
-        // TODO: 현장 선택 화면으로 이동 (현재는 첫 번째 현장 자동 선택)
-        setSite(result.sites[0]);
-        navigation.navigate('PhoneVerify', {
+        // 현장이 2개 이상이면 현장 선택 화면으로 이동
+        navigation.navigate('SiteSelect', {
           companyId: result.company.id,
-          siteId: result.sites[0].id,
+          companyName: result.company.name,
+          sites: result.sites,
         });
       }
     } catch (err) {

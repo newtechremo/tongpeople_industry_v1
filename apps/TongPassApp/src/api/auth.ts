@@ -40,37 +40,58 @@ export interface VerifySmsRequest {
 }
 
 export interface VerifySmsResponse {
-  verified: boolean;
-  isRegistered: boolean;
-  preRegisteredData?: PreRegisteredData;
-  accessToken?: string;
-  refreshToken?: string;
-  workerId?: string;
-  status?: WorkerStatus;
+  success: boolean;
+  message: string;
+  verificationToken: string;
+
+  // 이직 시나리오 - 기존 유저 정보 (INACTIVE 상태인 경우)
+  existingUser?: {
+    id: string;
+    status: 'INACTIVE';
+    companyName: string;
+  } | null;
 }
 
 // 근로자 등록
 export interface RegisterWorkerRequest {
-  siteId: string;
-  teamId: string;
+  // SMS 인증
+  verificationToken: string;
   phoneNumber: string;
+
+  // 근로자 정보
   name: string;
   birthDate: string; // YYYYMMDD 형식
-  email?: string;
   gender: 'M' | 'F';
-  nationality: string;
+  nationality: 'KR' | 'OTHER';
   jobTitle: string;
-  signatureBase64: string;
-  agreedTerms: string[]; // 동의한 약관 ID 배열
-  isDataConflict?: boolean;
+
+  // 소속
+  companyId: number;
+  siteId: number;
+  partnerId: number;
+
+  // 약관 동의
+  termsAgreed: boolean;
+  privacyAgreed: boolean;
+  thirdPartyAgreed: boolean;
+  locationAgreed: boolean;
+
+  // 전자서명
+  signatureImage: string; // Base64 이미지
 }
 
 export interface RegisterWorkerResponse {
   success: boolean;
-  workerId: string;
-  status: WorkerStatus;
-  accessToken: string;
-  refreshToken: string;
+  message: string;
+  data: {
+    userId: string;
+    name: string;
+    phone: string;
+    status: WorkerStatus;
+    isReactivated?: boolean; // 같은 회사 복귀
+    isTransferred?: boolean; // 다른 회사로 이직
+    previousCompany?: string;
+  };
 }
 
 // ==================== API 함수 ====================
@@ -93,7 +114,7 @@ export async function verifyCompanyCode(
 
   try {
     const response = await api.post<VerifyCompanyCodeResponse>(
-      '/auth/verify-company-code',
+      '/verify-company-code',
       {companyCode: trimmedCode},
     );
 
@@ -130,8 +151,11 @@ export async function requestSmsCode(
 
   try {
     const response = await api.post<RequestSmsCodeResponse>(
-      '/auth/request-sms',
-      {phoneNumber: cleanedPhone},
+      '/send-sms',
+      {
+        phone: cleanedPhone,
+        purpose: 'SIGNUP',
+      },
     );
 
     return {
@@ -168,13 +192,14 @@ export async function verifySms(
   }
 
   try {
-    const response = await api.post<VerifySmsResponse>('/auth/verify-sms', {
-      phoneNumber: cleanedPhone,
+    const response = await api.post<VerifySmsResponse>('/verify-sms', {
+      phone: cleanedPhone,
       code: cleanedCode,
+      purpose: 'SIGNUP',
     });
 
     // 인증 실패
-    if (!response.data?.verified) {
+    if (!response.data?.success) {
       throw new ApiError('INVALID_CODE', '인증번호가 일치하지 않습니다.');
     }
 
@@ -217,50 +242,60 @@ export async function registerWorker(
   data: RegisterWorkerRequest,
 ): Promise<RegisterWorkerResponse> {
   // 필수 필드 검증
-  const requiredFields: (keyof RegisterWorkerRequest)[] = [
-    'siteId',
-    'teamId',
-    'phoneNumber',
-    'name',
-    'birthDate',
-    'gender',
-    'nationality',
-    'jobTitle',
-    'signatureBase64',
-    'agreedTerms',
-  ];
-
-  for (const field of requiredFields) {
-    if (!data[field]) {
-      throw new ApiError(
-        'UNKNOWN_ERROR',
-        `필수 정보(${field})가 누락되었습니다.`,
-      );
-    }
-  }
-
-  // 서명 검증
-  if (!data.signatureBase64 || data.signatureBase64.length < 100) {
-    throw new ApiError('SIGNATURE_REQUIRED', '서명이 필요합니다.');
+  if (
+    !data.verificationToken ||
+    !data.phoneNumber ||
+    !data.name ||
+    !data.birthDate ||
+    !data.gender ||
+    !data.nationality ||
+    !data.jobTitle ||
+    !data.companyId ||
+    !data.siteId ||
+    !data.partnerId
+  ) {
+    throw new ApiError('UNKNOWN_ERROR', '필수 정보가 누락되었습니다.');
   }
 
   // 약관 동의 검증
-  if (!data.agreedTerms || data.agreedTerms.length < 4) {
+  if (
+    !data.termsAgreed ||
+    !data.privacyAgreed ||
+    !data.thirdPartyAgreed ||
+    !data.locationAgreed
+  ) {
     throw new ApiError('UNKNOWN_ERROR', '모든 약관에 동의해주세요.');
+  }
+
+  // 서명 검증
+  if (!data.signatureImage || data.signatureImage.length < 100) {
+    throw new ApiError('SIGNATURE_REQUIRED', '서명이 필요합니다.');
   }
 
   try {
     const response = await api.post<RegisterWorkerResponse>(
-      '/auth/register-worker',
+      '/register-worker',
       {
-        ...data,
-        phoneNumber: data.phoneNumber.replace(/[^0-9]/g, ''),
+        verificationToken: data.verificationToken,
+        phone: data.phoneNumber.replace(/[^0-9]/g, ''),
+        name: data.name,
         birthDate: data.birthDate.replace(/[^0-9]/g, ''),
+        gender: data.gender,
+        nationality: data.nationality,
+        jobTitle: data.jobTitle,
+        companyId: data.companyId,
+        siteId: data.siteId,
+        partnerId: data.partnerId,
+        termsAgreed: data.termsAgreed,
+        privacyAgreed: data.privacyAgreed,
+        thirdPartyAgreed: data.thirdPartyAgreed,
+        locationAgreed: data.locationAgreed,
+        signatureImage: data.signatureImage,
       },
     );
 
     // 응답 검증
-    if (!response.data?.workerId || !response.data?.accessToken) {
+    if (!response.data?.success || !response.data?.data?.userId) {
       throw new ApiError('SERVER_ERROR', '서버 응답이 올바르지 않습니다.');
     }
 
