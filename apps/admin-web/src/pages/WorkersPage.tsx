@@ -28,6 +28,7 @@ import { useAuth } from '@/context/AuthContext';
 import { useDialog } from '@/hooks/useDialog';
 import { getWorkers } from '@/api/workers';
 import { getPartners } from '@/api/partners';
+import { getAdminUsers } from '@/api/users';
 
 // 네비게이션 state 타입 정의
 interface WorkersLocationState {
@@ -145,7 +146,7 @@ export default function WorkersPage() {
 
   // 데이터 로드
   const loadData = useCallback(async () => {
-    if (!user?.siteId) {
+    if (!user?.companyId) {
       // siteId가 없으면 빈 데이터 표시
       setWorkers([]);
       setTeams([]);
@@ -155,9 +156,10 @@ export default function WorkersPage() {
 
     setIsLoading(true);
     try {
-      const [workersData, partnersData] = await Promise.all([
-        getWorkers({ siteId: user.siteId }),
-        getPartners(user.siteId),
+      const [workersData, partnersData, adminsData] = await Promise.all([
+        user.siteId ? getWorkers({ siteId: user.siteId }) : Promise.resolve([]),
+        user.siteId ? getPartners(user.siteId) : Promise.resolve([]),
+        getAdminUsers(user.companyId),
       ]);
 
       // API 데이터를 Worker 타입으로 변환
@@ -178,7 +180,34 @@ export default function WorkersPage() {
         monthlyWorkDays: 0,
         registeredAt: w.created_at || '',
       }));
-      setWorkers(convertedWorkers);
+      const visibleAdmins = (adminsData || []).filter(admin =>
+        admin.exclude_from_list !== true && (!admin.status || admin.status === 'ACTIVE')
+      );
+      const convertedAdmins: Worker[] = visibleAdmins.map(admin => ({
+        id: admin.id,
+        name: admin.name,
+        phone: admin.phone || '',
+        birthDate: admin.birth_date || undefined,
+        age: admin.birth_date ? calculateAge(admin.birth_date) : 0,
+        isSenior: admin.birth_date ? calculateAge(admin.birth_date) >= 65 : false,
+        siteId: admin.site_id || 0,
+        teamId: admin.partner_id || undefined,
+        teamName: admin.partner?.name || undefined,
+        role: admin.role as Worker['role'],
+        position: admin.job_title || undefined,
+        status: (admin.status || 'ACTIVE') as Worker['status'],
+        totalWorkDays: 0,
+        monthlyWorkDays: 0,
+        registeredAt: admin.created_at || '',
+      }));
+      const mergedWorkers = new Map<string, Worker>();
+      convertedWorkers.forEach(worker => mergedWorkers.set(worker.id, worker));
+      convertedAdmins.forEach(worker => {
+        if (!mergedWorkers.has(worker.id)) {
+          mergedWorkers.set(worker.id, worker);
+        }
+      });
+      setWorkers(Array.from(mergedWorkers.values()));
       setUseMockData(false);
 
       const convertedTeams: Team[] = (partnersData || []).map(p => ({
@@ -197,7 +226,7 @@ export default function WorkersPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [user?.siteId]);
+  }, [user?.siteId, user?.companyId]);
 
   // 초기 로드 및 refreshTrigger 변경 시 리로드
   useEffect(() => {
