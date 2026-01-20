@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+﻿import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { queryClient } from './lib/queryClient';
 import { AuthProvider } from './context/AuthContext';
@@ -12,6 +12,9 @@ import AttendancePage from './pages/AttendancePage';
 import SettingsPage from './pages/SettingsPage';
 import RiskAssessmentPage from './pages/RiskAssessmentPage';
 import CreateAssessmentPage from './pages/risk-assessment/CreateAssessmentPage';
+import RiskAssessmentDetailPage from './pages/risk-assessment/RiskAssessmentDetailPage';
+import RiskAssessmentEditPage from './pages/risk-assessment/RiskAssessmentEditPage';
+import RiskAssessmentApprovalPage from './pages/risk-assessment/RiskAssessmentApprovalPage';
 import LoginPage from './pages/LoginPage';
 import PasswordResetPage from './pages/PasswordResetPage';
 import {
@@ -61,6 +64,9 @@ function App() {
                 <Route path="attendance" element={<AttendancePage />} />
                 <Route path="safety/risk" element={<RiskAssessmentPage />} />
                 <Route path="safety/risk/create/:type" element={<CreateAssessmentPage />} />
+                <Route path="safety/risk/:id" element={<RiskAssessmentDetailPage />} />
+                <Route path="safety/risk/:id/edit" element={<RiskAssessmentEditPage />} />
+                <Route path="safety/risk/:id/approval" element={<RiskAssessmentApprovalPage />} />
                 <Route path="settings" element={<SettingsPage />} />
               </Route>
             </Routes>
@@ -72,3 +78,4 @@ function App() {
 }
 
 export default App;
+

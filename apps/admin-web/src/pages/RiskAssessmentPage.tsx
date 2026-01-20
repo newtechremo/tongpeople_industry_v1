@@ -1,4 +1,4 @@
-import { useState } from 'react';
+﻿import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Plus, FileText, Calendar, RefreshCw, Clock } from 'lucide-react';
 import AssessmentTypeSelectModal, { AssessmentType } from '../components/risk-assessment/AssessmentTypeSelectModal';
@@ -352,6 +352,7 @@ export default function RiskAssessmentPage() {
                 return (
                   <tr
                     key={assessment.id}
+                    onClick={() => navigate(`/safety/risk/${assessment.id}`)}
                     className="border-b border-gray-100 hover:bg-orange-50 transition-colors cursor-pointer"
                   >
                     <td className="px-4 py-4 text-sm text-slate-600">
@@ -365,7 +366,7 @@ export default function RiskAssessmentPage() {
                     </td>
                     <td className="px-4 py-4">
                       <span className="text-sm text-slate-600">
-                        {typeInfo?.shortLabel}(면봉기)
+                        {typeInfo?.shortLabel} 위험성평가
                       </span>
                     </td>
                     <td className="px-4 py-4">
