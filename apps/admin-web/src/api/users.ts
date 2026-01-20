@@ -90,3 +90,30 @@ export async function updateAdminUser(userId: string, updates: {
   if (error) throw error;
   return data;
 }
+
+/**
+ * 사용자의 근로자 목록 제외 설정 업데이트
+ */
+export async function updateUserExcludeFromList(
+  userId: string,
+  excludeFromList: boolean
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const { error } = await supabase
+      .from('users')
+      .update({ exclude_from_list: excludeFromList })
+      .eq('id', userId);
+
+    if (error) {
+      return { success: false, error: error.message };
+    }
+
+    return { success: true };
+  } catch (error) {
+    console.error('근로자 목록 제외 설정 업데이트 실패:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : '설정 업데이트 중 오류가 발생했습니다.'
+    };
+  }
+}

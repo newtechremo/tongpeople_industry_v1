@@ -1,11 +1,13 @@
 import { useState } from 'react';
 import { X, Send, User, Phone, Calendar, Briefcase, Shield, Flag, Users2 } from 'lucide-react';
 import type { Team, UserRole } from '@tong-pass/shared';
+import { inviteWorker } from '@/api/workers';
 
 interface WorkerAddModalProps {
   isOpen: boolean;
   onClose: () => void;
   teams: Team[];
+  onSuccess?: () => void;
 }
 
 // 직책/직종 옵션
@@ -44,7 +46,7 @@ interface FormData {
   gender: 'M' | 'F';
 }
 
-export default function WorkerAddModal({ isOpen, onClose, teams }: WorkerAddModalProps) {
+export default function WorkerAddModal({ isOpen, onClose, teams, onSuccess }: WorkerAddModalProps) {
   const [formData, setFormData] = useState<FormData>({
     teamId: '',
     name: '',
@@ -57,6 +59,7 @@ export default function WorkerAddModal({ isOpen, onClose, teams }: WorkerAddModa
   });
 
   const [errors, setErrors] = useState<Partial<Record<keyof FormData, string>>>({});
+  const [loading, setLoading] = useState(false);
 
   if (!isOpen) return null;
 
@@ -83,25 +86,49 @@ export default function WorkerAddModal({ isOpen, onClose, teams }: WorkerAddModa
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!validateForm()) return;
 
-    // TODO: API 호출하여 근로자 추가 및 문자 발송
-    console.log('Adding worker:', formData);
-    alert('동의 링크가 문자로 발송되었습니다.');
-    onClose();
+    setLoading(true);
 
-    // Reset form
-    setFormData({
-      teamId: '',
-      name: '',
-      phone: '',
-      birthDate: '',
-      position: '',
-      role: 'WORKER',
-      nationality: '대한민국',
-      gender: 'M',
-    });
+    try {
+      const result = await inviteWorker({
+        teamId: parseInt(formData.teamId),
+        name: formData.name,
+        phone: formData.phone,
+        birthDate: formData.birthDate,
+        position: formData.position,
+        role: formData.role as 'WORKER' | 'TEAM_ADMIN',
+        nationality: formData.nationality || 'KR',
+        gender: formData.gender as 'M' | 'F' | undefined,
+      });
+
+      if (result.success) {
+        alert('근로자 초대가 완료되었습니다.\n동의 링크가 문자로 발송되었습니다.');
+
+        // Reset form
+        setFormData({
+          teamId: '',
+          name: '',
+          phone: '',
+          birthDate: '',
+          position: '',
+          role: 'WORKER',
+          nationality: '대한민국',
+          gender: 'M',
+        });
+
+        onClose();
+        onSuccess?.();
+      } else {
+        alert(result.error || '초대 중 오류가 발생했습니다.');
+      }
+    } catch (error) {
+      console.error('Error inviting worker:', error);
+      alert('서버 오류가 발생했습니다.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -339,12 +366,14 @@ export default function WorkerAddModal({ isOpen, onClose, teams }: WorkerAddModa
             </button>
             <button
               onClick={handleSubmit}
+              disabled={loading}
               className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl font-bold text-white
                          bg-gradient-to-r from-orange-500 to-orange-600
-                         hover:from-orange-600 hover:to-orange-700 transition-all"
+                         hover:from-orange-600 hover:to-orange-700 transition-all
+                         disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <Send size={16} />
-              동의링크 발송
+              {loading ? '초대 중...' : '동의링크 발송'}
             </button>
           </div>
         </div>

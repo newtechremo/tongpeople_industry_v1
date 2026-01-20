@@ -70,6 +70,8 @@ type WorkerStatus = 'PENDING' | 'REQUESTED' | 'ACTIVE' | 'INACTIVE' | 'BLOCKED';
 
 | 문서 | 설명 |
 |------|------|
+| [`docs/signin/가입_방식_FAQ.md`](docs/signin/가입_방식_FAQ.md) | **필독!** 가입 방식 핵심 Q&A |
+| [`docs/signin/근로자_가입_방식_명확화_문서.md`](docs/signin/근로자_가입_방식_명확화_문서.md) | 웹-앱 연동, 충돌 시나리오, 데이터 흐름 상세 분석 |
 | [`docs/signin/통패스_근로자앱_가입_PRD.md`](docs/signin/통패스_근로자앱_가입_PRD.md) | 가입 플로우, 입력 항목, 상태 전이, API 명세 |
 
 **핵심 요약:**

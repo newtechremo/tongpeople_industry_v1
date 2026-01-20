@@ -14,6 +14,7 @@ export interface AuthUser {
   siteName: string | null;
   partnerId: number | null;
   partnerName: string | null;
+  excludeFromList: boolean;
 }
 
 export interface LoginResponse {
@@ -65,11 +66,29 @@ export interface SignupRequest {
   ceoName: string;
   companyAddress: string;
   employeeCountRange?: string;
+  businessCategoryCode?: string;
+  businessCategoryName?: string;
   siteName: string;
   siteAddress?: string;
   checkoutPolicy?: 'AUTO_8H' | 'MANUAL';
   autoHours?: number;
   password: string;
+}
+
+export interface SignupResponse {
+  success: boolean;
+  message: string;
+  user?: {
+    id: string;
+    name: string;
+    phone: string;
+    role: 'SUPER_ADMIN' | 'SITE_ADMIN' | 'TEAM_ADMIN' | 'WORKER';
+    companyId: number;
+    siteId: number;
+  };
+  accessToken?: string;
+  refreshToken?: string;
+  error?: string;
 }
 
 /**
@@ -114,7 +133,7 @@ export async function verifySms(
 /**
  * 관리자 회원가입
  */
-export async function signup(data: SignupRequest): Promise<{ success: boolean; message: string; error?: string }> {
+export async function signup(data: SignupRequest): Promise<SignupResponse> {
   console.log('[signup] 요청 시작:', { ...data, password: '***' });
 
   try {
@@ -135,7 +154,7 @@ export async function signup(data: SignupRequest): Promise<{ success: boolean; m
 
     // JSON 파싱 시도
     try {
-      const result = JSON.parse(responseText);
+      const result: SignupResponse = JSON.parse(responseText);
 
       if (!response.ok) {
         return {
@@ -143,6 +162,23 @@ export async function signup(data: SignupRequest): Promise<{ success: boolean; m
           message: result.error || '회원가입에 실패했습니다.',
           error: result.error,
         };
+      }
+
+      // 역할 확인 및 경고
+      if (result.success && result.user) {
+        console.log('[signup] 사용자 역할:', result.user.role);
+
+        if (result.user.role !== 'SUPER_ADMIN') {
+          console.warn('[signup] 최초 가입자가 SUPER_ADMIN이 아닙니다:', result.user.role);
+        }
+
+        // 토큰이 있으면 세션 설정
+        if (result.accessToken && result.refreshToken) {
+          await supabase.auth.setSession({
+            access_token: result.accessToken,
+            refresh_token: result.refreshToken,
+          });
+        }
       }
 
       return result;
@@ -252,26 +288,33 @@ export async function getSession() {
 }
 
 /**
- * 현재 사용자 정보 조회 (users, companies, sites, partners 조인)
+ * 현재 사용자 정보 조회 (조인 사용 - 성능 최적화)
  */
 export async function getCurrentUser(): Promise<AuthUser | null> {
   const { data: { user }, error: authError } = await supabase.auth.getUser();
 
   if (authError || !user) return null;
 
-  // users 테이블에서 company, site, partner 정보 조인
+  // users 테이블에서 company, site, partner 정보 조인해서 한 번에 가져오기
   const { data: profile, error: profileError } = await supabase
     .from('users')
     .select(`
-      *,
-      company:companies(id, name),
-      site:sites(id, name),
-      partner:partners(id, name)
+      id,
+      name,
+      phone,
+      role,
+      company_id,
+      site_id,
+      partner_id,
+      exclude_from_list,
+      companies!inner(id, name),
+      sites(id, name),
+      partners(id, name)
     `)
     .eq('id', user.id)
     .single();
 
-  if (profileError) {
+  if (profileError || !profile) {
     console.error('Failed to fetch user profile:', profileError);
     return null;
   }
@@ -282,11 +325,12 @@ export async function getCurrentUser(): Promise<AuthUser | null> {
     name: profile.name,
     role: profile.role,
     companyId: profile.company_id,
-    companyName: profile.company?.name || null,
+    companyName: Array.isArray(profile.companies) ? profile.companies[0]?.name : profile.companies?.name || null,
     siteId: profile.site_id,
-    siteName: profile.site?.name || null,
+    siteName: Array.isArray(profile.sites) ? profile.sites[0]?.name : profile.sites?.name || null,
     partnerId: profile.partner_id,
-    partnerName: profile.partner?.name || null,
+    partnerName: Array.isArray(profile.partners) ? profile.partners[0]?.name : profile.partners?.name || null,
+    excludeFromList: profile.exclude_from_list || false,
   };
 }
 

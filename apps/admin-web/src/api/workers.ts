@@ -15,6 +15,8 @@ export interface WorkerWithDetails extends User {
 
 /**
  * 근로자 목록 조회
+ * exclude_from_list=false(표시)로 설정된 사용자는 role에 관계없이 표시
+ * exclude_from_list=true(숨김)로 설정된 사용자는 제외
  */
 export async function getWorkers(options?: {
   siteId?: number;
@@ -22,6 +24,7 @@ export async function getWorkers(options?: {
   role?: UserRole;
   isActive?: boolean;
   search?: string;
+  includeExcluded?: boolean; // 목록 제외된 사용자 포함 여부
 }) {
   let query = supabase
     .from('users')
@@ -40,12 +43,25 @@ export async function getWorkers(options?: {
     query = query.eq('partner_id', options.partnerId);
   }
 
+  // role 필터
   if (options?.role) {
     query = query.eq('role', options.role);
   }
+  // role 필터 없으면 모든 role 포함 (exclude_from_list로 필터링됨)
 
-  if (options?.isActive !== undefined) {
-    query = query.eq('is_active', options.isActive);
+  // status 필터: 기본적으로 ACTIVE 또는 null인 사용자만 조회
+  // PENDING(동의대기), REQUESTED(승인대기), INACTIVE(비활성), BLOCKED(차단) 제외
+  if (options?.isActive !== undefined && options.isActive) {
+    query = query.eq('status', 'ACTIVE');
+  } else {
+    // isActive 옵션이 없으면 기본적으로 활성 사용자만 (ACTIVE 또는 null)
+    query = query.or('status.eq.ACTIVE,status.is.null');
+  }
+
+  // 근로자 목록에서 제외된 사용자 필터링 (기본: 제외)
+  // exclude_from_list=false 또는 null인 사용자만 표시
+  if (!options?.includeExcluded) {
+    query = query.or('exclude_from_list.is.null,exclude_from_list.eq.false');
   }
 
   if (options?.search) {
@@ -131,7 +147,7 @@ export async function updateWorker(id: string, worker: UserUpdate) {
 export async function deleteWorker(id: string) {
   const { error } = await supabase
     .from('users')
-    .update({ is_active: false })
+    .update({ status: 'INACTIVE' })
     .eq('id', id);
 
   if (error) throw error;
@@ -145,7 +161,7 @@ export async function getWorkerStats(siteId: number) {
     .from('users')
     .select('role, birth_date')
     .eq('site_id', siteId)
-    .eq('is_active', true);
+    .eq('status', 'ACTIVE');
 
   if (error) throw error;
 
@@ -194,4 +210,220 @@ function calculateAge(birthDate: string, baseDate: Date = new Date()): number {
   }
 
   return age;
+}
+
+/**
+ * 근로자 초대 (선등록 방식 A)
+ */
+export async function inviteWorker(data: {
+  teamId: number;
+  name: string;
+  phone: string;
+  birthDate: string;
+  position: string;
+  role: 'WORKER' | 'TEAM_ADMIN';
+  nationality?: string;
+  gender?: 'M' | 'F';
+}): Promise<{
+  success: boolean;
+  message: string;
+  data?: {
+    userId: string;
+    inviteToken: string;
+    inviteLink: string;
+  };
+  error?: string;
+}> {
+  const FUNCTIONS_URL = import.meta.env.VITE_SUPABASE_URL + '/functions/v1';
+  const endpoint = `${FUNCTIONS_URL}/invite-worker`;
+
+  console.log('[inviteWorker] 요청 URL:', endpoint);
+  console.log('[inviteWorker] 요청 데이터:', data);
+
+  try {
+    const session = await supabase.auth.getSession();
+    const token = session.data.session?.access_token;
+
+    if (!token) {
+      console.error('[inviteWorker] 토큰 없음');
+      return { success: false, message: '', error: '인증 토큰이 없습니다.' };
+    }
+
+    console.log('[inviteWorker] 요청 시작');
+    const response = await fetch(endpoint, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+      },
+      body: JSON.stringify(data),
+    });
+
+    console.log('[inviteWorker] 응답 상태:', response.status);
+    const result = await response.json();
+    console.log('[inviteWorker] 응답 데이터:', result);
+
+    if (!response.ok) {
+      console.error('[inviteWorker] API 에러:', result);
+      return {
+        success: false,
+        message: result.error || '근로자 초대에 실패했습니다.',
+        error: result.error,
+      };
+    }
+
+    return result;
+  } catch (error) {
+    console.error('[inviteWorker] 네트워크 에러:', error);
+    return {
+      success: false,
+      message: '',
+      error: error instanceof Error ? error.message : '근로자 초대 중 오류가 발생했습니다.'
+    };
+  }
+}
+
+/**
+ * 퇴사 사유 타입
+ */
+export type LeaveReason = 'RESIGNED' | 'TRANSFERRED' | 'FIRED';
+
+/**
+ * 근로자 이력 타입
+ */
+export interface WorkerHistory {
+  id: number;
+  companyId: number;
+  companyName: string;
+  siteId: number;
+  siteName: string;
+  partnerId: number;
+  partnerName: string;
+  role: string;
+  joinedAt: string;
+  leftAt: string;
+  leaveReason: string;
+}
+
+/**
+ * 근로자 퇴사 처리
+ */
+export async function terminateWorker(
+  workerId: string,
+  leaveReason: LeaveReason
+): Promise<{ success: boolean; message: string; error?: string }> {
+  const FUNCTIONS_URL = import.meta.env.VITE_SUPABASE_URL?.replace('supabase.co', 'supabase.co/functions/v1') || '';
+
+  try {
+    const session = await supabase.auth.getSession();
+    const token = session.data.session?.access_token;
+
+    if (!token) {
+      return { success: false, message: '', error: '인증 토큰이 없습니다.' };
+    }
+
+    const response = await fetch(`${FUNCTIONS_URL}/terminate-worker`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+      },
+      body: JSON.stringify({ workerId, leaveReason }),
+    });
+
+    const result = await response.json();
+    return result;
+  } catch (error) {
+    console.error('퇴사 처리 실패:', error);
+    return {
+      success: false,
+      message: '',
+      error: error instanceof Error ? error.message : '퇴사 처리 중 오류가 발생했습니다.'
+    };
+  }
+}
+
+/**
+ * 근로자 이력 조회
+ */
+export async function getWorkerHistory(
+  workerId: string
+): Promise<{
+  success: boolean;
+  data?: WorkerHistory[];
+  error?: string;
+}> {
+  try {
+    const { data, error } = await supabase
+      .from('user_employment_history')
+      .select(`
+        id,
+        company_id,
+        site_id,
+        partner_id,
+        role,
+        joined_at,
+        left_at,
+        leave_reason,
+        companies!inner(name),
+        sites(name),
+        partners(name)
+      `)
+      .eq('user_id', workerId)
+      .order('left_at', { ascending: false });
+
+    if (error) {
+      return { success: false, error: error.message };
+    }
+
+    return {
+      success: true,
+      data: data?.map(item => ({
+        id: item.id,
+        companyId: item.company_id,
+        companyName: Array.isArray(item.companies) ? item.companies[0]?.name : item.companies?.name || '',
+        siteId: item.site_id,
+        siteName: Array.isArray(item.sites) ? item.sites[0]?.name : item.sites?.name || '',
+        partnerId: item.partner_id,
+        partnerName: Array.isArray(item.partners) ? item.partners[0]?.name : item.partners?.name || '',
+        role: item.role,
+        joinedAt: item.joined_at,
+        leftAt: item.left_at,
+        leaveReason: item.leave_reason,
+      })) || []
+    };
+  } catch (error) {
+    console.error('이력 조회 실패:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : '이력 조회 중 오류가 발생했습니다.'
+    };
+  }
+}
+
+/**
+ * 현재 사용자의 근로자 목록 제외 설정 업데이트
+ */
+export async function updateExcludeFromList(
+  userId: string,
+  excludeFromList: boolean
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const { error } = await supabase
+      .from('users')
+      .update({ exclude_from_list: excludeFromList })
+      .eq('id', userId);
+
+    if (error) {
+      return { success: false, error: error.message };
+    }
+
+    return { success: true };
+  } catch (error) {
+    console.error('근로자 목록 제외 설정 업데이트 실패:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : '설정 업데이트 중 오류가 발생했습니다.'
+    };
+  }
 }

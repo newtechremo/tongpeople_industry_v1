@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Check, Loader2, Building2, Users, Shield, LayoutDashboard, AlertCircle } from 'lucide-react';
 import { useOnboarding } from '@/hooks/useOnboarding';
 import { signup } from '@/api/auth';
+import { useAuth } from '@/context/AuthContext';
 
 // Types
 interface LoadingStep {
@@ -17,6 +18,7 @@ interface LoadingStep {
 export function Step5Loading() {
   const navigate = useNavigate();
   const { data, nextStep, reset } = useOnboarding();
+  const { login } = useAuth();
   const [isProcessing, setIsProcessing] = useState(false);
 
   // State
@@ -56,7 +58,18 @@ export function Step5Loading() {
         }, 200);
 
         console.log('[Step5] signup API 호출');
-        const result = await signup({
+        console.log('[Step5] step2 데이터:', data.step2);
+
+        // 업종코드에서 코드와 이름 추출
+        const businessCategoryCode = data.step2.industryCode || undefined;
+        const businessCategoryName = businessCategoryCode
+          ? (await import('@tong-pass/shared')).INDUSTRY_CODES[businessCategoryCode]
+          : undefined;
+
+        console.log('[Step5] 업종코드:', businessCategoryCode, businessCategoryName);
+        console.log('[Step5] 직원수:', data.step2.employeeCountRange);
+
+        const signupData = {
           verificationToken: data.step1.verificationToken || '',
           name: data.step1.name,
           phone: data.step1.phone,
@@ -68,12 +81,18 @@ export function Step5Loading() {
           ceoName: data.step2.ceoName,
           companyAddress: data.step2.address,
           employeeCountRange: data.step2.employeeCountRange,
+          businessCategoryCode,
+          businessCategoryName,
           siteName: data.step3.siteName,
           siteAddress: data.step3.siteAddress,
           checkoutPolicy: data.step3.checkoutPolicy,
           autoHours: data.step3.autoHours,
           password: data.step4.password,
-        });
+        };
+
+        console.log('[Step5] signup 요청 데이터:', { ...signupData, password: '***' });
+
+        const result = await signup(signupData);
 
         clearInterval(progressInterval);
         console.log('[Step5] signup 결과:', result);
@@ -93,6 +112,16 @@ export function Step5Loading() {
           })));
           setProgress(((i + 1) / steps.length) * 100);
           await new Promise(resolve => setTimeout(resolve, stepDurations[i]));
+        }
+
+        // 자동 로그인 처리
+        console.log('[Step5] 자동 로그인 시작');
+        try {
+          await login(data.step1.phone, data.step4.password);
+          console.log('[Step5] 자동 로그인 성공');
+        } catch (loginError) {
+          console.error('[Step5] 자동 로그인 실패:', loginError);
+          // 로그인 실패해도 Step6로 이동 (수동 로그인 유도)
         }
 
         // Step6로 이동

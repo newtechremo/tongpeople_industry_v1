@@ -35,6 +35,9 @@ coverage/
 .supabase/
 **/.temp/
 
+# MCP Server (contains secrets)
+.mcp.json
+
 # TongPassApp (React Native)
 # Xcode
 apps/TongPassApp/ios/build/
