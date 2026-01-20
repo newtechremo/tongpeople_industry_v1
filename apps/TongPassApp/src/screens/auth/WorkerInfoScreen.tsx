@@ -31,7 +31,7 @@ const WorkerInfoScreen: React.FC<WorkerInfoScreenProps> = ({
   navigation,
   route,
 }) => {
-  const {companyId, siteId, phoneNumber, preRegisteredData, isTransfer, existingUserId} = route.params;
+  const {companyId, siteId, phoneNumber, preRegisteredData} = route.params;
 
   // 기본 정보
   const [name, setName] = useState(preRegisteredData?.name || '');
@@ -281,15 +281,6 @@ const WorkerInfoScreen: React.FC<WorkerInfoScreenProps> = ({
           keyboardShouldPersistTaps="handled">
           <Text style={styles.title}>근로자 정보 입력</Text>
 
-          {/* 이직 안내 배너 */}
-          {isTransfer && (
-            <View style={styles.transferBanner}>
-              <Text style={styles.transferText}>
-                🔄 이직 가입입니다. 기존 계정 정보가 새 회사로 업데이트됩니다.
-              </Text>
-            </View>
-          )}
-
           {preRegisteredData && (
             <View style={styles.banner}>
               <Text style={styles.bannerText}>
@@ -534,20 +525,6 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: colors.textPrimary,
     marginBottom: 24,
-  },
-  transferBanner: {
-    backgroundColor: colors.primaryLight,
-    padding: 16,
-    borderRadius: 8,
-    marginBottom: 16,
-    borderWidth: 2,
-    borderColor: colors.primary,
-  },
-  transferText: {
-    color: colors.primary,
-    fontSize: 14,
-    fontWeight: '600',
-    textAlign: 'center',
   },
   banner: {
     backgroundColor: colors.primaryLight,

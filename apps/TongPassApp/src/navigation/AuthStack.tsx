@@ -5,7 +5,6 @@ import {colors} from '@/constants/colors';
 
 import {
   CompanyCodeScreen,
-  SiteSelectScreen,
   PhoneVerifyScreen,
   WorkerInfoScreen,
   TermsScreen,
@@ -33,11 +32,6 @@ const AuthStack: React.FC = () => {
         name="CompanyCode"
         component={CompanyCodeScreen}
         options={{title: '회사코드 입력', headerShown: false}}
-      />
-      <Stack.Screen
-        name="SiteSelect"
-        component={SiteSelectScreen}
-        options={{title: '현장 선택'}}
       />
       <Stack.Screen
         name="PhoneVerify"
