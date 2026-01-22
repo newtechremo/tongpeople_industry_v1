@@ -1,7 +1,7 @@
-# Q03 스캔 실패 (Scan Failure)
+﻿# Q03 스캔 실패 (Scan Failure)
 
 > **화면 ID**: Q03
-> **파일명**: `15-scan-failure.md`
+> **파일명**: `Q03-scan-failure.md`
 > **상태**: Phase 1 MVP
 
 ---

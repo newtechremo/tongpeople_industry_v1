@@ -1,7 +1,7 @@
-# A03 전화번호 입력 (Phone Input)
+﻿# A03 전화번호 입력 (Phone Input)
 
 > **화면 ID**: A03
-> **파일명**: `03-phone-input.md`
+> **파일명**: `A03-phone-input.md`
 > **상태**: Phase 1 MVP
 
 ---

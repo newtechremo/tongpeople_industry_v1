@@ -1,7 +1,7 @@
-# A06 약관 동의 (Terms Agreement)
+﻿# A06 약관 동의 (Terms Agreement)
 
 > **화면 ID**: A06
-> **파일명**: `06-terms-agreement.md`
+> **파일명**: `A06-terms-agreement.md`
 > **상태**: Phase 1 MVP
 
 ---

@@ -1,7 +1,7 @@
-# A02 현장 선택 (Site Select)
+﻿# A02 현장 선택 (Site Select)
 
 > **화면 ID**: A02
-> **파일명**: `02-site-select.md`
+> **파일명**: `A02-site-select.md`
 > **상태**: Phase 1 MVP
 
 ---

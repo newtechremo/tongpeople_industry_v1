@@ -1,7 +1,7 @@
-# M04 출퇴근 기록 (Attendance History)
+﻿# M04 출퇴근 기록 (Attendance History)
 
 > **화면 ID**: M04
-> **파일명**: `12-attendance-history.md`
+> **파일명**: `M04-attendance-history.md`
 > **상태**: Phase 1 MVP
 
 ---

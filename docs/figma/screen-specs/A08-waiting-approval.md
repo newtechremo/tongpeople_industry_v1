@@ -1,7 +1,7 @@
-# A08 승인 대기 (Waiting Approval)
+﻿# A08 승인 대기 (Waiting Approval)
 
 > **화면 ID**: A08
-> **파일명**: `08-waiting-approval.md`
+> **파일명**: `A08-waiting-approval.md`
 > **상태**: Phase 1 MVP
 
 ---

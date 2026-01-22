@@ -1,7 +1,7 @@
-# Q01 QR 스캔 (QR Scanner)
+﻿# Q01 QR 스캔 (QR Scanner)
 
 > **화면 ID**: Q01
-> **파일명**: `13-qr-scan.md`
+> **파일명**: `Q01-qr-scan.md`
 > **상태**: Phase 1 MVP
 
 ---

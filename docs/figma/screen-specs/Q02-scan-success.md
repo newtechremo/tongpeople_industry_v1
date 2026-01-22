@@ -1,7 +1,7 @@
-# Q02 스캔 성공 (Scan Success)
+﻿# Q02 스캔 성공 (Scan Success)
 
 > **화면 ID**: Q02
-> **파일명**: `14-scan-success.md`
+> **파일명**: `Q02-scan-success.md`
 > **상태**: Phase 1 MVP
 
 ---

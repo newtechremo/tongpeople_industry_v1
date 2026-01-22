@@ -1,7 +1,7 @@
-# A07 전자서명 (Signature)
+﻿# A07 전자서명 (Signature)
 
 > **화면 ID**: A07
-> **파일명**: `07-signature.md`
+> **파일명**: `A07-signature.md`
 > **상태**: Phase 1 MVP
 
 ---

@@ -1,6 +1,6 @@
-# 공통 컴포넌트: 팝업 & 모달 (Popup & Modal)
+﻿# 공통 컴포넌트: 팝업 & 모달 (Popup & Modal)
 
-> **파일명**: `00-common-popup-modal.md`
+> **파일명**: `C00-common-popup-modal.md`
 > **상태**: Phase 1 MVP
 > **용도**: 앱 전체에서 사용되는 팝업/모달 공통 스펙
 

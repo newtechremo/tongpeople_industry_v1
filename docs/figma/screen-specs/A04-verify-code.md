@@ -1,7 +1,7 @@
-# A04 인증번호 입력 (Verify Code)
+﻿# A04 인증번호 입력 (Verify Code)
 
 > **화면 ID**: A04
-> **파일명**: `04-verify-code.md`
+> **파일명**: `A04-verify-code.md`
 > **상태**: Phase 1 MVP
 
 ---
@@ -14,7 +14,7 @@
 | **영문명** | SMS Verification |
 | **접근 조건** | SMS 발송 완료 |
 | **이전 화면** | A03 전화번호 입력 |
-| **다음 화면** | A05 정보 입력 (신규) 또는 홈 (기존 회원) |
+| **다음 화면** | A09 비밀번호 설정 (신규) 또는 홈/참여 회사 목록 (기존 회원) |
 
 ---
 
@@ -171,25 +171,25 @@ const handleInput = (index: number, value: string) => {
 
 ```
 1. API 호출: POST /verify-sms
-2. 기존 회원: 홈 화면으로 이동
-3. 신규 회원: A05 정보 입력으로 이동 (replace 네비게이션)
-4. 선등록 회원: A05로 이동 (데이터 pre-fill, replace 네비게이션)
+2. 기존 회원: 홈 또는 참여 회사 목록으로 이동
+3. 신규 회원: A09 비밀번호 설정으로 이동 (replace 네비게이션)
+4. 선등록 회원: A09로 이동 (데이터 pre-fill, replace 네비게이션)
 ```
 
 > **중요 (뒤로가기 처리):**
-> - 인증 성공 후 A05로 이동 시 **`router.replace()`** 사용
+> - 인증 성공 후 A09로 이동 시 **`router.replace()`** 사용
 > - A04 화면을 네비게이션 스택에서 제거하여 뒤로가기 시 인증 화면으로 돌아가지 않도록 함
-> - A05에서 뒤로가기 시 A03(전화번호 입력)으로 이동됨
+> - A09에서 뒤로가기 시 A03(전화번호 입력)으로 이동됨
 
 ```typescript
 // 인증 성공 시 네비게이션 예시
 const handleVerifySuccess = (response) => {
   if (response.isRegistered) {
-    // 기존 회원: 홈으로 이동
+    // 기존 회원: 홈 또는 참여 회사 목록으로 이동
     router.replace('/home');
   } else {
-    // 신규/선등록 회원: 정보입력으로 이동 (replace로 스택에서 A04 제거)
-    router.replace('/info-input', {
+    // 신규/선등록 회원: 비밀번호 설정으로 이동 (replace로 스택에서 A04 제거)
+    router.replace('/password-setup', {
       phoneNumber,
       preRegisteredData: response.preRegisteredData
     });

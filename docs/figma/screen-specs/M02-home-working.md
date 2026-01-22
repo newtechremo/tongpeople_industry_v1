@@ -1,7 +1,7 @@
-# M02 홈 - 근무 중 (Home Working)
+﻿# M02 홈 - 근무 중 (Home Working)
 
 > **화면 ID**: M02
-> **파일명**: `10-home-working.md`
+> **파일명**: `M02-home-working.md`
 > **상태**: Phase 1 MVP
 
 ---

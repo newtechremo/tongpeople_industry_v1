@@ -1,7 +1,7 @@
-# M03 홈 - 퇴근 완료 (Home After Work)
+﻿# M03 홈 - 퇴근 완료 (Home After Work)
 
 > **화면 ID**: M03
-> **파일명**: `11-home-after-work.md`
+> **파일명**: `M03-home-after-work.md`
 > **상태**: Phase 1 MVP
 
 ---

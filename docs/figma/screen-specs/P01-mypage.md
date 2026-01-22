@@ -1,7 +1,7 @@
-# P01 마이페이지 (My Page)
+﻿# P01 마이페이지 (My Page)
 
 > **화면 ID**: P01
-> **파일명**: `16-mypage.md`
+> **파일명**: `P01-mypage.md`
 > **상태**: Phase 1 MVP
 
 ---

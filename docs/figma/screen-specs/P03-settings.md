@@ -1,7 +1,7 @@
-# P03 설정 (Settings)
+﻿# P03 설정 (Settings)
 
 > **화면 ID**: P03
-> **파일명**: `18-settings.md`
+> **파일명**: `P03-settings.md`
 > **상태**: Phase 1 MVP
 
 ---

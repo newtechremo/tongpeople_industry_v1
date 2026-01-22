@@ -1,7 +1,7 @@
-# P02 프로필 상세 (Profile Detail)
+﻿# P02 프로필 상세 (Profile Detail)
 
 > **화면 ID**: P02
-> **파일명**: `17-profile-detail.md`
+> **파일명**: `P02-profile-detail.md`
 > **상태**: Phase 1 MVP
 
 ---
