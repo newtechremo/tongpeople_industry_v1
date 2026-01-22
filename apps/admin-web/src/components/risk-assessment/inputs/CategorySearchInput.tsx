@@ -1,5 +1,5 @@
-/**
- * 대분류 검색 Input (자동완성)
+﻿/**
+ * 작업 공종 검색 Input
  */
 
 import { useState, useRef, useEffect } from 'react';
@@ -23,15 +23,11 @@ export default function CategorySearchInput({
   const [isOpen, setIsOpen] = useState(false);
   const wrapperRef = useRef<HTMLDivElement>(null);
 
-  // 선택된 카테고리 찾기
   const selectedCategory = categories.find(cat => cat.id === value);
-
-  // 검색 필터링
   const filteredCategories = categories.filter(cat =>
     cat.name.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  // 외부 클릭 감지
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
       if (wrapperRef.current && !wrapperRef.current.contains(event.target as Node)) {
@@ -58,10 +54,9 @@ export default function CategorySearchInput({
   return (
     <div ref={wrapperRef} className="relative">
       <label className="block text-sm font-bold text-slate-700 mb-2">
-        대분류 <span className="text-orange-500">*</span>
+        작업 공종 <span className="text-orange-500">*</span>
       </label>
 
-      {/* Input */}
       <div className="relative">
         <div className={`flex items-center px-4 py-3 rounded-xl border-2 ${
           error
@@ -80,7 +75,7 @@ export default function CategorySearchInput({
                 onClick={handleClear}
                 className="ml-2 text-slate-400 hover:text-slate-600"
               >
-                ✕
+                삭제
               </button>
             </div>
           ) : (
@@ -92,13 +87,12 @@ export default function CategorySearchInput({
                 setIsOpen(true);
               }}
               onFocus={() => setIsOpen(true)}
-              placeholder="대분류를 검색하세요..."
+              placeholder="작업 공종을 검색하세요..."
               className="flex-1 bg-transparent focus:outline-none"
             />
           )}
         </div>
 
-        {/* Dropdown */}
         {isOpen && (
           <div className="absolute z-10 w-full mt-2 bg-white rounded-xl border-2 border-gray-200 shadow-lg max-h-60 overflow-y-auto">
             {filteredCategories.length > 0 ? (

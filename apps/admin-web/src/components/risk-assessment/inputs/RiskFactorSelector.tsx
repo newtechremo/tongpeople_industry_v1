@@ -1,7 +1,7 @@
-/**
+﻿/**
  * 위험요인 선택 컴포넌트
  *
- * 체크박스 방식으로 여러 위험요인 선택
+ * 체크박스 방식으로 여러 위험요인을 선택
  */
 
 import { useState } from 'react';
@@ -25,12 +25,10 @@ export default function RiskFactorSelector({
   const [tempSelected, setTempSelected] = useState<string[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
-  // 이미 선택된 항목 제외
   const unselectedFactors = availableFactors.filter(
     factor => !selectedFactorIds.includes(factor.id)
   );
 
-  // 검색 필터링
   const filteredFactors = unselectedFactors.filter(factor =>
     factor.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     factor.accident_type.toLowerCase().includes(searchQuery.toLowerCase())
@@ -77,7 +75,6 @@ export default function RiskFactorSelector({
 
   return (
     <>
-      {/* Add Button */}
       <button
         type="button"
         onClick={() => setIsModalOpen(true)}
@@ -87,11 +84,9 @@ export default function RiskFactorSelector({
         위험요인 추가
       </button>
 
-      {/* Modal */}
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
           <div className="bg-white rounded-2xl p-8 w-full max-w-3xl max-h-[80vh] flex flex-col">
-            {/* Header */}
             <div className="flex items-center justify-between mb-6">
               <h3 className="text-xl font-black text-slate-800">위험요인 선택</h3>
               <button
@@ -99,11 +94,10 @@ export default function RiskFactorSelector({
                 onClick={handleCancel}
                 className="text-slate-400 hover:text-slate-600"
               >
-                ✕
+                닫기
               </button>
             </div>
 
-            {/* Search */}
             <div className="mb-4">
               <div className="flex items-center px-4 py-3 rounded-xl border-2 border-gray-200">
                 <Search className="w-5 h-5 text-slate-400 mr-2" />
@@ -111,14 +105,13 @@ export default function RiskFactorSelector({
                   type="text"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="위험요인 또는 재해형태로 검색..."
+                  placeholder="위험요인 또는 사고 유형으로 검색..."
                   className="flex-1 bg-transparent focus:outline-none"
                   autoFocus
                 />
               </div>
             </div>
 
-            {/* List */}
             <div className="flex-1 overflow-y-auto border-2 border-gray-200 rounded-xl mb-6">
               {filteredFactors.length > 0 ? (
                 <div className="divide-y">
@@ -136,7 +129,7 @@ export default function RiskFactorSelector({
                       <div className="flex-1">
                         <div className="font-bold text-slate-800">{factor.name}</div>
                         <div className="text-sm text-slate-500 mt-1">
-                          재해형태: <span className="text-orange-600 font-medium">{factor.accident_type}</span>
+                          사고 유형: <span className="text-orange-600 font-medium">{factor.accident_type}</span>
                         </div>
                         {factor.description && (
                           <div className="text-xs text-slate-400 mt-1">{factor.description}</div>
@@ -152,7 +145,6 @@ export default function RiskFactorSelector({
               )}
             </div>
 
-            {/* Footer */}
             <div className="flex items-center justify-between">
               <p className="text-sm text-slate-600">
                 {tempSelected.length}개 선택됨

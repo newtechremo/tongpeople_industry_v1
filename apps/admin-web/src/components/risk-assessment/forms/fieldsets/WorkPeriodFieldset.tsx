@@ -1,4 +1,4 @@
-/**
+﻿/**
  * 작업기간 Fieldset
  *
  * 작업 시작일, 종료일 선택
@@ -19,22 +19,19 @@ export default function WorkPeriodFieldset({
   errors,
   onChange,
 }: Props) {
-  // Date를 YYYY-MM-DD 형식으로 변환
   const formatDateForInput = (date: Date): string => {
     return format(date, 'yyyy-MM-dd');
   };
 
-  // YYYY-MM-DD 문자열을 Date로 변환
   const parseInputDate = (dateString: string): Date => {
     return new Date(dateString);
   };
 
   return (
     <div className="p-8 rounded-2xl border border-gray-200 bg-white space-y-6">
-      <h3 className="text-lg font-bold text-slate-800">작업기간</h3>
+      <h3 className="text-lg font-bold text-slate-800">작업 기간</h3>
 
       <div className="grid grid-cols-2 gap-4">
-        {/* 시작일 */}
         <div>
           <label htmlFor="workStartDate" className="block text-sm font-bold text-slate-700 mb-2">
             작업 시작일 <span className="text-orange-500">*</span>
@@ -55,7 +52,6 @@ export default function WorkPeriodFieldset({
           )}
         </div>
 
-        {/* 종료일 */}
         <div>
           <label htmlFor="workEndDate" className="block text-sm font-bold text-slate-700 mb-2">
             작업 종료일 <span className="text-orange-500">*</span>
@@ -77,11 +73,11 @@ export default function WorkPeriodFieldset({
         </div>
       </div>
 
-      {/* 기간 표시 */}
       {startDate && endDate && (
         <div className="p-4 rounded-xl bg-slate-50 border border-slate-200">
           <p className="text-sm text-slate-600">
-            작업 기간: <span className="font-bold text-slate-800">
+            작업 기간:{' '}
+            <span className="font-bold text-slate-800">
               {format(startDate, 'yyyy년 MM월 dd일')} ~ {format(endDate, 'yyyy년 MM월 dd일')}
             </span>
             {' '}

@@ -1,5 +1,5 @@
-/**
- * 소분류 검색 Input (자동완성)
+﻿/**
+ * 세부 공종 검색 Input
  */
 
 import { useState, useRef, useEffect } from 'react';
@@ -25,15 +25,11 @@ export default function SubcategorySearchInput({
   const [isOpen, setIsOpen] = useState(false);
   const wrapperRef = useRef<HTMLDivElement>(null);
 
-  // 선택된 소분류 찾기
   const selectedSubcategory = subcategories.find(sub => sub.id === value);
-
-  // 검색 필터링
   const filteredSubcategories = subcategories.filter(sub =>
     sub.name.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  // 외부 클릭 감지
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
       if (wrapperRef.current && !wrapperRef.current.contains(event.target as Node)) {
@@ -60,10 +56,9 @@ export default function SubcategorySearchInput({
   return (
     <div ref={wrapperRef} className="relative">
       <label className="block text-sm font-bold text-slate-700 mb-2">
-        소분류 <span className="text-slate-400 text-xs">(선택사항)</span>
+        세부 공종 <span className="text-slate-400 text-xs">(선택사항)</span>
       </label>
 
-      {/* Input */}
       <div className="relative">
         <div className={`flex items-center px-4 py-3 rounded-xl border-2 ${
           disabled
@@ -85,7 +80,7 @@ export default function SubcategorySearchInput({
                   onClick={handleClear}
                   className="ml-2 text-slate-400 hover:text-slate-600"
                 >
-                  ✕
+                  삭제
                 </button>
               )}
             </div>
@@ -99,13 +94,12 @@ export default function SubcategorySearchInput({
               }}
               onFocus={() => !disabled && setIsOpen(true)}
               disabled={disabled}
-              placeholder={disabled ? "먼저 대분류를 선택하세요" : "소분류를 검색하세요..."}
+              placeholder={disabled ? '먼저 작업 공종을 선택하세요' : '세부 공종을 검색하세요...'}
               className="flex-1 bg-transparent focus:outline-none disabled:cursor-not-allowed"
             />
           )}
         </div>
 
-        {/* Dropdown */}
         {isOpen && !disabled && (
           <div className="absolute z-10 w-full mt-2 bg-white rounded-xl border-2 border-gray-200 shadow-lg max-h-60 overflow-y-auto">
             {filteredSubcategories.length > 0 ? (
@@ -138,7 +132,7 @@ export default function SubcategorySearchInput({
       )}
 
       {disabled && (
-        <p className="mt-1 text-xs text-slate-500">대분류를 먼저 선택해주세요</p>
+        <p className="mt-1 text-xs text-slate-500">작업 공종을 먼저 선택해주세요</p>
       )}
     </div>
   );

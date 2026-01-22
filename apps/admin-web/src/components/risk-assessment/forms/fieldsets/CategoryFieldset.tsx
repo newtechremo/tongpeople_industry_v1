@@ -1,7 +1,7 @@
-/**
+﻿/**
  * 작업 분류 Fieldset
  *
- * 대분류/소분류 선택
+ * 작업 공종/세부 공종 선택
  */
 
 import CategorySearchInput from '@/components/risk-assessment/inputs/CategorySearchInput';
@@ -27,7 +27,6 @@ export default function CategoryFieldset({
 }: Props) {
   const handleCategoryChange = (newCategoryId: string) => {
     onChange('category_id', newCategoryId);
-    // 대분류가 변경되면 소분류 초기화
     onChange('subcategory_id', '');
   };
 
@@ -36,7 +35,6 @@ export default function CategoryFieldset({
       <h3 className="text-lg font-bold text-slate-800">작업 분류</h3>
 
       <div className="grid grid-cols-2 gap-4">
-        {/* 대분류 검색 */}
         <CategorySearchInput
           categories={categories}
           value={categoryId}
@@ -44,7 +42,6 @@ export default function CategoryFieldset({
           error={errors.category_id}
         />
 
-        {/* 소분류 검색 */}
         <SubcategorySearchInput
           subcategories={subcategories}
           value={subcategoryId || ''}
@@ -54,11 +51,11 @@ export default function CategoryFieldset({
         />
       </div>
 
-      {/* 선택된 분류 표시 */}
       {categoryId && (
         <div className="p-4 rounded-xl bg-orange-50 border border-orange-200">
           <p className="text-sm text-slate-600">
-            선택한 작업 분류: <span className="font-bold text-orange-600">
+            선택된 작업 분류:{' '}
+            <span className="font-bold text-orange-600">
               {categories.find(c => c.id === categoryId)?.name}
               {subcategoryId && (
                 <> &gt; {subcategories.find(s => s.id === subcategoryId)?.name}</>

@@ -1,13 +1,15 @@
-/**
+﻿/**
  * 기본 정보 섹션 - 최초 위험성평가
  *
- * 현장명, 소속회사, 결재라인, 근로자대표, 작업기간, 위험성수준
+ * 현장명, 업체, 소속회사, 결재라인, 작업기간, 위험성 수준
  */
 
 import { Calendar } from 'lucide-react';
 
 interface BasicInfoSectionProps {
+  assessmentTitle?: string;
   siteName: string;
+  teamName?: string;
   companyName: string;
   approvalLineName: string | null;
   approvalLineCount: number | null;
@@ -15,63 +17,79 @@ interface BasicInfoSectionProps {
     approvalTitle: string;
     userName: string;
   }[];
-  workerRepName: string;
-  workerRepId: string;
   workPeriodStart: string;
   workPeriodEnd: string;
   onApprovalLineChange: () => void;
   onDateChange: (field: 'start' | 'end', value: string) => void;
+  canChangeApprovalLine?: boolean;
+  disableStartDate?: boolean;
+  disableEndDate?: boolean;
 }
 
 export default function BasicInfoSection({
+  assessmentTitle,
   siteName,
+  teamName,
   companyName,
   approvalLineName,
   approvalLineCount,
   approvalLineApprovers,
-  workerRepName,
-  workerRepId,
   workPeriodStart,
   workPeriodEnd,
   onApprovalLineChange,
   onDateChange,
+  canChangeApprovalLine = true,
+  disableStartDate = false,
+  disableEndDate = false,
 }: BasicInfoSectionProps) {
   return (
     <div className="bg-white rounded-xl border border-gray-200 p-6 space-y-6">
       <h3 className="text-lg font-bold text-slate-700">기본 정보</h3>
 
-      {/* 현장명 */}
+      {assessmentTitle && (
+        <div className="flex items-center gap-4">
+          <label className="text-sm font-medium text-slate-600 w-24">평가명</label>
+          <span className="text-slate-800">{assessmentTitle}</span>
+        </div>
+      )}
+
       <div className="flex items-center gap-4">
         <label className="text-sm font-medium text-slate-600 w-24">현장명</label>
         <span className="text-slate-800">{siteName}</span>
       </div>
 
-      {/* 소속 회사 */}
+      {teamName && (
+        <div className="flex items-center gap-4">
+          <label className="text-sm font-medium text-slate-600 w-24">업체</label>
+          <span className="text-slate-800">{teamName}</span>
+        </div>
+      )}
+
       <div className="flex items-center gap-4">
         <label className="text-sm font-medium text-slate-600 w-24">소속 회사</label>
         <span className="text-slate-800">{companyName}</span>
       </div>
 
-      {/* 결재 라인 */}
       <div className="flex items-center gap-4">
         <label className="text-sm font-medium text-slate-600 w-24">결재 라인</label>
         <div className="flex items-center gap-3 flex-1">
           <span className="text-sm text-slate-700">
             {approvalLineName
-              ? `${approvalLineName}${approvalLineCount ? ` · ${approvalLineCount}인` : ''}`
+              ? `${approvalLineName}${approvalLineCount ? ` · ${approvalLineCount}명` : ''}`
               : '선택된 결재라인 없음'}
           </span>
-          <button
-            type="button"
-            onClick={onApprovalLineChange}
-            className="text-sm text-orange-600 hover:text-orange-700 font-medium"
-          >
-            결재라인 변경
-          </button>
+          {canChangeApprovalLine && (
+            <button
+              type="button"
+              onClick={onApprovalLineChange}
+              className="text-sm text-orange-600 hover:text-orange-700 font-medium"
+            >
+              결재라인 변경
+            </button>
+          )}
         </div>
       </div>
 
-      {/* 결재라인 미리보기 */}
       {approvalLineApprovers.length > 0 && (
         <div className="border border-gray-200 rounded-lg overflow-x-auto">
           <table className="min-w-max w-full text-sm">
@@ -103,36 +121,6 @@ export default function BasicInfoSection({
         </div>
       )}
 
-      {/* 근로자 대표 테이블 */}
-      <div>
-        <label className="block text-sm font-medium text-slate-600 mb-2">근로자 대표</label>
-        <div className="border border-gray-200 rounded-lg overflow-hidden">
-          <table className="w-full text-sm">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-4 py-2 text-left text-slate-600 font-medium border-r border-gray-200">
-                  이름
-                </th>
-                <th className="px-4 py-2 text-left text-slate-600 font-medium">
-                  사번
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr>
-                <td className="px-4 py-2 border-r border-gray-200 text-slate-800">
-                  {workerRepName}
-                </td>
-                <td className="px-4 py-2 text-slate-800">
-                  {workerRepId}
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      {/* 작업 기간 */}
       <div>
         <label className="block text-sm font-medium text-slate-600 mb-2">작업 기간</label>
         <div className="flex items-center gap-3">
@@ -141,7 +129,8 @@ export default function BasicInfoSection({
               type="date"
               value={workPeriodStart}
               onChange={(e) => onDateChange('start', e.target.value)}
-              className="px-4 py-2 pr-10 border border-gray-300 rounded-lg text-sm focus:outline-none focus:border-orange-500 focus:ring-1 focus:ring-orange-500"
+              disabled={disableStartDate}
+              className="px-4 py-2 pr-10 border border-gray-300 rounded-lg text-sm focus:outline-none focus:border-orange-500 focus:ring-1 focus:ring-orange-500 disabled:bg-gray-100 disabled:text-slate-500"
             />
             <Calendar className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
           </div>
@@ -151,19 +140,19 @@ export default function BasicInfoSection({
               type="date"
               value={workPeriodEnd}
               onChange={(e) => onDateChange('end', e.target.value)}
-              className="px-4 py-2 pr-10 border border-gray-300 rounded-lg text-sm focus:outline-none focus:border-orange-500 focus:ring-1 focus:ring-orange-500"
+              disabled={disableEndDate}
+              className="px-4 py-2 pr-10 border border-gray-300 rounded-lg text-sm focus:outline-none focus:border-orange-500 focus:ring-1 focus:ring-orange-500 disabled:bg-gray-100 disabled:text-slate-500"
             />
             <Calendar className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
           </div>
         </div>
       </div>
 
-      {/* 위험성 수준 */}
       <div className="flex items-center gap-4">
         <label className="text-sm font-medium text-slate-600 w-24">위험성 수준</label>
         <div className="text-sm text-slate-700">
           <span className="font-medium">상·중·하</span>
-          <span className="text-slate-500 ml-2">- 위험성 수준을 [상·중·하] 3단계 선택</span>
+          <span className="text-slate-500 ml-2">- 위험성 수준을 상·중·하 3단계 선택</span>
         </div>
       </div>
     </div>

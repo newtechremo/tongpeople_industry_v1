@@ -1,7 +1,5 @@
-/**
+﻿/**
  * 선택된 위험요인 목록 Fieldset
- *
- * 선택된 위험요인들을 테이블 형태로 표시하고 제거 가능
  */
 
 import { Trash2 } from 'lucide-react';
@@ -36,7 +34,6 @@ export default function RiskItemsFieldset({
         </span>
       </div>
 
-      {/* 위험요인 선택 버튼 */}
       <RiskFactorSelector
         availableFactors={availableFactors}
         selectedFactorIds={selectedFactors.map(f => f.id)}
@@ -44,7 +41,6 @@ export default function RiskItemsFieldset({
         disabled={disabled}
       />
 
-      {/* 선택된 위험요인 테이블 */}
       {selectedFactors.length > 0 && (
         <div className="border-2 border-gray-200 rounded-xl overflow-hidden">
           <table className="w-full">
@@ -57,7 +53,7 @@ export default function RiskItemsFieldset({
                   위험요인
                 </th>
                 <th className="px-4 py-3 text-left text-xs font-bold text-slate-700 uppercase tracking-wider w-32">
-                  재해형태
+                  사고 유형
                 </th>
                 <th className="px-4 py-3 text-center text-xs font-bold text-slate-700 uppercase tracking-wider w-20">
                   삭제
@@ -98,12 +94,10 @@ export default function RiskItemsFieldset({
         </div>
       )}
 
-      {/* 에러 메시지 */}
       {error && (
         <p className="text-sm text-red-600">{error}</p>
       )}
 
-      {/* 빈 상태 */}
       {selectedFactors.length === 0 && !disabled && (
         <div className="p-8 text-center border-2 border-dashed border-slate-200 rounded-xl bg-slate-50">
           <p className="text-slate-400">위험요인을 추가해주세요</p>

@@ -1,7 +1,7 @@
-/**
- * 최초 위험성평가 폼
+﻿/**
+ * 최초 위험성평가 만들기 (레거시)
  *
- * 전체 폼을 통합하여 관리
+ * 임시 비교용 페이지
  */
 
 import { useEffect, useMemo, useState } from 'react';
@@ -15,7 +15,6 @@ import RiskFactorSelectModal from './modals/RiskFactorSelectModal';
 import SuccessModal from './modals/SuccessModal';
 import { useApprovalLines } from '@/stores/approvalLinesStore';
 
-// UUID 대체 - 간단한 ID 생성기
 let idCounter = 0;
 const generateId = () => `temp-${Date.now()}-${++idCounter}`;
 
@@ -42,21 +41,13 @@ interface Category {
   subcategories: Subcategory[];
 }
 
-interface InitialAssessmentFormProps {
-  onBack: () => void;
-  onSuccess: () => void;
-}
-
-export default function InitialAssessmentForm({
-  onBack,
-  onSuccess,
-}: InitialAssessmentFormProps) {
+export default function LegacyInitialAssessmentPage() {
   const navigate = useNavigate();
-  // 기본 정보
+  const handleBack = () => navigate('/safety/risk');
+  const handleSuccess = () => navigate('/safety/risk');
+
   const [siteName] = useState('통사통사현장');
   const [companyName] = useState('(주)통하는사람들');
-  const [workerRepName] = useState('36');
-  const [workerRepId] = useState('0017');
   const [workPeriodStart, setWorkPeriodStart] = useState('2026-01-01');
   const [workPeriodEnd, setWorkPeriodEnd] = useState('2026-01-31');
   const [approvalModalOpen, setApprovalModalOpen] = useState(false);
@@ -81,17 +72,14 @@ export default function InitialAssessmentForm({
     }
   }, [availableApprovalLines, defaultApprovalLine, selectedApprovalLine]);
 
-  // 작업 공종 (대분류)
   const [categories, setCategories] = useState<Category[]>([]);
 
-  // 모달 상태
   const [subcategoryModalOpen, setSubcategoryModalOpen] = useState(false);
   const [riskFactorModalOpen, setRiskFactorModalOpen] = useState(false);
   const [successModalOpen, setSuccessModalOpen] = useState(false);
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
   const [activeSubcategory, setActiveSubcategory] = useState<number | null>(null);
 
-  // 대분류 추가
   const handleAddCategory = () => {
     setCategories([
       ...categories,
@@ -104,7 +92,6 @@ export default function InitialAssessmentForm({
     ]);
   };
 
-  // 대분류 선택
   const handleCategoryChange = (categoryId: string, newCategoryId: number, newCategoryName: string) => {
     setCategories(
       categories.map((cat) =>
@@ -115,12 +102,10 @@ export default function InitialAssessmentForm({
     );
   };
 
-  // 대분류 삭제
   const handleDeleteCategory = (categoryId: string) => {
     setCategories(categories.filter((cat) => cat.id !== categoryId));
   };
 
-  // Mock 소분류 데이터 (실제로는 API에서 categoryId로 조회)
   const getMockSubcategoryName = (id: number): string => {
     const mockData: Record<number, string> = {
       101: '가설전선 설치작업',
@@ -132,23 +117,19 @@ export default function InitialAssessmentForm({
     return mockData[id] || `소분류 ${id}`;
   };
 
-  // 소분류 토글
   const handleSubcategoryToggle = (categoryId: string, subcategoryIds: number[]) => {
     setCategories(
       categories.map((cat) => {
         if (cat.id !== categoryId) return cat;
 
-        // 기존 소분류 중 선택된 것만 유지
         const existingSubs = cat.subcategories.filter((sub) =>
           subcategoryIds.includes(sub.id)
         );
 
-        // 새로 추가된 소분류 찾기
         const newSubIds = subcategoryIds.filter(
           (id) => !cat.subcategories.find((sub) => sub.id === id)
         );
 
-        // Mock: 새 소분류 생성 (실제로는 API에서 가져와야 함)
         const newSubs: Subcategory[] = newSubIds.map((id) => ({
           id,
           name: getMockSubcategoryName(id),
@@ -163,7 +144,6 @@ export default function InitialAssessmentForm({
     );
   };
 
-  // 커스텀 소분류 추가
   const handleAddCustomSubcategory = (name: string) => {
     if (!activeCategory) {
       alert('대분류를 먼저 선택해주세요.');
@@ -192,14 +172,12 @@ export default function InitialAssessmentForm({
     );
   };
 
-  // 위험요인 추가
   const handleAddRiskFactor = (categoryId: string, subcategoryId: number) => {
     setActiveCategory(categoryId);
     setActiveSubcategory(subcategoryId);
     setRiskFactorModalOpen(true);
   };
 
-  // 위험요인 선택 완료
   const handleSelectRiskFactors = (factors: { factor: string; improvement: string }[]) => {
     if (!activeCategory || !activeSubcategory) return;
 
@@ -231,7 +209,6 @@ export default function InitialAssessmentForm({
     );
   };
 
-  // 위험요인 업데이트
   const handleUpdateRiskFactor = (
     categoryId: string,
     subcategoryId: number,
@@ -260,7 +237,6 @@ export default function InitialAssessmentForm({
     );
   };
 
-  // 위험요인 삭제
   const handleDeleteRiskFactor = (categoryId: string, subcategoryId: number, factorId: string) => {
     setCategories(
       categories.map((cat) => {
@@ -281,17 +257,14 @@ export default function InitialAssessmentForm({
     );
   };
 
-  // 폼 제출
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
-    // 유효성 검사
     if (categories.length === 0) {
       alert('최소 1개 이상의 작업 공종을 추가해주세요.');
       return;
     }
 
-    // 각 대분류마다 최소 1개 이상의 소분류 확인
     for (let i = 0; i < categories.length; i++) {
       const category = categories[i];
       if (!category.categoryId) {
@@ -303,7 +276,6 @@ export default function InitialAssessmentForm({
         return;
       }
 
-      // 각 소분류마다 최소 1개 이상의 위험요인 확인
       for (let j = 0; j < category.subcategories.length; j++) {
         const subcategory = category.subcategories[j];
         if (subcategory.riskFactors.length === 0) {
@@ -311,7 +283,6 @@ export default function InitialAssessmentForm({
           return;
         }
 
-        // 각 위험요인의 필수 항목 확인
         for (let k = 0; k < subcategory.riskFactors.length; k++) {
           const factor = subcategory.riskFactors[k];
           if (!factor.factor.trim()) {
@@ -330,11 +301,10 @@ export default function InitialAssessmentForm({
       }
     }
 
-    // TODO: API 호출
     console.log('제출 데이터:', {
       siteName,
       companyName,
-      approvalLineId,
+      approvalLineId: selectedApprovalLine?.id || null,
       workPeriodStart,
       workPeriodEnd,
       categories,
@@ -346,21 +316,19 @@ export default function InitialAssessmentForm({
   return (
     <>
       <form onSubmit={handleSubmit} className="space-y-6">
-        {/* 헤더 */}
         <div className="flex items-center gap-3">
           <button
             type="button"
-            onClick={onBack}
+            onClick={handleBack}
             className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
           >
             <ChevronLeft size={20} className="text-slate-600" />
           </button>
           <h1 className="text-xl font-black tracking-tight text-slate-800">
-            최초 위험성 평가 만들기
+            최초 위험성 평가 만들기 (레거시)
           </h1>
         </div>
 
-        {/* 기본 정보 */}
         <BasicInfoSection
           siteName={siteName}
           companyName={companyName}
@@ -372,8 +340,6 @@ export default function InitialAssessmentForm({
               userName: approver.userName,
             })) || []
           }
-          workerRepName={workerRepName}
-          workerRepId={workerRepId}
           workPeriodStart={workPeriodStart}
           workPeriodEnd={workPeriodEnd}
           onApprovalLineChange={() => setApprovalModalOpen(true)}
@@ -383,7 +349,6 @@ export default function InitialAssessmentForm({
           }}
         />
 
-        {/* 작업 공종 */}
         <div className="space-y-6">
           <h3 className="text-lg font-bold text-slate-700">작업 공종</h3>
 
@@ -415,7 +380,6 @@ export default function InitialAssessmentForm({
             />
           ))}
 
-          {/* 작업 공종 추가 버튼 */}
           <button
             type="button"
             onClick={handleAddCategory}
@@ -426,11 +390,10 @@ export default function InitialAssessmentForm({
           </button>
         </div>
 
-        {/* 하단 버튼 */}
         <div className="flex items-center justify-center gap-4 pt-6 border-t border-gray-200">
           <button
             type="button"
-            onClick={onBack}
+            onClick={handleBack}
             className="px-8 py-3 rounded-xl font-medium text-slate-600 bg-gray-100 hover:bg-gray-200 transition-colors"
           >
             취소
@@ -444,7 +407,6 @@ export default function InitialAssessmentForm({
         </div>
       </form>
 
-      {/* 모달들 - form 밖에 위치 */}
       <SubcategoryAddModal
         isOpen={subcategoryModalOpen}
         onClose={() => setSubcategoryModalOpen(false)}
@@ -485,7 +447,7 @@ export default function InitialAssessmentForm({
         isOpen={successModalOpen}
         onConfirm={() => {
           setSuccessModalOpen(false);
-          onSuccess();
+          handleSuccess();
         }}
       />
 

@@ -1,10 +1,9 @@
-import { useState } from 'react';
+﻿import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ChevronLeft, CheckCircle, AlertCircle } from 'lucide-react';
 import InitialAssessmentForm from '@/components/risk-assessment/forms/InitialAssessmentForm';
 import AdHocAssessmentForm from '@/components/risk-assessment/forms/AdHocAssessmentForm';
 
-// URL 파라미터 → 라벨 매핑
 const TYPE_LABELS: Record<string, string> = {
   initial: '최초',
   regular: '정기',
@@ -26,7 +25,7 @@ export default function CreateAssessmentPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitStatus, setSubmitStatus] = useState<'success' | 'error' | null>(null);
 
-  const typeLabel = type ? TYPE_LABELS[type] || type.toUpperCase() : '알 수 없음';
+  const typeLabel = type ? TYPE_LABELS[type] || type.toUpperCase() : '유형 없음';
   const assessmentType = type ? TYPE_MAPPING[type] : null;
 
   const handleBack = () => {
@@ -38,22 +37,27 @@ export default function CreateAssessmentPage() {
     setSubmitStatus(null);
 
     try {
-      // TODO: API 호출로 데이터 저장
-      console.log('평가 데이터:', {
+      const draftId = `draft-${Date.now()}`;
+      const payload = {
+        id: draftId,
         ...data,
         type: assessmentType,
         created_at: new Date().toISOString(),
         status: 'DRAFT',
-      });
+      };
 
-      // 임시: 2초 대기 (API 호출 시뮬레이션)
+      try {
+        localStorage.setItem(`risk-assessment:draft:${draftId}`, JSON.stringify(payload));
+      } catch (storageError) {
+        console.error('로컬 저장 실패:', storageError);
+      }
+
       await new Promise(resolve => setTimeout(resolve, 2000));
 
       setSubmitStatus('success');
 
-      // 성공 메시지 표시 후 목록으로 이동
       setTimeout(() => {
-        navigate('/safety/risk');
+        navigate(`/safety/risk/${draftId}`);
       }, 1500);
     } catch (error) {
       console.error('평가 생성 실패:', error);
@@ -64,12 +68,11 @@ export default function CreateAssessmentPage() {
   };
 
   const handleCancel = () => {
-    if (window.confirm('작성 중인 내용이 저장되지 않습니다. 취소하시겠습니까?')) {
+    if (window.confirm('작성 중인 내용은 저장되지 않습니다. 취소하시겠습니까?')) {
       navigate('/safety/risk');
     }
   };
 
-  // 지원하지 않는 타입
   if (!assessmentType) {
     return (
       <div className="space-y-6">
@@ -86,7 +89,7 @@ export default function CreateAssessmentPage() {
         </div>
         <div className="bg-white rounded-xl border border-gray-200 p-8">
           <p className="text-slate-500 text-center">
-            지원하지 않는 평가 유형입니다
+            지원하지 않는 평가 유형입니다.
           </p>
         </div>
       </div>
@@ -95,7 +98,6 @@ export default function CreateAssessmentPage() {
 
   return (
     <div className="space-y-6">
-      {/* 헤더 */}
       <div className="flex items-center gap-3">
         <button
           onClick={handleBack}
@@ -109,7 +111,6 @@ export default function CreateAssessmentPage() {
         </h1>
       </div>
 
-      {/* 제출 상태 알림 */}
       {submitStatus === 'success' && (
         <div className="p-4 rounded-xl bg-green-50 border border-green-200 flex items-center gap-3">
           <CheckCircle className="w-5 h-5 text-green-600" />
@@ -124,7 +125,6 @@ export default function CreateAssessmentPage() {
         </div>
       )}
 
-      {/* 로딩 오버레이 */}
       {isSubmitting && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
           <div className="bg-white rounded-2xl p-8 text-center">
@@ -134,7 +134,6 @@ export default function CreateAssessmentPage() {
         </div>
       )}
 
-      {/* 폼 렌더링 */}
       {assessmentType === 'INITIAL' && (
         <InitialAssessmentForm onSubmit={handleSubmit} onCancel={handleCancel} />
       )}
