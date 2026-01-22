@@ -333,6 +333,8 @@ export default function InitialAssessmentForm({ onSubmit, onCancel }: Props) {
             selectedApprovalLine?.approvers.map((approver) => ({
               approvalTitle: approver.approvalTitle,
               userName: approver.userName,
+              userId: approver.userId,
+              position: approver.position,
             })) || []
           }
           workPeriodStart={workPeriodStart}
