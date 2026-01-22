@@ -20,6 +20,10 @@
     "./utils": {
       "types": "./dist/utils/index.d.ts",
       "default": "./src/utils/index.ts"
+    },
+    "./risk-assessment/recommender": {
+      "types": "./dist/risk-assessment/recommender.d.ts",
+      "default": "./src/risk-assessment/recommender.ts"
     }
   },
   "scripts": {

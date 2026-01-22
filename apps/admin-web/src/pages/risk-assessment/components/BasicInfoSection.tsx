@@ -16,6 +16,8 @@ interface BasicInfoSectionProps {
   approvalLineApprovers: {
     approvalTitle: string;
     userName: string;
+    userId: string;
+    position: string;
   }[];
   workPeriodStart: string;
   workPeriodEnd: string;
@@ -24,6 +26,9 @@ interface BasicInfoSectionProps {
   canChangeApprovalLine?: boolean;
   disableStartDate?: boolean;
   disableEndDate?: boolean;
+  signatures?: Record<string, string>;
+  onApplySignature?: (userId: string) => void;
+  canEdit?: boolean;
 }
 
 export default function BasicInfoSection({
@@ -41,6 +46,9 @@ export default function BasicInfoSection({
   canChangeApprovalLine = true,
   disableStartDate = false,
   disableEndDate = false,
+  signatures = {},
+  onApplySignature,
+  canEdit = true,
 }: BasicInfoSectionProps) {
   return (
     <div className="bg-white rounded-xl border border-gray-200 p-6 space-y-6">
@@ -106,15 +114,56 @@ export default function BasicInfoSection({
               </tr>
             </thead>
             <tbody>
+              {/* 이름 행 */}
               <tr>
                 {approvalLineApprovers.map((approver, index) => (
                   <td
                     key={`${approver.userName}-${index}`}
-                    className="px-4 py-2 text-slate-800 border-r border-gray-200 last:border-r-0"
+                    className="px-4 py-2 text-slate-800 border-r border-gray-200 last:border-r-0 border-b border-gray-200"
                   >
-                    {approver.userName}
+                    <div className="text-sm font-medium">{approver.userName}</div>
+                    {approver.position && (
+                      <div className="text-xs text-slate-500 mt-0.5">{approver.position}</div>
+                    )}
                   </td>
                 ))}
+              </tr>
+              {/* 서명 행 */}
+              <tr>
+                {approvalLineApprovers.map((approver, index) => {
+                  const signature = signatures[approver.userId];
+                  const hasSignature = Boolean(signature);
+
+                  return (
+                    <td
+                      key={`signature-${approver.userId}-${index}`}
+                      className="px-4 py-3 border-r border-gray-200 last:border-r-0"
+                    >
+                      <div className="min-h-[60px] flex flex-col justify-between">
+                        {hasSignature ? (
+                          <div className="text-sm text-slate-700">
+                            {signature.startsWith('data:image') ? (
+                              <img src={signature} alt="전자서명" className="h-10 object-contain" />
+                            ) : (
+                              <span className="font-semibold">{signature}</span>
+                            )}
+                          </div>
+                        ) : (
+                          <span className="text-xs text-slate-400">서명 필요</span>
+                        )}
+                        {canEdit && onApplySignature && !hasSignature && (
+                          <button
+                            type="button"
+                            onClick={() => onApplySignature(approver.userId)}
+                            className="mt-2 text-xs font-bold text-orange-600 hover:text-orange-700 transition-colors"
+                          >
+                            서명 불러오기
+                          </button>
+                        )}
+                      </div>
+                    </td>
+                  );
+                })}
               </tr>
             </tbody>
           </table>
@@ -145,14 +194,6 @@ export default function BasicInfoSection({
             />
             <Calendar className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
           </div>
-        </div>
-      </div>
-
-      <div className="flex items-center gap-4">
-        <label className="text-sm font-medium text-slate-600 w-24">위험성 수준</label>
-        <div className="text-sm text-slate-700">
-          <span className="font-medium">상·중·하</span>
-          <span className="text-slate-500 ml-2">- 위험성 수준을 상·중·하 3단계 선택</span>
         </div>
       </div>
     </div>

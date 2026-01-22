@@ -1,5 +1,5 @@
 /**
- * 최초 위험성평가 폼 (레거시 기반)
+ * 위험성평가 폼 (최초/정기)
  *
  * 기본정보 + 작업 공종/소분류 + 위험요인 입력 흐름 유지
  */
@@ -50,11 +50,12 @@ interface InitialAssessmentPayload {
 }
 
 interface Props {
+  type: 'initial' | 'regular';
   onSubmit: (data: InitialAssessmentPayload) => void;
   onCancel: () => void;
 }
 
-export default function InitialAssessmentForm({ onSubmit, onCancel }: Props) {
+export default function InitialAssessmentForm({ type, onSubmit, onCancel }: Props) {
   const navigate = useNavigate();
 
   const [siteName] = useState('통사통사현장');
@@ -333,6 +334,8 @@ export default function InitialAssessmentForm({ onSubmit, onCancel }: Props) {
             selectedApprovalLine?.approvers.map((approver) => ({
               approvalTitle: approver.approvalTitle,
               userName: approver.userName,
+              userId: approver.userId,
+              position: approver.position,
             })) || []
           }
           workPeriodStart={workPeriodStart}

@@ -1,6 +1,6 @@
 ﻿import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { ChevronLeft, FileDown, Trash2, RotateCcw } from 'lucide-react';
+import { ChevronLeft, FileDown, Trash2, RotateCcw, Calendar } from 'lucide-react';
 import BasicInfoSection from './components/BasicInfoSection';
 import ApprovalLineSelectModal from './modals/ApprovalLineSelectModal';
 import ConfirmDialog from '@/components/common/ConfirmDialog';
@@ -99,6 +99,7 @@ function buildItemsFromCategories(categories: LocalCategory[]) {
         risk_factor_name: factor.factor,
         measures: factor.improvement,
         accident_type: subcategory.name || category.categoryName,
+        level: factor.level,
       }))
     )
   );
@@ -370,6 +371,8 @@ export default function RiskAssessmentDetailPage() {
         approvalLineApprovers={approvalLineApprovers.map((approver) => ({
           approvalTitle: approver.approvalTitle,
           userName: approver.userName,
+          userId: approver.userId,
+          position: approver.position,
         }))}
         workPeriodStart={workPeriodStart}
         workPeriodEnd={workPeriodEnd}
@@ -378,124 +381,212 @@ export default function RiskAssessmentDetailPage() {
         canChangeApprovalLine={canEdit}
         disableStartDate={disableStartDate}
         disableEndDate={disableEndDate}
+        signatures={appliedSignatures}
+        onApplySignature={handleApplySignature}
+        canEdit={canEdit}
       />
 
-      <div className="bg-white rounded-xl border border-gray-200 p-6 space-y-3">
-        <h2 className="text-lg font-bold text-slate-800">작업 분류</h2>
+      <div className="space-y-6">
+        <h2 className="text-lg font-bold text-slate-700">작업 공종</h2>
+
         {localAssessment ? (
-          <div className="space-y-3 text-sm text-slate-700">
+          <div className="space-y-6">
             {localAssessment.categories.length === 0 && (
-              <div className="text-slate-500">작업 공종이 없습니다.</div>
+              <div className="text-sm text-slate-500">작업 공종이 없습니다.</div>
             )}
-            {localAssessment.categories.map((category) => {
-              const subNames = category.subcategories.map((sub) => sub.name).join(', ');
-              return (
-                <div key={category.id} className="border border-gray-200 rounded-lg p-3">
-                  <div>
-                    <span className="font-medium">작업공종</span>
-                    <span className="ml-3">{category.categoryName || '-'}</span>
-                  </div>
-                  <div className="mt-1">
-                    <span className="font-medium">세부 공종</span>
-                    <span className="ml-3">{subNames || '-'}</span>
+            {localAssessment.categories.map((category, index) => (
+              <div key={category.id} className="bg-gray-50 rounded-xl border border-gray-200 p-6 space-y-4">
+                {/* 대분류 헤더 */}
+                <div>
+                  <label className="block text-sm font-medium text-slate-600 mb-2">
+                    대분류{index + 1}
+                  </label>
+                  <div className="px-4 py-2 bg-white border border-gray-300 rounded-lg text-sm text-slate-800">
+                    {category.categoryName || '-'}
                   </div>
                 </div>
-              );
-            })}
+
+                {/* 소분류별 위험요인 */}
+                {category.subcategories.map((subcategory, subIndex) => {
+                  const circledNumbers = ['①', '②', '③', '④', '⑤', '⑥', '⑦', '⑧', '⑨', '⑩'];
+                  const subcategoryFactors = subcategory.riskFactors;
+
+                  return (
+                    <div key={subcategory.id} className="bg-orange-50/30 rounded-lg p-4 ml-4 space-y-4">
+                      {/* 소분류 헤더 */}
+                      <h4 className="text-sm font-bold text-slate-700">
+                        소분류{circledNumbers[subIndex] || `${subIndex + 1}`} {subcategory.name}
+                      </h4>
+
+                      {/* 위험요인 카드들 */}
+                      <div className="space-y-4">
+                        {subcategoryFactors.map((factor) => {
+                          const getLevelStyles = () => {
+                            switch (factor.level) {
+                              case 'HIGH':
+                                return 'border-red-600 bg-red-50/50';
+                              case 'MEDIUM':
+                                return 'border-amber-600 bg-amber-50/50';
+                              case 'LOW':
+                                return 'border-green-600 bg-green-50/50';
+                              default:
+                                return 'border-gray-200 bg-white';
+                            }
+                          };
+
+                          const levelLabel = factor.level === 'HIGH' ? '상' : factor.level === 'MEDIUM' ? '중' : factor.level === 'LOW' ? '하' : null;
+
+                          return (
+                            <div key={factor.id} className={`rounded-xl p-4 space-y-4 ${getLevelStyles()}`}>
+                              {/* 위험 요인 */}
+                              <div>
+                                <label className="block text-sm font-medium text-slate-600 mb-2">
+                                  위험 요인
+                                </label>
+                                {canEdit ? (
+                                  <input
+                                    type="text"
+                                    value={factor.factor}
+                                    onChange={(e) =>
+                                      setItems((prev) =>
+                                        prev.map((item) =>
+                                          item.id === factor.id
+                                            ? { ...item, risk_factor_name: e.target.value }
+                                            : item
+                                        )
+                                      )
+                                    }
+                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:border-orange-500 focus:ring-1 focus:ring-orange-500"
+                                  />
+                                ) : (
+                                  <div className="px-4 py-2 text-sm text-slate-800">
+                                    {factor.factor}
+                                  </div>
+                                )}
+                              </div>
+
+                              {/* 위험성 수준 */}
+                              <div>
+                                <div className="flex items-center gap-6">
+                                  <span className="text-sm font-medium text-slate-600">위험성 수준</span>
+                                  {canEdit ? (
+                                    <div className="flex items-center gap-4">
+                                      {[
+                                        { value: 'HIGH', label: '상' },
+                                        { value: 'MEDIUM', label: '중' },
+                                        { value: 'LOW', label: '하' },
+                                      ].map((option) => (
+                                        <label key={option.value} className="flex items-center gap-2 cursor-pointer">
+                                          <input
+                                            type="radio"
+                                            name={`risk-level-${factor.id}`}
+                                            value={option.value}
+                                            checked={factor.level === option.value}
+                                            onChange={() => {
+                                              setItems((prev) =>
+                                                prev.map((item) =>
+                                                  item.id === factor.id
+                                                    ? { ...item, level: option.value as 'HIGH' | 'MEDIUM' | 'LOW' }
+                                                    : item
+                                                )
+                                              );
+                                            }}
+                                            className="w-4 h-4 text-orange-500 focus:ring-orange-500"
+                                          />
+                                          <span className="text-sm text-slate-700">{option.label}</span>
+                                        </label>
+                                      ))}
+                                    </div>
+                                  ) : (
+                                    <span className="text-sm text-slate-700">{levelLabel || '-'}</span>
+                                  )}
+                                </div>
+                              </div>
+
+                              {/* 개선 대책 */}
+                              <div>
+                                <label className="block text-sm font-medium text-slate-600 mb-2">
+                                  개선 대책
+                                </label>
+                                {canEdit ? (
+                                  <input
+                                    type="text"
+                                    value={factor.improvement}
+                                    onChange={(e) =>
+                                      setItems((prev) =>
+                                        prev.map((item) =>
+                                          item.id === factor.id
+                                            ? { ...item, measures: e.target.value }
+                                            : item
+                                        )
+                                      )
+                                    }
+                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:border-orange-500 focus:ring-1 focus:ring-orange-500"
+                                  />
+                                ) : (
+                                  <div className="px-4 py-2 text-sm text-slate-700">
+                                    {factor.improvement || '-'}
+                                  </div>
+                                )}
+                              </div>
+
+                              {/* 작업 기간 */}
+                              <div>
+                                <label className="block text-sm font-medium text-slate-600 mb-2">
+                                  작업 기간
+                                </label>
+                                <div className="flex items-center gap-3">
+                                  <div className="relative flex-1">
+                                    <input
+                                      type="date"
+                                      value={factor.workPeriodStart}
+                                      disabled={!canEdit}
+                                      className="w-full px-4 py-2 pr-10 border border-gray-300 rounded-lg text-sm focus:outline-none focus:border-orange-500 focus:ring-1 focus:ring-orange-500 disabled:bg-gray-100 disabled:text-slate-500"
+                                      readOnly
+                                    />
+                                    <Calendar className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+                                  </div>
+                                  <span className="text-slate-500">~</span>
+                                  <div className="relative flex-1">
+                                    <input
+                                      type="date"
+                                      value={factor.workPeriodEnd}
+                                      disabled={!canEdit}
+                                      className="w-full px-4 py-2 pr-10 border border-gray-300 rounded-lg text-sm focus:outline-none focus:border-orange-500 focus:ring-1 focus:ring-orange-500 disabled:bg-gray-100 disabled:text-slate-500"
+                                      readOnly
+                                    />
+                                    <Calendar className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            ))}
           </div>
         ) : (
-          <>
-            <div className="text-sm text-slate-700">
-              <span className="font-medium">작업공종</span>
-              <span className="ml-3">{mergedAssessment?.category_name || '-'}</span>
+          <div className="bg-gray-50 rounded-xl border border-gray-200 p-6">
+            <div>
+              <label className="block text-sm font-medium text-slate-600 mb-2">대분류</label>
+              <div className="px-4 py-2 bg-white border border-gray-300 rounded-lg text-sm text-slate-800">
+                {mergedAssessment?.category_name || '-'}
+              </div>
             </div>
             {mergedAssessment?.subcategory_name && (
-              <div className="text-sm text-slate-700">
-                <span className="font-medium">세부 공종</span>
-                <span className="ml-3">{mergedAssessment.subcategory_name}</span>
+              <div className="mt-4">
+                <label className="block text-sm font-medium text-slate-600 mb-2">세부 공종</label>
+                <div className="px-3 py-1.5 bg-orange-50 text-orange-700 text-sm rounded-lg border border-orange-200 inline-block">
+                  {mergedAssessment.subcategory_name}
+                </div>
               </div>
             )}
-          </>
+          </div>
         )}
-      </div>
-
-      <div className="bg-white rounded-xl border border-gray-200 p-6 space-y-4">
-        <h2 className="text-lg font-bold text-slate-800">결재 서명</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {approvalLineApprovers.length === 0 && (
-            <div className="text-sm text-slate-500">결재라인을 선택해 주세요.</div>
-          )}
-          {approvalLineApprovers.map((approver) => (
-            <div key={approver.userId} className="border border-gray-200 rounded-lg p-4 space-y-3">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-bold text-slate-800">{approver.approvalTitle}</p>
-                  <p className="text-xs text-slate-500">{approver.userName} · {approver.position}</p>
-                </div>
-                <span className="text-xs text-slate-500">{appliedSignatures[approver.userId] ? '서명 완료' : '미서명'}</span>
-              </div>
-              <SignatureBox
-                approver={approver}
-                signature={appliedSignatures[approver.userId] || null}
-                onApply={() => handleApplySignature(approver.userId)}
-                disabled={!canEdit}
-              />
-            </div>
-          ))}
-        </div>
-      </div>
-
-      <div className="bg-white rounded-xl border border-gray-200 p-6 space-y-4">
-        <h2 className="text-lg font-bold text-slate-800">위험요인 목록</h2>
-        <div className="space-y-4">
-          {items.map((item) => (
-            <div key={item.id} className="border border-gray-200 rounded-xl p-4 space-y-3">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-slate-500">사고 유형: {item.accident_type || '-'} </p>
-                  {canEdit ? (
-                    <input
-                      type="text"
-                      value={item.risk_factor_name}
-                      onChange={(e) =>
-                        setItems((prev) =>
-                          prev.map((prevItem) =>
-                            prevItem.id === item.id
-                              ? { ...prevItem, risk_factor_name: e.target.value }
-                              : prevItem
-                          )
-                        )
-                      }
-                      className="mt-1 w-full px-3 py-2 border border-gray-200 rounded-lg text-sm"
-                    />
-                  ) : (
-                    <p className="mt-1 text-sm font-bold text-slate-800">{item.risk_factor_name}</p>
-                  )}
-                </div>
-              </div>
-              <div>
-                <label className="text-xs font-medium text-slate-500">개선대책</label>
-                {canEdit ? (
-                  <textarea
-                    value={item.measures || ''}
-                    onChange={(e) =>
-                      setItems((prev) =>
-                        prev.map((prevItem) =>
-                          prevItem.id === item.id
-                            ? { ...prevItem, measures: e.target.value }
-                            : prevItem
-                        )
-                      )
-                    }
-                    className="mt-1 w-full min-h-[80px] px-3 py-2 border border-gray-200 rounded-lg text-sm"
-                  />
-                ) : (
-                  <p className="mt-1 text-sm text-slate-700 whitespace-pre-line">{item.measures || '-'}</p>
-                )}
-              </div>
-            </div>
-          ))}
-        </div>
       </div>
 
       <ApprovalLineSelectModal
