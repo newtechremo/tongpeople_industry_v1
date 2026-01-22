@@ -198,6 +198,8 @@ const ASSESSMENT_TYPES: AssessmentTypeInfo[] = [
 
 ];
 
+const AVAILABLE_CREATE_TYPES: AssessmentType[] = ['INITIAL', 'OCCASIONAL', 'CONTINUOUS'];
+
 
 
 const STATUS_LABELS: Record<AssessmentStatus, { label: string; color: string }> = {
@@ -683,6 +685,10 @@ export default function RiskAssessmentPage() {
   const handleCreateClick = () => {
 
     if (filterType !== 'ALL') {
+      if (!AVAILABLE_CREATE_TYPES.includes(filterType)) {
+        alert('해당 유형은 아직 만들기 기능이 준비되지 않았습니다.');
+        return;
+      }
 
       // 특정 유형 필터 선택 상태 → 바로 이동
 
@@ -703,6 +709,10 @@ export default function RiskAssessmentPage() {
   // 팝업에서 유형 선택 시
 
   const handleTypeSelect = (type: AssessmentType) => {
+    if (!AVAILABLE_CREATE_TYPES.includes(type)) {
+      alert('해당 유형은 아직 만들기 기능이 준비되지 않았습니다.');
+      return;
+    }
 
     navigate(`/safety/risk/create/${TYPE_URL_MAP[type]}`);
 
@@ -847,6 +857,7 @@ export default function RiskAssessmentPage() {
                 const typeInfo = ASSESSMENT_TYPES.find(t => t.id === assessment.type);
 
                 const statusInfo = STATUS_LABELS[assessment.status];
+                const isDraft = assessment.status === 'DRAFT';
 
                 return (
 
@@ -854,9 +865,17 @@ export default function RiskAssessmentPage() {
 
                     key={assessment.id}
 
-                    onClick={() => navigate(`/safety/risk/${assessment.id}`)}
+                    onClick={() => {
+                      if (isDraft) {
+                        alert('작성중인 문서는 아직 상세 화면을 지원하지 않습니다.');
+                        return;
+                      }
+                      navigate(`/safety/risk/${assessment.id}`);
+                    }}
 
-                    className="border-b border-gray-100 hover:bg-orange-50 transition-colors cursor-pointer"
+                    className={`border-b border-gray-100 transition-colors cursor-pointer ${
+                      isDraft ? 'bg-gray-50 text-slate-400 hover:bg-gray-100' : 'hover:bg-orange-50'
+                    }`}
 
                   >
 
