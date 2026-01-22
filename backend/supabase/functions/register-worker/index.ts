@@ -136,6 +136,97 @@ Deno.serve(async (req) => {
         console.log('[INFO] 반려된 사용자 재가입:', normalizedPhone);
       }
 
+      // PENDING 상태: 관리자가 선등록한 경우 → 동의 완료로 즉시 ACTIVE (프리패스)
+      else if (existingUser.status === 'PENDING') {
+        // 생년월일 포맷 변환
+        let formattedBirthDate: string;
+        try {
+          formattedBirthDate = formatBirthDate(data.birthDate);
+        } catch {
+          return new Response(
+            JSON.stringify({ error: '생년월일 형식이 올바르지 않습니다. (YYYYMMDD)' }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        // 사용자 정보 업데이트 및 ACTIVE로 변경
+        const { error: updateError } = await supabase
+          .from('users')
+          .update({
+            status: 'ACTIVE',
+            phone: normalizedPhone,
+            birth_date: formattedBirthDate,
+            gender: data.gender,
+            nationality: data.nationality,
+            job_title: data.jobTitle,
+            terms_agreed_at: new Date().toISOString(),
+            privacy_agreed_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', existingUser.id);
+
+        if (updateError) {
+          console.error('PENDING user update error:', updateError);
+          return new Response(
+            JSON.stringify({ error: '사용자 정보 업데이트 중 오류가 발생했습니다.' }),
+            { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        // Supabase Auth 계정 생성 (phone 기반 fake email)
+        const fakeEmail = `${normalizedPhone}@phone.tongpass.local`;
+        const randomPassword = crypto.randomUUID();
+
+        const { data: authUser, error: authError } = await supabase.auth.admin.createUser({
+          email: fakeEmail,
+          password: randomPassword,
+          email_confirm: true,
+          user_metadata: {
+            name: data.name,
+            phone: normalizedPhone,
+            user_id: existingUser.id,
+          },
+        });
+
+        if (authError) {
+          console.error('Auth creation error for PENDING user:', authError);
+          // Auth 생성 실패해도 users 테이블은 업데이트됨 - 롤백
+          await supabase
+            .from('users')
+            .update({ status: 'PENDING' })
+            .eq('id', existingUser.id);
+          return new Response(
+            JSON.stringify({ error: '계정 생성 중 오류가 발생했습니다.' }),
+            { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        // users 테이블에 auth_id가 필요하다면 연결 (현재 id가 auth_id와 동일하게 사용됨)
+        // 선등록 시 id가 UUID가 아닌 경우를 대비
+        if (authUser?.user) {
+          await supabase
+            .from('users')
+            .update({ id: authUser.user.id })
+            .eq('id', existingUser.id);
+        }
+
+        console.log('[INFO] 선등록 사용자 활성화 (프리패스):', normalizedPhone);
+
+        return new Response(
+          JSON.stringify({
+            success: true,
+            message: '가입이 완료되었습니다.',
+            data: {
+              userId: authUser?.user?.id || existingUser.id,
+              name: data.name,
+              status: 'ACTIVE',
+              isPreRegistered: true,
+            },
+          }),
+          { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
       // INACTIVE 상태: 이직 시나리오
       else if (existingUser.status === 'INACTIVE') {
         // 같은 회사 복귀

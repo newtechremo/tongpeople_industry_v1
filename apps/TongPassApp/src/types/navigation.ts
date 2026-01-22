@@ -22,12 +22,25 @@ export interface WorkerRegistrationData {
 // 인증 스택
 export type AuthStackParamList = {
   CompanyCode: undefined;
+  SiteSelect: {
+    companyId: string;
+    companyName: string;
+    sites: Array<{
+      id: string;
+      name: string;
+      address: string;
+    }>;
+  };
   PhoneVerify: {companyId: string; siteId: string};
   WorkerInfo: {
     companyId: string;
     siteId: string;
     phoneNumber: string;
     preRegisteredData?: PreRegisteredData;
+
+    // 이직 시나리오 추가 파라미터
+    isTransfer?: boolean;
+    existingUserId?: string;
   };
   Terms: {
     registrationData: WorkerRegistrationData;
@@ -59,6 +72,10 @@ export type RootStackParamList = {
 export type CompanyCodeScreenProps = NativeStackScreenProps<
   AuthStackParamList,
   'CompanyCode'
+>;
+export type SiteSelectScreenProps = NativeStackScreenProps<
+  AuthStackParamList,
+  'SiteSelect'
 >;
 export type PhoneVerifyScreenProps = NativeStackScreenProps<
   AuthStackParamList,

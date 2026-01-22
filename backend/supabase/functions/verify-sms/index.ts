@@ -90,10 +90,10 @@ Deno.serve(async (req) => {
       .update({ verified: true })
       .eq('id', verification.id);
 
-    // 6. 기존 사용자 조회 (INACTIVE 상태 체크)
+    // 6. 기존 사용자 조회 (PENDING/REQUESTED/INACTIVE 상태 체크)
     const { data: existingUser } = await supabase
       .from('users')
-      .select('id, status, company_id, companies(name)')
+      .select('id, name, status, site_id, partner_id, company_id, companies(name)')
       .eq('phone', normalizedPhone)
       .single();
 
@@ -106,17 +106,28 @@ Deno.serve(async (req) => {
       expiresAt: Date.now() + 10 * 60 * 1000, // 10분 유효
     }));
 
+    // 8. 기존 사용자 정보 반환 (PENDING, REQUESTED, INACTIVE 포함)
+    // - PENDING: 관리자가 선등록한 경우 → 동의 후 즉시 ACTIVE
+    // - REQUESTED: 직접가입 후 승인 대기 → 관리자 승인 필요
+    // - INACTIVE: 이전 회사 퇴사 → 이직 안내
+    const targetStatuses = ['PENDING', 'REQUESTED', 'INACTIVE'];
+    const existingUserResponse = existingUser && targetStatuses.includes(existingUser.status)
+      ? {
+          id: existingUser.id,
+          name: existingUser.name,
+          status: existingUser.status,
+          site_id: existingUser.site_id,
+          partner_id: existingUser.partner_id,
+          companyName: existingUser.companies?.name || null,
+        }
+      : null;
+
     return new Response(
       JSON.stringify({
         success: true,
         message: '인증이 완료되었습니다.',
         verificationToken,
-        // INACTIVE 상태의 기존 사용자 정보 전달 (클라이언트에서 이직 안내 표시)
-        existingUser: existingUser?.status === 'INACTIVE' ? {
-          id: existingUser.id,
-          status: existingUser.status,
-          companyName: existingUser.companies?.name || '이전 회사'
-        } : null
+        existingUser: existingUserResponse,
       }),
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );

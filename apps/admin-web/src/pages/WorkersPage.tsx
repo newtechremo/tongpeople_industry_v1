@@ -16,6 +16,8 @@ import {
   FileSpreadsheet,
   RefreshCw,
   QrCode,
+  Check,
+  XCircle,
 } from 'lucide-react';
 import type { Worker, Team } from '@tong-pass/shared';
 import WorkerAddModal from '@/components/workers/WorkerAddModal';
@@ -297,6 +299,76 @@ export default function WorkersPage() {
 
   const hasActiveFilters = searchQuery || teamFilter !== 'ALL' || roleFilter !== 'ALL' || statusFilter !== 'ALL';
 
+  // 근로자 승인 핸들러
+  const handleApproveWorker = async (workerId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    try {
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/admin-approve-worker`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${user?.session?.access_token}`,
+          },
+          body: JSON.stringify({ workerId }),
+        }
+      );
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || '승인 실패');
+      }
+      showAlert({
+        title: '승인 완료',
+        message: '근로자가 승인되었습니다.',
+        variant: 'success',
+      });
+      setRefreshTrigger(prev => prev + 1);
+    } catch (error) {
+      console.error('승인 오류:', error);
+      showAlert({
+        title: '승인 실패',
+        message: error instanceof Error ? error.message : '승인 처리 중 오류가 발생했습니다.',
+        variant: 'error',
+      });
+    }
+  };
+
+  // 근로자 반려 핸들러
+  const handleRejectWorker = async (workerId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    try {
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/admin-reject-worker`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${user?.session?.access_token}`,
+          },
+          body: JSON.stringify({ workerId }),
+        }
+      );
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || '반려 실패');
+      }
+      showAlert({
+        title: '반려 완료',
+        message: '가입 요청이 반려되었습니다.',
+        variant: 'info',
+      });
+      setRefreshTrigger(prev => prev + 1);
+    } catch (error) {
+      console.error('반려 오류:', error);
+      showAlert({
+        title: '반려 실패',
+        message: error instanceof Error ? error.message : '반려 처리 중 오류가 발생했습니다.',
+        variant: 'error',
+      });
+    }
+  };
+
   // 일괄 액션 핸들러
   const handleBulkAction = (action: string) => {
     showAlert({
@@ -567,7 +639,27 @@ export default function WorkersPage() {
                     </span>
                   </td>
                   <td className="px-4 py-4" onClick={() => navigate(`/workers/${worker.id}`)}>
-                    <StatusBadge status={worker.status} />
+                    <div className="flex items-center gap-2">
+                      <StatusBadge status={worker.status} />
+                      {worker.status === 'REQUESTED' && (
+                        <>
+                          <button
+                            onClick={(e) => handleApproveWorker(worker.id, e)}
+                            className="p-1.5 rounded-md bg-green-100 text-green-600 hover:bg-green-200 transition-colors"
+                            title="승인"
+                          >
+                            <Check size={14} />
+                          </button>
+                          <button
+                            onClick={(e) => handleRejectWorker(worker.id, e)}
+                            className="p-1.5 rounded-md bg-red-100 text-red-600 hover:bg-red-200 transition-colors"
+                            title="반려"
+                          >
+                            <XCircle size={14} />
+                          </button>
+                        </>
+                      )}
+                    </div>
                   </td>
                   <td className="px-4 py-4">
                     <button

@@ -668,3 +668,5 @@ chore: 의존성 업데이트
 - [프로젝트 개요](./PROJECT-OVERVIEW.md)
 - [기술 아키텍처](./ARCHITECTURE.md)
 - [데이터베이스 설계](./DATABASE.md)
+- [**빌드 가이드**](./BUILD_GUIDE.md) - Android/iOS 빌드 명령어 및 문제 해결
+- [에러 로그 기록](./logs/) - 빌드 에러 분석 및 해결 기록

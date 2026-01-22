@@ -37,17 +37,35 @@ export interface CommuteOutResponse {
  */
 export async function getWorkerMe(): Promise<GetWorkerMeResponse> {
   try {
-    const response = await api.get<GetWorkerMeResponse>('/worker/me');
+    const response = await api.get<{
+      success: boolean;
+      data: {
+        user: Worker;
+        company: any;
+        site: any;
+        partner: any;
+        todayAttendance: {
+          checkInTime: string;
+          checkOutTime: string | null;
+          isAutoOut: boolean;
+        } | null;
+        commuteStatus: CommuteStatus;
+      };
+    }>('/worker-me');
 
     // 응답 검증
-    if (!response.data?.id) {
+    if (!response.data?.success || !response.data?.data?.user?.id) {
       throw new ApiError('SERVER_ERROR', '사용자 정보를 불러올 수 없습니다.');
     }
 
-    // 기본값 설정
+    const {user, todayAttendance, commuteStatus} = response.data.data;
+
+    // GetWorkerMeResponse 형식으로 변환
     return {
-      ...response.data,
-      commuteStatus: response.data.commuteStatus || 'WORK_OFF',
+      ...user,
+      commuteStatus: commuteStatus || 'WORK_OFF',
+      checkInTime: todayAttendance?.checkInTime,
+      checkOutTime: todayAttendance?.checkOutTime || undefined,
     };
   } catch (error) {
     if (error instanceof ApiError) {
@@ -62,7 +80,7 @@ export async function getWorkerMe(): Promise<GetWorkerMeResponse> {
  */
 export async function commuteIn(): Promise<CommuteInResponse> {
   try {
-    const response = await api.post<CommuteInResponse>('/worker/commute-in');
+    const response = await api.post<CommuteInResponse>('/worker-commute-in');
 
     // 응답 검증
     if (!response.data?.success) {
@@ -87,7 +105,7 @@ export async function commuteIn(): Promise<CommuteInResponse> {
  */
 export async function commuteOut(): Promise<CommuteOutResponse> {
   try {
-    const response = await api.post<CommuteOutResponse>('/worker/commute-out');
+    const response = await api.post<CommuteOutResponse>('/worker-commute-out');
 
     // 응답 검증
     if (!response.data?.success) {
@@ -110,6 +128,7 @@ export async function commuteOut(): Promise<CommuteOutResponse> {
 
 /**
  * 오늘의 출퇴근 상태 조회
+ * - worker-me API에서 이미 출퇴근 상태를 제공하므로, 이 함수는 getWorkerMe()를 호출
  */
 export async function getTodayCommute(): Promise<{
   status: CommuteStatus;
@@ -117,16 +136,11 @@ export async function getTodayCommute(): Promise<{
   checkOutTime?: string;
 }> {
   try {
-    const response = await api.get<{
-      status: CommuteStatus;
-      checkInTime?: string;
-      checkOutTime?: string;
-    }>('/worker/today-commute');
-
+    const workerData = await getWorkerMe();
     return {
-      status: response.data?.status || 'WORK_OFF',
-      checkInTime: response.data?.checkInTime,
-      checkOutTime: response.data?.checkOutTime,
+      status: workerData.commuteStatus,
+      checkInTime: workerData.checkInTime,
+      checkOutTime: workerData.checkOutTime,
     };
   } catch (error) {
     // 에러 발생 시 기본값 반환 (네트워크 에러 등)
