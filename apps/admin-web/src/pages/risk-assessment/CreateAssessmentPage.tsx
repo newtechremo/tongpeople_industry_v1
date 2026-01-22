@@ -15,6 +15,7 @@ type AssessmentType = 'INITIAL' | 'ADHOC' | 'FREQUENCY_INTENSITY';
 
 const TYPE_MAPPING: Record<string, AssessmentType> = {
   initial: 'INITIAL',
+  regular: 'INITIAL',
   occasional: 'ADHOC',
   continuous: 'FREQUENCY_INTENSITY',
 };
@@ -135,7 +136,11 @@ export default function CreateAssessmentPage() {
       )}
 
       {assessmentType === 'INITIAL' && (
-        <InitialAssessmentForm onSubmit={handleSubmit} onCancel={handleCancel} />
+        <InitialAssessmentForm
+          type={type as 'initial' | 'regular'}
+          onSubmit={handleSubmit}
+          onCancel={handleCancel}
+        />
       )}
 
       {(assessmentType === 'ADHOC' || assessmentType === 'FREQUENCY_INTENSITY') && (
