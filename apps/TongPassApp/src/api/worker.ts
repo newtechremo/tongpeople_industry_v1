@@ -10,6 +10,14 @@ import {ApiError} from '@/types/api';
 
 // ==================== 응답 타입 ====================
 
+export interface QRPayloadResponse {
+  workerId: string;
+  timestamp: number;
+  expiresAt: number;
+  signature: string;
+  expiresInSeconds: number;
+}
+
 export interface GetWorkerMeResponse extends Worker {
   commuteStatus: CommuteStatus;
   checkInTime?: string; // ISO 8601 형식
@@ -150,5 +158,31 @@ export async function getTodayCommute(): Promise<{
     return {
       status: 'WORK_OFF',
     };
+  }
+}
+
+/**
+ * QR 페이로드 조회
+ * - 관리자가 스캔할 QR 코드에 포함될 서명된 데이터 생성
+ * - 30초마다 갱신 필요
+ */
+export async function getQRPayload(): Promise<QRPayloadResponse> {
+  try {
+    const response = await api.get<{
+      success: boolean;
+      data: QRPayloadResponse;
+    }>('/worker-qr-payload');
+
+    // 응답 검증
+    if (!response.data?.success || !response.data?.data?.workerId) {
+      throw new ApiError('SERVER_ERROR', 'QR 코드 생성에 실패했습니다.');
+    }
+
+    return response.data.data;
+  } catch (error) {
+    if (error instanceof ApiError) {
+      throw error;
+    }
+    throw new ApiError('SERVER_ERROR', 'QR 코드 생성에 실패했습니다.');
   }
 }

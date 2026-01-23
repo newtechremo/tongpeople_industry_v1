@@ -15,6 +15,8 @@ export type ApiErrorCode =
   | 'DUPLICATE_PHONE'
   | 'INVALID_TEAM'
   | 'SIGNATURE_REQUIRED'
+  | 'USER_NOT_FOUND'
+  | 'INVALID_PASSWORD'
   // 토큰 관련
   | 'INVALID_TOKEN'
   | 'TOKEN_EXPIRED'
@@ -62,6 +64,8 @@ export const API_ERROR_MESSAGES: Record<ApiErrorCode, string> = {
   DUPLICATE_PHONE: '이미 등록된 전화번호입니다.',
   INVALID_TEAM: '유효하지 않은 팀입니다.',
   SIGNATURE_REQUIRED: '서명이 필요합니다.',
+  USER_NOT_FOUND: '등록되지 않은 사용자입니다.',
+  INVALID_PASSWORD: '비밀번호가 올바르지 않습니다.',
   // 토큰 관련
   INVALID_TOKEN: '인증 정보가 유효하지 않습니다.',
   TOKEN_EXPIRED: '인증이 만료되었습니다. 다시 로그인해주세요.',

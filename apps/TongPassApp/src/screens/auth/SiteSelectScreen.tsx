@@ -46,8 +46,11 @@ const SiteSelectScreen: React.FC<SiteSelectScreenProps> = ({
       return;
     }
 
-    // Recoil 상태 업데이트
-    setSite(selectedSite);
+    // Recoil 상태 업데이트 (companyId 추가)
+    setSite({
+      ...selectedSite,
+      companyId,
+    });
 
     // 전화번호 인증 화면으로 이동
     navigation.navigate('PhoneVerify', {

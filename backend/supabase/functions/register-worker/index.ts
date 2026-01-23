@@ -1,37 +1,43 @@
 // 근로자 가입 Edge Function
 // 회사코드/QR 방식(방식 B): 근로자가 직접 가입 → REQUESTED 상태 → 관리자 승인 대기
+// 모바일 앱 호환 응답 형식 지원
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
-
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-};
+import { generateTokens } from '../_shared/jwt.ts';
+import { handleCors } from '../_shared/cors.ts';
+import { successResponse, errorResponse, serverError } from '../_shared/response.ts';
 
 interface RegisterWorkerRequest {
   // SMS 인증
-  verificationToken: string;
+  verificationToken?: string;
   phone: string;
+  phoneNumber?: string; // 모바일 앱 호환
 
   // 근로자 정보
   name: string;
   birthDate: string; // YYYYMMDD
   gender: 'M' | 'F';
-  nationality: 'KR' | 'OTHER';
+  nationality: 'KR' | 'OTHER' | string;
   jobTitle: string;
+  email?: string;
 
   // 소속
-  companyId: number;
-  siteId: number;
-  partnerId: number;
+  companyId?: number | string;
+  siteId: number | string;
+  partnerId?: number | string;
+  teamId?: number | string; // 모바일 앱 호환 (partnerId와 동일)
 
-  // 약관 동의
-  termsAgreed: boolean;
-  privacyAgreed: boolean;
-  thirdPartyAgreed: boolean;
-  locationAgreed: boolean;
+  // 약관 동의 - 기존 형식 (개별 boolean)
+  termsAgreed?: boolean;
+  privacyAgreed?: boolean;
+  thirdPartyAgreed?: boolean;
+  locationAgreed?: boolean;
+
+  // 약관 동의 - 모바일 앱 형식 (배열)
+  agreedTerms?: string[];
 
   // 전자서명
-  signatureImage: string; // Base64 이미지
+  signatureImage?: string; // Base64 이미지
+  signatureBase64?: string; // 모바일 앱 호환
 }
 
 // 전화번호 정규화
@@ -49,9 +55,8 @@ function formatBirthDate(birthDate: string): string {
 
 Deno.serve(async (req) => {
   // CORS preflight
-  if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders });
-  }
+  const corsResponse = handleCors(req);
+  if (corsResponse) return corsResponse;
 
   try {
     const supabase = createClient(
@@ -60,66 +65,67 @@ Deno.serve(async (req) => {
     );
 
     const data: RegisterWorkerRequest = await req.json();
-    const normalizedPhone = normalizePhone(data.phone);
+
+    // 모바일 앱 호환: phoneNumber -> phone
+    const phoneInput = data.phone || data.phoneNumber || '';
+    const normalizedPhone = normalizePhone(phoneInput);
+
+    // 모바일 앱 호환: teamId -> partnerId
+    const partnerId = data.partnerId || data.teamId;
+
+    // 모바일 앱 호환: signatureBase64 -> signatureImage
+    const signatureImage = data.signatureImage || data.signatureBase64;
+
+    // 모바일 앱 호환: agreedTerms 배열 처리
+    const hasAgreedTerms = data.agreedTerms && data.agreedTerms.length >= 4;
+    const termsAgreed = data.termsAgreed || (hasAgreedTerms && data.agreedTerms!.includes('terms'));
+    const privacyAgreed = data.privacyAgreed || (hasAgreedTerms && data.agreedTerms!.includes('privacy'));
+    const thirdPartyAgreed = data.thirdPartyAgreed || (hasAgreedTerms && data.agreedTerms!.includes('third_party'));
+    const locationAgreed = data.locationAgreed || (hasAgreedTerms && data.agreedTerms!.includes('location'));
 
     // 1. 인증 토큰 검증
-    const isDevToken = data.verificationToken.startsWith('DEV_TOKEN_');
+    const verificationToken = data.verificationToken || '';
+    const isDevToken = verificationToken.startsWith('DEV_TOKEN_') || !verificationToken;
 
-    if (!isDevToken) {
+    if (!isDevToken && verificationToken) {
       try {
-        const tokenData = JSON.parse(atob(data.verificationToken));
+        const tokenData = JSON.parse(atob(verificationToken));
 
         if (tokenData.phone !== normalizedPhone) {
-          return new Response(
-            JSON.stringify({ error: '인증 정보가 일치하지 않습니다.' }),
-            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-          );
+          return errorResponse('INVALID_TOKEN', '인증 정보가 일치하지 않습니다.');
         }
 
         if (tokenData.expiresAt < Date.now()) {
-          return new Response(
-            JSON.stringify({ error: '인증이 만료되었습니다. 처음부터 다시 진행해주세요.' }),
-            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-          );
+          return errorResponse('TOKEN_EXPIRED', '인증이 만료되었습니다. 처음부터 다시 진행해주세요.');
         }
 
         // PURPOSE는 SIGNUP 또는 LOGIN 모두 허용 (기존 회원 로그인 플로우 고려)
         if (!['SIGNUP', 'LOGIN'].includes(tokenData.purpose)) {
-          return new Response(
-            JSON.stringify({ error: '잘못된 인증 토큰입니다.' }),
-            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-          );
+          return errorResponse('INVALID_TOKEN', '잘못된 인증 토큰입니다.');
         }
       } catch {
-        return new Response(
-          JSON.stringify({ error: '유효하지 않은 인증 토큰입니다.' }),
-          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
+        return errorResponse('INVALID_TOKEN', '유효하지 않은 인증 토큰입니다.');
       }
     } else {
       console.log('[DEV] 개발용 토큰으로 인증 우회:', normalizedPhone);
     }
 
     // 2. 필수 필드 검증
-    if (!data.termsAgreed || !data.privacyAgreed || !data.thirdPartyAgreed || !data.locationAgreed) {
-      return new Response(
-        JSON.stringify({ error: '모든 필수 약관에 동의해주세요.' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+    if (!termsAgreed || !privacyAgreed || !thirdPartyAgreed || !locationAgreed) {
+      return errorResponse('UNKNOWN_ERROR', '모든 필수 약관에 동의해주세요.');
     }
 
     if (!data.name || !data.birthDate || !data.gender || !data.nationality || !data.jobTitle) {
-      return new Response(
-        JSON.stringify({ error: '모든 필수 정보를 입력해주세요.' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+      return errorResponse('UNKNOWN_ERROR', '모든 필수 정보를 입력해주세요.');
     }
 
-    if (!data.companyId || !data.siteId || !data.partnerId) {
-      return new Response(
-        JSON.stringify({ error: '회사, 현장, 팀 정보가 필요합니다.' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+    if (!data.siteId || !partnerId) {
+      return errorResponse('INVALID_TEAM', '현장, 팀 정보가 필요합니다.');
+    }
+
+    // 서명 검증
+    if (!signatureImage || signatureImage.length < 100) {
+      return errorResponse('SIGNATURE_REQUIRED', '서명이 필요합니다.');
     }
 
     // 3. 중복 검사 (휴대폰 번호)
@@ -143,10 +149,7 @@ Deno.serve(async (req) => {
         try {
           formattedBirthDate = formatBirthDate(data.birthDate);
         } catch {
-          return new Response(
-            JSON.stringify({ error: '생년월일 형식이 올바르지 않습니다. (YYYYMMDD)' }),
-            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-          );
+          return errorResponse('UNKNOWN_ERROR', '생년월일 형식이 올바르지 않습니다. (YYYYMMDD)');
         }
 
         // 사용자 정보 업데이트 및 ACTIVE로 변경
@@ -167,10 +170,7 @@ Deno.serve(async (req) => {
 
         if (updateError) {
           console.error('PENDING user update error:', updateError);
-          return new Response(
-            JSON.stringify({ error: '사용자 정보 업데이트 중 오류가 발생했습니다.' }),
-            { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-          );
+          return errorResponse('SERVER_ERROR', '사용자 정보 업데이트 중 오류가 발생했습니다.', 500);
         }
 
         // Supabase Auth 계정 생성 (phone 기반 fake email)
@@ -195,10 +195,7 @@ Deno.serve(async (req) => {
             .from('users')
             .update({ status: 'PENDING' })
             .eq('id', existingUser.id);
-          return new Response(
-            JSON.stringify({ error: '계정 생성 중 오류가 발생했습니다.' }),
-            { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-          );
+          return errorResponse('SERVER_ERROR', '계정 생성 중 오류가 발생했습니다.', 500);
         }
 
         // users 테이블에 auth_id가 필요하다면 연결 (현재 id가 auth_id와 동일하게 사용됨)
@@ -212,19 +209,24 @@ Deno.serve(async (req) => {
 
         console.log('[INFO] 선등록 사용자 활성화 (프리패스):', normalizedPhone);
 
-        return new Response(
-          JSON.stringify({
-            success: true,
-            message: '가입이 완료되었습니다.',
-            data: {
-              userId: authUser?.user?.id || existingUser.id,
-              name: data.name,
-              status: 'ACTIVE',
-              isPreRegistered: true,
-            },
-          }),
-          { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
+        // JWT 토큰 생성
+        const userId = authUser?.user?.id || existingUser.id;
+        const tokens = await generateTokens(userId, supabase);
+
+        return successResponse({
+          message: '가입이 완료되었습니다.',
+          accessToken: tokens.accessToken,
+          refreshToken: tokens.refreshToken,
+          workerId: userId,
+          status: 'ACTIVE',
+          data: {
+            userId,
+            name: data.name,
+            phone: normalizedPhone,
+            status: 'ACTIVE',
+            isPreRegistered: true,
+          },
+        });
       }
 
       // INACTIVE 상태: 이직 시나리오
@@ -236,7 +238,7 @@ Deno.serve(async (req) => {
             .update({
               status: 'ACTIVE',
               site_id: data.siteId,
-              partner_id: data.partnerId,
+              partner_id: partnerId,
               role: 'WORKER',
               updated_at: new Date().toISOString()
             })
@@ -244,18 +246,23 @@ Deno.serve(async (req) => {
 
           console.log('[INFO] 같은 회사 복귀:', normalizedPhone);
 
-          return new Response(
-            JSON.stringify({
-              success: true,
-              message: '계정이 재활성화되었습니다.',
-              data: {
-                userId: existingUser.id,
-                status: 'ACTIVE',
-                isReactivated: true
-              }
-            }),
-            { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-          );
+          // JWT 토큰 생성
+          const tokens = await generateTokens(existingUser.id, supabase);
+
+          return successResponse({
+            message: '계정이 재활성화되었습니다.',
+            accessToken: tokens.accessToken,
+            refreshToken: tokens.refreshToken,
+            workerId: existingUser.id,
+            status: 'ACTIVE',
+            data: {
+              userId: existingUser.id,
+              name: data.name,
+              phone: normalizedPhone,
+              status: 'ACTIVE',
+              isReactivated: true,
+            }
+          });
         }
 
         // 다른 회사로 이직
@@ -265,7 +272,7 @@ Deno.serve(async (req) => {
             .update({
               company_id: data.companyId,
               site_id: data.siteId,
-              partner_id: data.partnerId,
+              partner_id: partnerId,
               role: 'WORKER',
               status: 'REQUESTED',  // 새 회사는 승인 필요
               requested_at: new Date().toISOString(),
@@ -279,28 +286,30 @@ Deno.serve(async (req) => {
             to: data.companyId
           });
 
-          return new Response(
-            JSON.stringify({
-              success: true,
-              message: '새 회사로 가입 신청되었습니다. 관리자 승인 후 서비스를 이용하실 수 있습니다.',
-              data: {
-                userId: existingUser.id,
-                status: 'REQUESTED',
-                isTransferred: true,
-                previousCompany: existingUser.companies?.name || '이전 회사'
-              }
-            }),
-            { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-          );
+          // JWT 토큰 생성 (REQUESTED 상태지만 토큰은 필요)
+          const tokens = await generateTokens(existingUser.id, supabase);
+
+          return successResponse({
+            message: '새 회사로 가입 신청되었습니다. 관리자 승인 후 서비스를 이용하실 수 있습니다.',
+            accessToken: tokens.accessToken,
+            refreshToken: tokens.refreshToken,
+            workerId: existingUser.id,
+            status: 'REQUESTED',
+            data: {
+              userId: existingUser.id,
+              name: data.name,
+              phone: normalizedPhone,
+              status: 'REQUESTED',
+              isTransferred: true,
+              previousCompany: existingUser.companies?.name || '이전 회사'
+            }
+          });
         }
       }
 
       // 그 외 상태: 이미 가입됨
       else {
-        return new Response(
-          JSON.stringify({ error: '이미 가입된 휴대폰 번호입니다.' }),
-          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
+        return errorResponse('DUPLICATE_PHONE', '이미 가입된 휴대폰 번호입니다.');
       }
     }
 
@@ -313,24 +322,18 @@ Deno.serve(async (req) => {
       .single();
 
     if (siteError || !site) {
-      return new Response(
-        JSON.stringify({ error: '현장 정보를 찾을 수 없습니다.' }),
-        { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+      return errorResponse('NOT_FOUND', '현장 정보를 찾을 수 없습니다.', 404);
     }
 
     const { data: partner, error: partnerError } = await supabase
       .from('partners')
       .select('id')
-      .eq('id', data.partnerId)
+      .eq('id', partnerId)
       .eq('site_id', data.siteId)
       .single();
 
     if (partnerError || !partner) {
-      return new Response(
-        JSON.stringify({ error: '팀 정보를 찾을 수 없습니다.' }),
-        { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+      return errorResponse('INVALID_TEAM', '팀 정보를 찾을 수 없습니다.', 404);
     }
 
     // 5. Supabase Auth 사용자 생성
@@ -351,10 +354,7 @@ Deno.serve(async (req) => {
 
     if (authError || !authUser.user) {
       console.error('Auth error:', authError);
-      return new Response(
-        JSON.stringify({ error: '계정 생성 중 오류가 발생했습니다.' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+      return errorResponse('SERVER_ERROR', '계정 생성 중 오류가 발생했습니다.', 500);
     }
 
     // 6. 생년월일 포맷 변환
@@ -363,10 +363,7 @@ Deno.serve(async (req) => {
       formattedBirthDate = formatBirthDate(data.birthDate);
     } catch {
       await supabase.auth.admin.deleteUser(authUser.user.id);
-      return new Response(
-        JSON.stringify({ error: '생년월일 형식이 올바르지 않습니다. (YYYYMMDD)' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+      return errorResponse('UNKNOWN_ERROR', '생년월일 형식이 올바르지 않습니다. (YYYYMMDD)');
     }
 
     // 7. 사용자 프로필 생성 (users 테이블)
@@ -377,7 +374,7 @@ Deno.serve(async (req) => {
         id: authUser.user.id,
         company_id: data.companyId,
         site_id: data.siteId,
-        partner_id: data.partnerId,
+        partner_id: partnerId,
         name: data.name,
         phone: normalizedPhone,
         birth_date: formattedBirthDate,
@@ -395,33 +392,29 @@ Deno.serve(async (req) => {
       console.error('User error:', userError);
       // 롤백: Auth 사용자 삭제
       await supabase.auth.admin.deleteUser(authUser.user.id);
-      return new Response(
-        JSON.stringify({ error: '사용자 정보 저장 중 오류가 발생했습니다.' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+      return errorResponse('SERVER_ERROR', '사용자 정보 저장 중 오류가 발생했습니다.', 500);
     }
 
     // 8. 전자서명 저장 (추후 Storage 활용 가능, 현재는 생략)
     // TODO: Supabase Storage에 signatureImage 업로드 후 URL 저장
 
-    return new Response(
-      JSON.stringify({
-        success: true,
-        message: '가입 신청이 완료되었습니다. 관리자 승인 후 서비스를 이용하실 수 있습니다.',
-        data: {
-          userId: authUser.user.id,
-          name: data.name,
-          phone: normalizedPhone,
-          status: 'REQUESTED',
-        },
-      }),
-      { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    );
+    // 9. JWT 토큰 생성
+    const tokens = await generateTokens(authUser.user.id, supabase);
+
+    return successResponse({
+      message: '가입 신청이 완료되었습니다. 관리자 승인 후 서비스를 이용하실 수 있습니다.',
+      accessToken: tokens.accessToken,
+      refreshToken: tokens.refreshToken,
+      workerId: authUser.user.id,
+      status: 'REQUESTED',
+      data: {
+        userId: authUser.user.id,
+        name: data.name,
+        phone: normalizedPhone,
+        status: 'REQUESTED',
+      },
+    });
   } catch (error) {
-    console.error('Error:', error);
-    return new Response(
-      JSON.stringify({ error: '서버 오류가 발생했습니다.' }),
-      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    );
+    return serverError(error);
   }
 });

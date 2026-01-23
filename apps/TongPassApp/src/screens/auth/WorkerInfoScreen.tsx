@@ -290,11 +290,35 @@ const WorkerInfoScreen: React.FC<WorkerInfoScreenProps> = ({
             </View>
           )}
 
+          {/* 선등록 정보 배너 */}
           {preRegisteredData && (
-            <View style={styles.banner}>
-              <Text style={styles.bannerText}>
-                관리자가 등록한 정보를 불러왔습니다.
+            <View style={styles.preRegBanner}>
+              <View style={styles.preRegHeader}>
+                <Text style={styles.preRegIcon}>✓</Text>
+                <Text style={styles.preRegTitle}>선등록된 정보가 있습니다</Text>
+              </View>
+              <Text style={styles.preRegDescription}>
+                관리자가 미리 등록한 정보입니다.{'\n'}
+                확인 후 다음 단계로 진행해주세요.
               </Text>
+              {preRegisteredData.name && (
+                <View style={styles.preRegItem}>
+                  <Text style={styles.preRegLabel}>이름</Text>
+                  <Text style={styles.preRegValue}>{preRegisteredData.name}</Text>
+                </View>
+              )}
+              {preRegisteredData.teamName && (
+                <View style={styles.preRegItem}>
+                  <Text style={styles.preRegLabel}>소속팀</Text>
+                  <Text style={styles.preRegValue}>{preRegisteredData.teamName}</Text>
+                </View>
+              )}
+              {preRegisteredData.jobTitle && (
+                <View style={styles.preRegItem}>
+                  <Text style={styles.preRegLabel}>직책</Text>
+                  <Text style={styles.preRegValue}>{preRegisteredData.jobTitle}</Text>
+                </View>
+              )}
             </View>
           )}
 
@@ -559,6 +583,54 @@ const styles = StyleSheet.create({
     color: colors.primary,
     fontSize: 14,
     textAlign: 'center',
+  },
+  // 선등록 배너
+  preRegBanner: {
+    backgroundColor: colors.primaryLight,
+    padding: 16,
+    borderRadius: 12,
+    marginBottom: 24,
+    borderWidth: 1,
+    borderColor: colors.primary,
+  },
+  preRegHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  preRegIcon: {
+    fontSize: 16,
+    color: colors.primary,
+    fontWeight: 'bold',
+    marginRight: 8,
+  },
+  preRegTitle: {
+    fontSize: 15,
+    fontWeight: 'bold',
+    color: colors.primary,
+  },
+  preRegDescription: {
+    fontSize: 13,
+    color: colors.textSecondary,
+    lineHeight: 18,
+    marginBottom: 12,
+  },
+  preRegItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 6,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(249, 115, 22, 0.2)',
+  },
+  preRegLabel: {
+    fontSize: 13,
+    color: colors.textSecondary,
+  },
+  preRegValue: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.textPrimary,
   },
   inputGroup: {
     marginBottom: 20,

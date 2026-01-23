@@ -5,7 +5,7 @@
  * - 개별 약관 내용 보기 (TODO)
  */
 
-import React, {useState, useCallback} from 'react';
+import React, {useState, useCallback, useEffect} from 'react';
 import {
   View,
   Text,
@@ -13,6 +13,8 @@ import {
   StyleSheet,
   SafeAreaView,
   ScrollView,
+  Alert,
+  BackHandler,
 } from 'react-native';
 import {TermsScreenProps} from '@/types/navigation';
 import {colors} from '@/constants/colors';
@@ -45,6 +47,74 @@ const TermsScreen: React.FC<TermsScreenProps> = ({navigation, route}) => {
     });
     setAgreed(newAgreed);
   }, [isAllAgreed]);
+
+  /**
+   * 하나라도 동의한 상태인지 확인
+   */
+  const hasAnyAgreed = Object.values(agreed).some(value => value);
+
+  /**
+   * 뒤로가기 경고 핸들러
+   */
+  const handleBackPress = useCallback(() => {
+    if (hasAnyAgreed) {
+      Alert.alert(
+        '화면 나가기',
+        '동의한 내용이 모두 초기화됩니다.\n정말 나가시겠습니까?',
+        [
+          {text: '취소', style: 'cancel'},
+          {
+            text: '나가기',
+            style: 'destructive',
+            onPress: () => navigation.goBack(),
+          },
+        ],
+      );
+      return true; // 기본 뒤로가기 동작 방지
+    }
+    return false; // 기본 뒤로가기 동작 허용
+  }, [hasAnyAgreed, navigation]);
+
+  /**
+   * 뒤로가기 버튼 리스너 (Android)
+   */
+  useEffect(() => {
+    const backHandler = BackHandler.addEventListener(
+      'hardwareBackPress',
+      handleBackPress,
+    );
+
+    return () => backHandler.remove();
+  }, [handleBackPress]);
+
+  /**
+   * 네비게이션 뒤로가기 리스너 (iOS & Android)
+   */
+  useEffect(() => {
+    const unsubscribe = navigation.addListener('beforeRemove', e => {
+      if (!hasAnyAgreed) {
+        return; // 동의한 게 없으면 그냥 이동
+      }
+
+      // 기본 동작 방지
+      e.preventDefault();
+
+      Alert.alert(
+        '화면 나가기',
+        '동의한 내용이 모두 초기화됩니다.\n정말 나가시겠습니까?',
+        [
+          {text: '취소', style: 'cancel'},
+          {
+            text: '나가기',
+            style: 'destructive',
+            onPress: () => navigation.dispatch(e.data.action),
+          },
+        ],
+      );
+    });
+
+    return unsubscribe;
+  }, [navigation, hasAnyAgreed]);
 
   /**
    * 다음 단계로 이동 (서명 화면)

@@ -1,11 +1,11 @@
 /**
  * 홈 화면
- * - 출퇴근 상태 표시
- * - 출퇴근 버튼
- * - 사용자 정보 표시
+ * - M01: 출근 전 - 출근 버튼 (파랑)
+ * - M02: 근무 중 - QR 코드 표시 + 퇴근 버튼 (빨강)
+ * - M03: 퇴근 완료 - 완료 메시지 + 비활성 버튼
  */
 
-import React, {useState, useCallback, useEffect} from 'react';
+import React, {useState, useCallback, useEffect, useMemo} from 'react';
 import {
   View,
   Text,
@@ -17,7 +17,10 @@ import {
   RefreshControl,
   ScrollView,
 } from 'react-native';
+import {useNavigation} from '@react-navigation/native';
+import {NativeStackNavigationProp} from '@react-navigation/native-stack';
 import {useRecoilState, useRecoilValue} from 'recoil';
+import {RootStackParamList} from '@/types/navigation';
 import {colors} from '@/constants/colors';
 import {userInfoState, commuteStatusState} from '@/store/atoms/userAtom';
 import {
@@ -27,8 +30,15 @@ import {
 import {getWorkerMe, commuteIn, commuteOut} from '@/api/worker';
 import {useAuth} from '@/hooks/useAuth';
 import {ApiError} from '@/types/api';
+import DynamicQRCode from '@/components/qr/DynamicQRCode';
+
+type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
+
+// 팀 관리자 이상 권한 체크
+const ADMIN_ROLES = ['TEAM_ADMIN', 'SITE_ADMIN', 'SUPER_ADMIN'];
 
 const HomeScreen: React.FC = () => {
+  const navigation = useNavigation<NavigationProp>();
   const {logout} = useAuth();
   const userInfo = useRecoilValue(userInfoState);
   const company = useRecoilValue(selectedCompanyState);
@@ -203,6 +213,38 @@ const HomeScreen: React.FC = () => {
   };
 
   /**
+   * 상태 카드 스타일 결정
+   */
+  const getStatusCardStyle = () => {
+    switch (commuteStatus) {
+      case 'WORK_OFF':
+        return styles.statusCardOff;
+      case 'WORK_ON':
+        return styles.statusCardOn;
+      case 'WORK_DONE':
+        return styles.statusCardDone;
+      default:
+        return styles.statusCardOff;
+    }
+  };
+
+  /**
+   * 상태 텍스트 스타일 결정
+   */
+  const getStatusTextStyle = () => {
+    switch (commuteStatus) {
+      case 'WORK_OFF':
+        return styles.statusTextOff;
+      case 'WORK_ON':
+        return styles.statusTextOn;
+      case 'WORK_DONE':
+        return styles.statusTextDone;
+      default:
+        return styles.statusTextOff;
+    }
+  };
+
+  /**
    * 출근 시간 포맷
    */
   const formatTime = (isoString: string) => {
@@ -220,6 +262,18 @@ const HomeScreen: React.FC = () => {
   // 사용자 이름 (기본값 처리)
   const userName = userInfo?.name || '근로자';
   const companyName = company?.name || site?.name || '';
+
+  // 관리자 권한 체크 (TEAM_ADMIN 이상)
+  const isAdmin = useMemo(() => {
+    return userInfo?.role && ADMIN_ROLES.includes(userInfo.role);
+  }, [userInfo?.role]);
+
+  /**
+   * QR 스캔 화면 이동
+   */
+  const handleOpenQRScan = useCallback(() => {
+    navigation.navigate('QRScanStack', {mode: 'CHECK_IN'});
+  }, [navigation]);
 
   return (
     <SafeAreaView style={styles.container}>
@@ -248,16 +302,48 @@ const HomeScreen: React.FC = () => {
 
         {/* 콘텐츠 */}
         <View style={styles.content}>
+          {/* 날짜 */}
+          <Text style={styles.dateText}>
+            {new Date().toLocaleDateString('ko-KR', {
+              year: 'numeric',
+              month: 'long',
+              day: 'numeric',
+              weekday: 'long',
+            })}
+          </Text>
+
           {/* 상태 카드 */}
-          <View style={styles.statusCard}>
+          <View style={[styles.statusCard, getStatusCardStyle()]}>
             <Text style={styles.statusLabel}>현재 상태</Text>
-            <Text style={styles.statusText}>{getStatusText()}</Text>
+            <Text style={[styles.statusText, getStatusTextStyle()]}>
+              {getStatusText()}
+            </Text>
             {checkInTime && commuteStatus !== 'WORK_OFF' && (
               <Text style={styles.checkInTimeText}>
                 출근 시간: {formatTime(checkInTime)}
               </Text>
             )}
           </View>
+
+          {/* M02 상태: QR 코드 표시 */}
+          {commuteStatus === 'WORK_ON' && (
+            <View style={styles.qrSection}>
+              <DynamicQRCode size={180} />
+            </View>
+          )}
+
+          {/* M03 상태: 완료 메시지 */}
+          {commuteStatus === 'WORK_DONE' && (
+            <View style={styles.completedSection}>
+              <View style={styles.checkIcon}>
+                <Text style={styles.checkIconText}>✓</Text>
+              </View>
+              <Text style={styles.completedTitle}>오늘 근무 완료</Text>
+              <Text style={styles.completedSubtitle}>
+                내일도 안전한 하루 되세요!
+              </Text>
+            </View>
+          )}
 
           {/* 출퇴근 버튼 */}
           <TouchableOpacity
@@ -271,18 +357,19 @@ const HomeScreen: React.FC = () => {
               <Text style={styles.commuteButtonText}>{getButtonText()}</Text>
             )}
           </TouchableOpacity>
-
-          {/* 날짜 */}
-          <Text style={styles.dateText}>
-            {new Date().toLocaleDateString('ko-KR', {
-              year: 'numeric',
-              month: 'long',
-              day: 'numeric',
-              weekday: 'long',
-            })}
-          </Text>
         </View>
       </ScrollView>
+
+      {/* QR 스캔 플로팅 버튼 (관리자 전용) */}
+      {isAdmin && (
+        <TouchableOpacity
+          style={styles.qrScanFab}
+          onPress={handleOpenQRScan}
+          activeOpacity={0.8}>
+          <Text style={styles.qrScanFabIcon}>📷</Text>
+          <Text style={styles.qrScanFabText}>QR 스캔</Text>
+        </TouchableOpacity>
+      )}
     </SafeAreaView>
   );
 };
@@ -324,44 +411,105 @@ const styles = StyleSheet.create({
   content: {
     flex: 1,
     padding: 24,
-    justifyContent: 'center',
     alignItems: 'center',
   },
+  dateText: {
+    fontSize: 16,
+    color: colors.textSecondary,
+    marginBottom: 16,
+  },
+  // 상태 카드 기본
   statusCard: {
     width: '100%',
-    padding: 24,
-    backgroundColor: colors.backgroundGray,
+    padding: 20,
     borderRadius: 16,
     alignItems: 'center',
-    marginBottom: 32,
+    marginBottom: 24,
+    borderWidth: 2,
+  },
+  statusCardOff: {
+    backgroundColor: '#EFF6FF',
+    borderColor: colors.info,
+  },
+  statusCardOn: {
+    backgroundColor: '#FEF2F2',
+    borderColor: colors.error,
+  },
+  statusCardDone: {
+    backgroundColor: colors.backgroundGray,
+    borderColor: colors.border,
   },
   statusLabel: {
-    fontSize: 14,
+    fontSize: 13,
     color: colors.textSecondary,
-    marginBottom: 8,
+    marginBottom: 4,
   },
   statusText: {
-    fontSize: 28,
+    fontSize: 24,
     fontWeight: 'bold',
-    color: colors.textPrimary,
+  },
+  statusTextOff: {
+    color: colors.info,
+  },
+  statusTextOn: {
+    color: colors.error,
+  },
+  statusTextDone: {
+    color: colors.textDisabled,
   },
   checkInTimeText: {
     fontSize: 14,
     color: colors.textSecondary,
     marginTop: 8,
   },
+  // QR 코드 섹션 (M02)
+  qrSection: {
+    marginBottom: 24,
+    alignItems: 'center',
+  },
+  // 완료 섹션 (M03)
+  completedSection: {
+    alignItems: 'center',
+    marginBottom: 24,
+    paddingVertical: 20,
+  },
+  checkIcon: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: colors.success,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  checkIconText: {
+    color: '#FFFFFF',
+    fontSize: 40,
+    fontWeight: 'bold',
+  },
+  completedTitle: {
+    fontSize: 22,
+    fontWeight: 'bold',
+    color: colors.textPrimary,
+    marginBottom: 8,
+  },
+  completedSubtitle: {
+    fontSize: 15,
+    color: colors.textSecondary,
+  },
+  // 출퇴근 버튼
   commuteButton: {
-    width: 200,
-    height: 200,
-    borderRadius: 100,
+    width: '100%',
+    maxWidth: 300,
+    paddingVertical: 18,
+    borderRadius: 16,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 24,
     shadowColor: '#000',
     shadowOffset: {width: 0, height: 4},
-    shadowOpacity: 0.2,
+    shadowOpacity: 0.15,
     shadowRadius: 8,
-    elevation: 8,
+    elevation: 6,
   },
   buttonIn: {
     backgroundColor: colors.info,
@@ -371,15 +519,39 @@ const styles = StyleSheet.create({
   },
   buttonDone: {
     backgroundColor: colors.textDisabled,
+    shadowOpacity: 0,
+    elevation: 0,
   },
   commuteButtonText: {
     color: '#FFFFFF',
-    fontSize: 24,
+    fontSize: 20,
     fontWeight: 'bold',
   },
-  dateText: {
+  // QR 스캔 플로팅 버튼 (관리자 전용)
+  qrScanFab: {
+    position: 'absolute',
+    right: 20,
+    bottom: 100,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.primary,
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 30,
+    shadowColor: '#000',
+    shadowOffset: {width: 0, height: 4},
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  qrScanFabIcon: {
+    fontSize: 20,
+    marginRight: 8,
+  },
+  qrScanFabText: {
+    color: '#FFFFFF',
     fontSize: 16,
-    color: colors.textSecondary,
+    fontWeight: 'bold',
   },
 });
 

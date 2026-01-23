@@ -13,7 +13,8 @@ import {useRecoilValue} from 'recoil';
 import {authState} from '@/store/atoms/authAtom';
 import {workerStatusState} from '@/store/atoms/userAtom';
 import AuthStack from './AuthStack';
-import MainStack from './MainStack';
+import MainTabs from './MainTabs';
+import QRScanStack from './QRScanStack';
 import {WaitingScreen} from '@/screens/auth';
 
 const Stack = createNativeStackNavigator();
@@ -67,7 +68,18 @@ const RootNavigator: React.FC = () => {
           <Stack.Screen name="Waiting" component={WaitingScreen} />
         )}
         {initialRoute === 'Main' && (
-          <Stack.Screen name="Main" component={MainStack} />
+          <>
+            <Stack.Screen name="Main" component={MainTabs} />
+            {/* QR 스캔 스택 (팀 관리자 이상 권한) */}
+            <Stack.Screen
+              name="QRScanStack"
+              component={QRScanStack}
+              options={{
+                presentation: 'fullScreenModal',
+                animation: 'slide_from_bottom',
+              }}
+            />
+          </>
         )}
       </Stack.Navigator>
     </NavigationContainer>

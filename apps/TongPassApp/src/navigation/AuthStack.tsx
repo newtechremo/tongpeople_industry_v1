@@ -4,9 +4,12 @@ import {AuthStackParamList} from '@/types/navigation';
 import {colors} from '@/constants/colors';
 
 import {
+  AuthEntryScreen,
   CompanyCodeScreen,
   SiteSelectScreen,
   PhoneVerifyScreen,
+  PasswordSetupScreen,
+  PasswordResetScreen,
   WorkerInfoScreen,
   TermsScreen,
   TermsDetailScreen,
@@ -30,6 +33,11 @@ const AuthStack: React.FC = () => {
         headerShadowVisible: false,
       }}>
       <Stack.Screen
+        name="AuthEntry"
+        component={AuthEntryScreen}
+        options={{headerShown: false}}
+      />
+      <Stack.Screen
         name="CompanyCode"
         component={CompanyCodeScreen}
         options={{title: '회사코드 입력', headerShown: false}}
@@ -43,6 +51,16 @@ const AuthStack: React.FC = () => {
         name="PhoneVerify"
         component={PhoneVerifyScreen}
         options={{title: '전화번호 인증'}}
+      />
+      <Stack.Screen
+        name="PasswordSetup"
+        component={PasswordSetupScreen}
+        options={{title: '비밀번호 설정'}}
+      />
+      <Stack.Screen
+        name="PasswordReset"
+        component={PasswordResetScreen}
+        options={{title: '비밀번호 재설정'}}
       />
       <Stack.Screen
         name="WorkerInfo"

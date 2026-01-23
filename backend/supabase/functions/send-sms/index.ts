@@ -1,11 +1,8 @@
 // SMS 인증코드 발송 Edge Function
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { encode as base64Encode } from 'https://deno.land/std@0.208.0/encoding/base64.ts';
-
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-};
+import { handleCors } from '../_shared/cors.ts';
+import { successResponse, errorResponse, serverError } from '../_shared/response.ts';
 
 interface SendSmsRequest {
   phone: string;
@@ -98,9 +95,8 @@ function normalizePhone(phone: string): string {
 
 Deno.serve(async (req) => {
   // CORS preflight
-  if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders });
-  }
+  const corsResponse = handleCors(req);
+  if (corsResponse) return corsResponse;
 
   try {
     const supabase = createClient(
@@ -113,10 +109,7 @@ Deno.serve(async (req) => {
     // 1. 전화번호 유효성 검사
     const normalizedPhone = normalizePhone(phone);
     if (!/^01[0-9]{8,9}$/.test(normalizedPhone)) {
-      return new Response(
-        JSON.stringify({ error: '올바른 휴대폰 번호를 입력해주세요.' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+      return errorResponse('INVALID_PHONE_NUMBER', '올바른 휴대폰 번호를 입력해주세요.');
     }
 
     // 2. 목적별 검증
@@ -129,10 +122,7 @@ Deno.serve(async (req) => {
         .single();
 
       if (existingUser) {
-        return new Response(
-          JSON.stringify({ error: '이미 가입된 휴대폰 번호입니다.' }),
-          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
+        return errorResponse('DUPLICATE_PHONE', '이미 가입된 휴대폰 번호입니다.');
       }
     } else if (purpose === 'LOGIN' || purpose === 'PASSWORD_RESET') {
       // 로그인/비밀번호 재설정: 등록된 번호인지 확인
@@ -143,10 +133,7 @@ Deno.serve(async (req) => {
         .single();
 
       if (!existingUser) {
-        return new Response(
-          JSON.stringify({ error: '등록되지 않은 휴대폰 번호입니다.' }),
-          { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
+        return errorResponse('USER_NOT_FOUND', '등록되지 않은 휴대폰 번호입니다.', 404);
       }
     }
 
@@ -174,10 +161,7 @@ Deno.serve(async (req) => {
 
     if (insertError) {
       console.error('Insert error:', insertError);
-      return new Response(
-        JSON.stringify({ error: '인증코드 생성 중 오류가 발생했습니다.' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+      return errorResponse('SERVER_ERROR', '인증코드 생성 중 오류가 발생했습니다.', 500);
     }
 
     // 6. SMS 발송 (네이버 클라우드 SENS API)
@@ -201,10 +185,7 @@ Deno.serve(async (req) => {
         console.error('[SMS] 발송 실패:', smsResult.error);
         // SMS 발송 실패해도 개발 환경에서는 계속 진행 (테스트용)
         if (Deno.env.get('ENVIRONMENT') === 'production') {
-          return new Response(
-            JSON.stringify({ error: 'SMS 발송에 실패했습니다. 잠시 후 다시 시도해주세요.' }),
-            { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-          );
+          return errorResponse('SMS_SEND_FAILED', 'SMS 발송에 실패했습니다. 잠시 후 다시 시도해주세요.', 500);
         }
       }
     } else {
@@ -212,21 +193,13 @@ Deno.serve(async (req) => {
       console.log(`[개발모드] SMS 인증코드: ${normalizedPhone} -> ${code}`);
     }
 
-    return new Response(
-      JSON.stringify({
-        success: true,
-        message: '인증코드가 발송되었습니다.',
-        // 개발 환경에서만 코드 반환 (프로덕션에서는 제거)
-        ...(Deno.env.get('ENVIRONMENT') !== 'production' && { code }),
-        expiresIn: 180, // 3분 (초)
-      }),
-      { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    );
+    return successResponse({
+      message: '인증코드가 발송되었습니다.',
+      // 개발 환경에서만 코드 반환 (프로덕션에서는 제거)
+      ...(Deno.env.get('ENVIRONMENT') !== 'production' && { code }),
+      expiresIn: 180, // 3분 (초)
+    });
   } catch (error) {
-    console.error('Error:', error);
-    return new Response(
-      JSON.stringify({ error: '서버 오류가 발생했습니다.' }),
-      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    );
+    return serverError(error);
   }
 });

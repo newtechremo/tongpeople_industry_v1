@@ -27,6 +27,10 @@ import {formatPhoneNumber} from '@/utils/format';
 
 // 상태 확인 주기 (밀리초)
 const POLL_INTERVAL = 30000; // 30초
+const POLL_INTERVAL_REALTIME_FALLBACK = 60000; // Realtime 연결 시 1분 (백업용)
+
+// Realtime 연결 상태
+type RealtimeStatus = 'connecting' | 'connected' | 'disconnected' | 'error';
 
 const WaitingScreen: React.FC = () => {
   const userInfo = useRecoilValue(userInfoState);
@@ -35,8 +39,10 @@ const WaitingScreen: React.FC = () => {
 
   const [loading, setLoading] = useState(false);
   const [lastChecked, setLastChecked] = useState<Date | null>(null);
+  const [realtimeStatus, setRealtimeStatus] = useState<RealtimeStatus>('connecting');
   const pollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const appState = useRef(AppState.currentState);
+  const realtimeCleanupRef = useRef<(() => void) | null>(null);
 
   /**
    * 상태 확인
@@ -99,6 +105,73 @@ const WaitingScreen: React.FC = () => {
   );
 
   /**
+   * Realtime 구독 설정
+   * TODO: Supabase Realtime 라이브러리 설치 후 실제 연동
+   */
+  useEffect(() => {
+    if (!userInfo?.id) return;
+
+    // Realtime 연결 시뮬레이션 (실제 구현 시 Supabase 클라이언트 사용)
+    setRealtimeStatus('connecting');
+
+    const connectRealtime = async () => {
+      try {
+        // TODO: 실제 Supabase Realtime 연결
+        // const channel = supabase
+        //   .channel(`user-${userInfo.id}`)
+        //   .on(
+        //     'postgres_changes',
+        //     {
+        //       event: 'UPDATE',
+        //       schema: 'public',
+        //       table: 'users',
+        //       filter: `id=eq.${userInfo.id}`,
+        //     },
+        //     payload => {
+        //       const newStatus = payload.new.status;
+        //       if (newStatus === 'ACTIVE') {
+        //         setWorkerStatus('ACTIVE');
+        //         Alert.alert('승인 완료', '가입이 승인되었습니다!');
+        //       } else if (newStatus === 'BLOCKED') {
+        //         setWorkerStatus('BLOCKED');
+        //         Alert.alert('가입 거절', '가입 요청이 거절되었습니다.');
+        //       }
+        //     },
+        //   )
+        //   .subscribe(status => {
+        //     if (status === 'SUBSCRIBED') {
+        //       setRealtimeStatus('connected');
+        //     } else if (status === 'CLOSED' || status === 'CHANNEL_ERROR') {
+        //       setRealtimeStatus('disconnected');
+        //     }
+        //   });
+
+        // 시뮬레이션: 2초 후 연결됨 (실제로는 폴링으로 대체)
+        await new Promise<void>(resolve => setTimeout(resolve, 2000));
+        setRealtimeStatus('disconnected'); // 실제 Realtime 미연결 상태로 표시
+
+        // cleanup 함수 저장
+        realtimeCleanupRef.current = () => {
+          // channel?.unsubscribe();
+        };
+      } catch (error) {
+        setRealtimeStatus('error');
+        if (__DEV__) {
+          console.warn('[WaitingScreen] Realtime connection error:', error);
+        }
+      }
+    };
+
+    connectRealtime();
+
+    return () => {
+      if (realtimeCleanupRef.current) {
+        realtimeCleanupRef.current();
+      }
+    };
+  }, [userInfo?.id, setWorkerStatus]);
+
+  /**
    * 앱 상태 변화 처리 (포그라운드로 돌아올 때 상태 확인)
    */
   useEffect(() => {
@@ -125,22 +198,29 @@ const WaitingScreen: React.FC = () => {
 
   /**
    * 폴링 설정
+   * Realtime 연결 상태에 따라 폴링 주기 조절
    */
   useEffect(() => {
     // 초기 상태 확인
     checkStatus(false);
 
+    // Realtime 연결 시 폴링 주기를 늘림 (백업용)
+    const interval =
+      realtimeStatus === 'connected'
+        ? POLL_INTERVAL_REALTIME_FALLBACK
+        : POLL_INTERVAL;
+
     // 주기적 상태 확인
     pollIntervalRef.current = setInterval(() => {
       checkStatus(false);
-    }, POLL_INTERVAL);
+    }, interval);
 
     return () => {
       if (pollIntervalRef.current) {
         clearInterval(pollIntervalRef.current);
       }
     };
-  }, [checkStatus]);
+  }, [checkStatus, realtimeStatus]);
 
   /**
    * 로그아웃 처리
@@ -198,6 +278,27 @@ const WaitingScreen: React.FC = () => {
             <Text style={styles.refreshButtonText}>상태 새로고침</Text>
           )}
         </TouchableOpacity>
+
+        {/* 연결 상태 표시 */}
+        <View style={styles.connectionStatus}>
+          <View
+            style={[
+              styles.connectionDot,
+              realtimeStatus === 'connected'
+                ? styles.connectionDotConnected
+                : realtimeStatus === 'connecting'
+                ? styles.connectionDotConnecting
+                : styles.connectionDotDisconnected,
+            ]}
+          />
+          <Text style={styles.connectionText}>
+            {realtimeStatus === 'connected'
+              ? '실시간 연결됨'
+              : realtimeStatus === 'connecting'
+              ? '연결 중...'
+              : '자동 새로고침 중 (30초)'}
+          </Text>
+        </View>
 
         {/* 마지막 확인 시간 */}
         {lastChecked && (
@@ -296,8 +397,33 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
   },
+  // 연결 상태
+  connectionStatus: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 16,
+  },
+  connectionDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    marginRight: 8,
+  },
+  connectionDotConnected: {
+    backgroundColor: colors.success,
+  },
+  connectionDotConnecting: {
+    backgroundColor: colors.warning,
+  },
+  connectionDotDisconnected: {
+    backgroundColor: colors.textDisabled,
+  },
+  connectionText: {
+    fontSize: 12,
+    color: colors.textSecondary,
+  },
   lastCheckedText: {
-    marginTop: 12,
+    marginTop: 8,
     fontSize: 12,
     color: colors.textDisabled,
   },
