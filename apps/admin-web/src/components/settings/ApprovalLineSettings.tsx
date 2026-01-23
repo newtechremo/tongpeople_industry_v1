@@ -33,6 +33,14 @@ const MOCK_USERS = [
   { id: 'user7', name: '송기범', position: '안전기사' },
 ];
 
+// Mock 팀(업체) 데이터
+const MOCK_TEAMS = [
+  { id: 1, name: '(주)정이앤지' },
+  { id: 2, name: '협력업체A' },
+  { id: 3, name: '협력업체B' },
+  { id: 4, name: '자체팀' },
+];
+
 
 interface ApprovalLineSettingsProps {
   autoOpenModal?: boolean;
@@ -196,6 +204,9 @@ export default function ApprovalLineSettings({
               <th className="px-4 py-3 text-left text-xs font-bold text-slate-500 uppercase w-40">
                 결재라인 명칭
               </th>
+              <th className="px-4 py-3 text-left text-xs font-bold text-slate-500 uppercase w-32">
+                소속 팀
+              </th>
               <th className="px-4 py-3 text-left text-xs font-bold text-slate-500 uppercase w-40">
                 태그
               </th>
@@ -208,59 +219,76 @@ export default function ApprovalLineSettings({
             </tr>
           </thead>
           <tbody>
-            {filteredLines.map((line) => (
-              <tr key={line.id} className="border-b border-gray-100 hover:bg-gray-50">
-                <td className="px-4 py-4">
-                  <button
-                    onClick={() => handleTogglePin(line.id)}
-                    className={`w-8 h-8 rounded-full flex items-center justify-center ${
-                      line.isPinned ? 'bg-red-50' : 'bg-gray-100'
-                    }`}
-                    title="같은 태그에서 1개만 고정"
-                  >
-                    <Pin
-                      size={16}
-                      className={line.isPinned ? 'text-red-500' : 'text-slate-400'}
-                      fill={line.isPinned ? 'currentColor' : 'none'}
-                    />
-                  </button>
-                </td>
-                <td className="px-4 py-4 text-sm font-medium text-slate-700">
-                  {line.name}
-                </td>
-                <td className="px-4 py-4">
-                  <div className="flex flex-wrap gap-2">
-                    {line.tags.map((tag) => (
-                      <span
-                        key={tag}
-                        className="px-2 py-1 text-xs font-semibold rounded-full bg-slate-100 text-slate-600"
-                      >
-                        {APPROVAL_DOCUMENT_TYPE_LABELS[tag]}
+            {filteredLines.map((line) => {
+              const teamName = line.teamId
+                ? MOCK_TEAMS.find(t => t.id === line.teamId)?.name
+                : null;
+
+              return (
+                <tr key={line.id} className="border-b border-gray-100 hover:bg-gray-50">
+                  <td className="px-4 py-4">
+                    <button
+                      onClick={() => handleTogglePin(line.id)}
+                      className={`w-8 h-8 rounded-full flex items-center justify-center ${
+                        line.isPinned ? 'bg-red-50' : 'bg-gray-100'
+                      }`}
+                      title="같은 태그에서 1개만 고정"
+                    >
+                      <Pin
+                        size={16}
+                        className={line.isPinned ? 'text-red-500' : 'text-slate-400'}
+                        fill={line.isPinned ? 'currentColor' : 'none'}
+                      />
+                    </button>
+                  </td>
+                  <td className="px-4 py-4 text-sm font-medium text-slate-700">
+                    {line.name}
+                  </td>
+                  <td className="px-4 py-4">
+                    {teamName ? (
+                      <span className="px-2 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-700">
+                        {teamName}
                       </span>
-                    ))}
-                  </div>
-                </td>
-                <td className="px-4 py-4">
-                  <ApproverPreviewTable approvers={line.approvers} />
-                </td>
-                <td className="px-4 py-4 text-right">
-                  <button
-                    onClick={() => handleEdit(line)}
-                    className="p-2 text-slate-400 hover:text-orange-600 hover:bg-orange-50 rounded-lg transition-colors"
-                    title="수정"
-                  >
-                    <Pencil size={16} />
-                  </button>
-                  <button
-                    onClick={() => handleDeleteLine(line.id)}
-                    className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
-                    title="삭제"
-                  >
-                    <Trash2 size={16} />
-                  </button>
-                </td>
-              </tr>
-            ))}
+                    ) : (
+                      <span className="px-2 py-1 text-xs font-semibold rounded-full bg-gray-100 text-gray-600">
+                        공용
+                      </span>
+                    )}
+                  </td>
+                  <td className="px-4 py-4">
+                    <div className="flex flex-wrap gap-2">
+                      {line.tags.map((tag) => (
+                        <span
+                          key={tag}
+                          className="px-2 py-1 text-xs font-semibold rounded-full bg-slate-100 text-slate-600"
+                        >
+                          {APPROVAL_DOCUMENT_TYPE_LABELS[tag]}
+                        </span>
+                      ))}
+                    </div>
+                  </td>
+                  <td className="px-4 py-4">
+                    <ApproverPreviewTable approvers={line.approvers} />
+                  </td>
+                  <td className="px-4 py-4 text-right">
+                    <button
+                      onClick={() => handleEdit(line)}
+                      className="p-2 text-slate-400 hover:text-orange-600 hover:bg-orange-50 rounded-lg transition-colors"
+                      title="수정"
+                    >
+                      <Pencil size={16} />
+                    </button>
+                    <button
+                      onClick={() => handleDeleteLine(line.id)}
+                      className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                      title="삭제"
+                    >
+                      <Trash2 size={16} />
+                    </button>
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
 
@@ -331,6 +359,7 @@ function ApprovalLineForm({ editingLine, onSave, onCancel }: ApprovalLineFormPro
   const [tags, setTags] = useState<ApprovalDocumentType[]>(
     editingLine?.tags || ['GENERAL']
   );
+  const [teamId, setTeamId] = useState<number | null>(editingLine?.teamId ?? null);
   const [isPinned, setIsPinned] = useState(editingLine?.isPinned || false);
   const [approvers, setApprovers] = useState<ApproverSlot[]>(() => {
     if (editingLine) {
@@ -424,6 +453,7 @@ function ApprovalLineForm({ editingLine, onSave, onCancel }: ApprovalLineFormPro
       id: editingLine?.id || '',
       name: lineName.trim(),
       tags,
+      teamId,
       isPinned,
       approvers: validApprovers.map((a) => ({
         userId: a.userId,
@@ -460,6 +490,28 @@ function ApprovalLineForm({ editingLine, onSave, onCancel }: ApprovalLineFormPro
           className="w-full px-4 py-3 border border-gray-200 rounded-lg text-sm
                      focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
         />
+      </div>
+
+      <div className="space-y-2">
+        <label className="block text-sm font-bold text-slate-700">
+          소속 팀(업체)
+        </label>
+        <select
+          value={teamId ?? ''}
+          onChange={(e) => setTeamId(e.target.value ? Number(e.target.value) : null)}
+          className="w-full px-4 py-3 border border-gray-200 rounded-lg text-sm
+                     focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+        >
+          <option value="">공용 (모든 팀)</option>
+          {MOCK_TEAMS.map((team) => (
+            <option key={team.id} value={team.id}>
+              {team.name}
+            </option>
+          ))}
+        </select>
+        <p className="text-xs text-slate-400">
+          특정 팀을 선택하면 해당 팀에서만 이 결재라인을 사용할 수 있습니다.
+        </p>
       </div>
 
       <div className="space-y-2">

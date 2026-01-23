@@ -64,12 +64,23 @@ export default function InitialAssessmentForm({ type, onSubmit, onCancel }: Prop
   const [workPeriodEnd, setWorkPeriodEnd] = useState('2026-01-31');
   const [approvalModalOpen, setApprovalModalOpen] = useState(false);
 
+  // Mock: 현재 사용자의 팀 ID (실제로는 인증 컨텍스트에서 가져옴)
+  const currentUserTeamId: number | null = 1; // (주)정이앤지
+
   const approvalLines = useApprovalLines();
   const availableApprovalLines = useMemo(() => {
-    return approvalLines.filter((line) =>
-      line.tags.includes('RISK_ASSESSMENT') || line.tags.includes('GENERAL')
-    );
-  }, [approvalLines]);
+    return approvalLines.filter((line) => {
+      // 태그 필터링
+      const hasRequiredTag = line.tags.includes('RISK_ASSESSMENT') || line.tags.includes('GENERAL');
+      if (!hasRequiredTag) return false;
+
+      // 팀 필터링: 공용 또는 현재 사용자의 팀과 일치
+      const isPublic = !line.teamId;
+      const isMyTeam = currentUserTeamId !== null && line.teamId === currentUserTeamId;
+
+      return isPublic || isMyTeam;
+    });
+  }, [approvalLines, currentUserTeamId]);
 
   const defaultApprovalLine = useMemo(() => {
     const pinned = availableApprovalLines.find((line) => line.isPinned);

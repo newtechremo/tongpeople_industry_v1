@@ -3,6 +3,14 @@ import { Check, Search, X } from 'lucide-react';
 import type { ApprovalLine } from '@tong-pass/shared';
 import { APPROVAL_DOCUMENT_TYPE_LABELS } from '@tong-pass/shared';
 
+// Mock 팀(업체) 데이터
+const MOCK_TEAMS = [
+  { id: 1, name: '(주)정이앤지' },
+  { id: 2, name: '협력업체A' },
+  { id: 3, name: '협력업체B' },
+  { id: 4, name: '자체팀' },
+];
+
 interface ApprovalLineSelectModalProps {
   isOpen: boolean;
   lines: ApprovalLine[];
@@ -82,6 +90,10 @@ export default function ApprovalLineSelectModal({
             <div className="divide-y divide-gray-100">
               {filtered.map((line) => {
                 const isSelected = selectedId === line.id;
+                const teamName = line.teamId
+                  ? MOCK_TEAMS.find(t => t.id === line.teamId)?.name
+                  : null;
+
                 return (
                   <button
                     key={line.id}
@@ -92,10 +104,19 @@ export default function ApprovalLineSelectModal({
                   >
                     <div className="flex items-start justify-between gap-4">
                       <div>
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 flex-wrap">
                           <span className="text-sm font-bold text-slate-800">{line.name}</span>
                           {line.isPinned && (
                             <span className="text-xs font-semibold text-red-500">고정</span>
+                          )}
+                          {teamName ? (
+                            <span className="px-2 py-0.5 text-xs font-semibold rounded-full bg-blue-100 text-blue-700">
+                              {teamName}
+                            </span>
+                          ) : (
+                            <span className="px-2 py-0.5 text-xs font-semibold rounded-full bg-gray-100 text-gray-600">
+                              공용
+                            </span>
                           )}
                         </div>
                         <div className="flex flex-wrap gap-2 mt-2">
