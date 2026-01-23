@@ -9,6 +9,7 @@ export interface WorkerRegistrationData {
   companyId: string;
   siteId: string;
   phoneNumber: string;
+  password: string; // 비밀번호
   name: string;
   birthDate: string;
   gender: 'M' | 'F';
@@ -37,6 +38,7 @@ export type AuthStackParamList = {
     companyId: string;
     siteId: string;
     phoneNumber: string;
+    password: string; // 비밀번호
     preRegisteredData?: PreRegisteredData;
 
     // 이직 시나리오 추가 파라미터
@@ -59,6 +61,9 @@ export type AuthStackParamList = {
     siteId: string;
     phoneNumber: string;
     preRegisteredData?: PreRegisteredData;
+    // 이직 시나리오 추가 파라미터
+    isTransfer?: boolean;
+    existingUserId?: string;
   };
   PasswordReset: undefined;
   Waiting: undefined;

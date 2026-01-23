@@ -1,6 +1,7 @@
 // 근로자 QR 페이로드 생성 Edge Function
 // 관리자가 스캔할 QR 코드 데이터를 서버에서 안전하게 생성
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { verifyAccessToken } from '../_shared/jwt.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -51,7 +52,6 @@ Deno.serve(async (req) => {
 
   try {
     const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? '';
-    const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY') ?? '';
 
     // Authorization 헤더에서 JWT 토큰 추출
     const authHeader = req.headers.get('Authorization');
@@ -64,23 +64,16 @@ Deno.serve(async (req) => {
 
     const token = authHeader.replace('Bearer ', '');
 
-    // 사용자 인증을 위한 클라이언트
-    const supabaseAuth = createClient(supabaseUrl, supabaseAnonKey, {
-      global: {
-        headers: { Authorization: authHeader },
-      },
-    });
-
     // Service Role 클라이언트 (DB 쿼리용)
     const supabaseAdmin = createClient(
       supabaseUrl,
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
 
-    // 1. JWT 검증 및 사용자 확인
-    const { data: { user }, error: authError } = await supabaseAuth.auth.getUser(token);
+    // 1. 커스텀 JWT 검증
+    const userId = await verifyAccessToken(token);
 
-    if (authError || !user) {
+    if (!userId) {
       return new Response(
         JSON.stringify({ error: '유효하지 않은 인증 토큰입니다.' }),
         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -91,7 +84,7 @@ Deno.serve(async (req) => {
     const { data: workerData, error: workerError } = await supabaseAdmin
       .from('users')
       .select('id, status, name')
-      .eq('id', user.id)
+      .eq('id', userId)
       .single();
 
     if (workerError || !workerData) {
@@ -123,14 +116,14 @@ Deno.serve(async (req) => {
     const expiresAt = now + QR_EXPIRATION_MS;
 
     // 4. 서명 생성
-    const signature = await generateQRSignature(user.id, timestamp, expiresAt);
+    const signature = await generateQRSignature(userId, timestamp, expiresAt);
 
     // 5. 응답 반환
     return new Response(
       JSON.stringify({
         success: true,
         data: {
-          workerId: user.id,
+          workerId: userId,
           timestamp: timestamp,
           expiresAt: expiresAt,
           signature: signature,

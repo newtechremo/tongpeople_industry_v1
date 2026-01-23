@@ -28,6 +28,7 @@ import { useAuth } from '@/context/AuthContext';
 import { useDialog } from '@/hooks/useDialog';
 import { getWorkers } from '@/api/workers';
 import { getPartners } from '@/api/partners';
+import { supabase } from '@/lib/supabase';
 
 // 네비게이션 state 타입 정의
 interface WorkersLocationState {
@@ -145,8 +146,10 @@ export default function WorkersPage() {
 
   // 데이터 로드
   const loadData = useCallback(async () => {
+    console.log('[loadData] called, user:', user, 'siteId:', user?.siteId);
     if (!user?.siteId) {
       // siteId가 없으면 빈 데이터 표시
+      console.log('[loadData] no siteId, clearing data');
       setWorkers([]);
       setTeams([]);
       setUseMockData(false);
@@ -156,9 +159,10 @@ export default function WorkersPage() {
     setIsLoading(true);
     try {
       const [workersData, partnersData] = await Promise.all([
-        getWorkers({ siteId: user.siteId }),
+        getWorkers({ status: 'ALL' }), // 임시: siteId 필터 제거하여 모든 근로자 조회
         getPartners(user.siteId),
       ]);
+      console.log('[loadData] workersData:', workersData);
 
       // API 데이터를 Worker 타입으로 변환
       const convertedWorkers: Worker[] = (workersData || []).map(w => ({
@@ -178,7 +182,10 @@ export default function WorkersPage() {
         monthlyWorkDays: 0,
         registeredAt: w.created_at || '',
       }));
+      console.log('[loadData] convertedWorkers:', convertedWorkers);
+      console.log('[loadData] setting workers state...');
       setWorkers(convertedWorkers);
+      console.log('[loadData] workers state set');
       setUseMockData(false);
 
       const convertedTeams: Team[] = (partnersData || []).map(p => ({
@@ -261,7 +268,7 @@ export default function WorkersPage() {
         if (a.role !== 'TEAM_ADMIN' && b.role === 'TEAM_ADMIN') return 1;
         return a.name.localeCompare(b.name);
       });
-  }, [searchQuery, teamFilter, roleFilter, statusFilter]);
+  }, [displayWorkers, searchQuery, teamFilter, roleFilter, statusFilter]);
 
   // 페이지네이션
   const totalPages = Math.ceil(filteredWorkers.length / ITEMS_PER_PAGE);
@@ -303,13 +310,18 @@ export default function WorkersPage() {
   const handleApproveWorker = async (workerId: string, e: React.MouseEvent) => {
     e.stopPropagation();
     try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) {
+        throw new Error('인증 세션이 만료되었습니다. 다시 로그인해주세요.');
+      }
+
       const response = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/admin-approve-worker`,
         {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            Authorization: `Bearer ${user?.session?.access_token}`,
+            Authorization: `Bearer ${session.access_token}`,
           },
           body: JSON.stringify({ workerId }),
         }
@@ -329,7 +341,7 @@ export default function WorkersPage() {
       showAlert({
         title: '승인 실패',
         message: error instanceof Error ? error.message : '승인 처리 중 오류가 발생했습니다.',
-        variant: 'error',
+        variant: 'danger',
       });
     }
   };
@@ -338,13 +350,21 @@ export default function WorkersPage() {
   const handleRejectWorker = async (workerId: string, e: React.MouseEvent) => {
     e.stopPropagation();
     try {
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      console.log('[handleRejectWorker] session:', session, 'error:', sessionError);
+      console.log('[handleRejectWorker] access_token:', session?.access_token?.substring(0, 50) + '...');
+
+      if (!session?.access_token) {
+        throw new Error('인증 세션이 만료되었습니다. 다시 로그인해주세요.');
+      }
+
       const response = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/admin-reject-worker`,
         {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            Authorization: `Bearer ${user?.session?.access_token}`,
+            Authorization: `Bearer ${session.access_token}`,
           },
           body: JSON.stringify({ workerId }),
         }
@@ -364,7 +384,7 @@ export default function WorkersPage() {
       showAlert({
         title: '반려 실패',
         message: error instanceof Error ? error.message : '반려 처리 중 오류가 발생했습니다.',
-        variant: 'error',
+        variant: 'danger',
       });
     }
   };

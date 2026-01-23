@@ -12,7 +12,7 @@ import {
   ChevronDown,
 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
-import { getAttendanceRecords } from '@/api/attendance';
+import { getWorkersWithAttendance } from '@/api/attendance';
 import { getPartners } from '@/api/partners';
 import { getWorkDate } from '@tong-pass/shared';
 import { useDialog } from '@/hooks/useDialog';
@@ -215,9 +215,9 @@ function StatusBadge({ status }: { status: AttendanceStatus }) {
       );
     case 'PENDING':
       return (
-        <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-yellow-100 text-yellow-700 text-xs font-bold rounded-full">
-          <span className="w-1.5 h-1.5 bg-yellow-500 rounded-full" />
-          승인대기
+        <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-gray-100 text-gray-600 text-xs font-bold rounded-full">
+          <span className="w-1.5 h-1.5 bg-gray-400 rounded-full" />
+          미출근
         </span>
       );
     case 'CHECKED_OUT':
@@ -255,31 +255,40 @@ export default function AttendancePage() {
 
     setIsLoading(true);
     try {
-      const [recordsData, partnersData] = await Promise.all([
-        getAttendanceRecords({ siteId: user.siteId, workDate: selectedDate }),
+      const [workersData, partnersData] = await Promise.all([
+        getWorkersWithAttendance({ siteId: user.siteId, workDate: selectedDate }),
         getPartners(user.siteId),
       ]);
 
-      if (recordsData && recordsData.length > 0) {
+      if (workersData && workersData.length > 0) {
         // API 데이터를 AttendanceRecord 타입으로 변환
-        const convertedRecords: AttendanceRecord[] = recordsData.map((r, idx) => ({
-          id: r.id || idx,
-          workerId: r.worker_id || '',
-          workerName: r.worker_name || '',
-          teamName: r.partnerName || '미지정',
-          position: r.position || '일반근로자',
-          birthDate: r.birth_date || '',
-          age: r.birth_date ? new Date().getFullYear() - new Date(r.birth_date).getFullYear() : 0,
-          isSenior: r.is_senior || false,
-          isTeamAdmin: r.role === 'TEAM_ADMIN' || r.role === 'SITE_ADMIN',
-          checkInTime: r.check_in_time ? new Date(r.check_in_time).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' }) : null,
-          checkOutTime: r.check_out_time ? new Date(r.check_out_time).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' }) : null,
-          isAutoOut: r.is_auto_out || false,
-          status: r.check_out_time ? 'CHECKED_OUT' : 'WORKING',
-        }));
+        const convertedRecords: AttendanceRecord[] = workersData.map((r, idx) => {
+          // 상태 결정: 출근기록 없음 → 미출근, 퇴근시간 있음 → 퇴근, 그 외 → 출근중
+          let status: AttendanceStatus = 'PENDING'; // 미출근
+          if (r.has_attendance) {
+            status = r.check_out_time ? 'CHECKED_OUT' : 'WORKING';
+          }
+
+          return {
+            id: r.id || idx,
+            workerId: r.worker_id || '',
+            workerName: r.worker_name || '',
+            teamName: r.partnerName || '미지정',
+            position: r.position || '일반근로자',
+            birthDate: r.birth_date || '',
+            age: r.age || 0,
+            isSenior: r.is_senior || false,
+            isTeamAdmin: r.role === 'TEAM_ADMIN' || r.role === 'SITE_ADMIN',
+            checkInTime: r.check_in_time ? new Date(r.check_in_time).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' }) : null,
+            checkOutTime: r.check_out_time ? new Date(r.check_out_time).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' }) : null,
+            isAutoOut: r.is_auto_out || false,
+            status,
+          };
+        });
         setAttendanceData(convertedRecords);
         setUseMockData(false);
       } else {
+        // 근로자가 한 명도 없으면 mock 데이터 표시
         setUseMockData(true);
       }
 
@@ -490,8 +499,8 @@ export default function AttendancePage() {
                 <p className="text-sm text-slate-500">근무 중</p>
                 <p className="text-2xl font-black text-slate-800">{stats.working}명</p>
                 {stats.pending > 0 && (
-                  <p className="text-xs text-yellow-600 font-bold mt-0.5">
-                    승인대기 {stats.pending}명
+                  <p className="text-xs text-gray-500 font-bold mt-0.5">
+                    미출근 {stats.pending}명
                   </p>
                 )}
               </div>

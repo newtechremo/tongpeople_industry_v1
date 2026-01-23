@@ -85,9 +85,11 @@ const SignatureScreenComponent: React.FC<SignatureScreenProps> = ({
     try {
       // registerWorker API 호출
       const result = await registerWorker({
+        companyId: registrationData.companyId,
         siteId: registrationData.siteId,
         teamId: registrationData.teamId,
         phoneNumber: registrationData.phoneNumber,
+        password: registrationData.password,
         name: registrationData.name,
         birthDate: registrationData.birthDate,
         gender: registrationData.gender,

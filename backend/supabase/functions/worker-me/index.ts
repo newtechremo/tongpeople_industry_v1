@@ -4,6 +4,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { isSenior } from '../_shared/date.ts';
 import { corsHeaders, handleCors } from '../_shared/cors.ts';
 import { successResponse, errorResponse, serverError } from '../_shared/response.ts';
+import { verifyAccessToken } from '../_shared/jwt.ts';
 
 Deno.serve(async (req) => {
   // CORS preflight
@@ -20,14 +21,6 @@ Deno.serve(async (req) => {
     const token = authHeader.replace('Bearer ', '');
 
     const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? '';
-    const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY') ?? '';
-
-    // 사용자 인증을 위한 클라이언트 (Anon Key 사용)
-    const supabaseAuth = createClient(supabaseUrl, supabaseAnonKey, {
-      global: {
-        headers: { Authorization: authHeader },
-      },
-    });
 
     // Service Role 클라이언트 (DB 쿼리용)
     const supabaseAdmin = createClient(
@@ -35,11 +28,11 @@ Deno.serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
 
-    // 1. JWT 검증 및 사용자 확인
-    const { data: { user }, error: authError } = await supabaseAuth.auth.getUser(token);
+    // 1. 커스텀 JWT 검증
+    const userId = await verifyAccessToken(token);
 
-    if (authError || !user) {
-      console.error('Auth error:', authError);
+    if (!userId) {
+      console.error('Token verification failed');
       return errorResponse('INVALID_TOKEN', '유효하지 않은 인증 토큰입니다.', 401);
     }
 
@@ -81,7 +74,7 @@ Deno.serve(async (req) => {
           name
         )
       `)
-      .eq('id', user.id)
+      .eq('id', userId)
       .single();
 
     if (workerError || !workerData) {
@@ -118,7 +111,7 @@ Deno.serve(async (req) => {
     const { data: todayAttendance } = await supabaseAdmin
       .from('attendance')
       .select('id, check_in_time, check_out_time, is_auto_out')
-      .eq('user_id', user.id)
+      .eq('user_id', userId)
       .eq('work_date', workDateStr)
       .single();
 

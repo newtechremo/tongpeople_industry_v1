@@ -22,14 +22,22 @@ import {
 } from 'react-native';
 import {useNavigation} from '@react-navigation/native';
 import {NativeStackNavigationProp} from '@react-navigation/native-stack';
+import {useSetRecoilState} from 'recoil';
 import {colors} from '@/constants/colors';
 import {AuthStackParamList} from '@/types/navigation';
 import {formatPhoneNumber} from '@/utils/format';
+import {loginWithPassword} from '@/api/auth';
+import {useAuth} from '@/hooks/useAuth';
+import {workerStatusState, userInfoState} from '@/store/atoms/userAtom';
+import {ApiError} from '@/types/api';
 
 type NavigationProp = NativeStackNavigationProp<AuthStackParamList>;
 
 const AuthEntryScreen: React.FC = () => {
   const navigation = useNavigation<NavigationProp>();
+  const {login} = useAuth();
+  const setWorkerStatus = useSetRecoilState(workerStatusState);
+  const setUserInfo = useSetRecoilState(userInfoState);
 
   const [phoneNumber, setPhoneNumber] = useState('');
   const [password, setPassword] = useState('');
@@ -61,24 +69,86 @@ const AuthEntryScreen: React.FC = () => {
   const handleLogin = useCallback(async () => {
     if (!isLoginEnabled) return;
 
+    // 관리자 로그인은 웹에서만 지원
+    if (isAdminLogin) {
+      Alert.alert(
+        '관리자 로그인',
+        '관리자 로그인은 웹에서만 지원됩니다.\n관리자 웹사이트를 이용해주세요.',
+      );
+      return;
+    }
+
     setLoading(true);
 
     try {
-      // TODO: 실제 로그인 API 연동 (POST /auth/login)
-      // 현재는 알림만 표시
-      Alert.alert(
-        '준비 중',
-        '로그인 기능은 준비 중입니다.\n가입하기 버튼을 통해 회원가입을 진행해주세요.',
-      );
+      // 숫자만 추출
+      const cleanedPhone = phoneNumber.replace(/[^0-9]/g, '');
+
+      // 비밀번호 로그인 API 호출
+      const result = await loginWithPassword(cleanedPhone, password);
+
+      // 토큰 저장 및 로그인 처리
+      login(result.accessToken, result.refreshToken);
+
+      // 상태 저장
+      setWorkerStatus(result.status);
+
+      // 사용자 정보 부분 업데이트 (기존 정보 유지, 로그인 응답 정보로 갱신)
+      if (result.workerId) {
+        setUserInfo(prev => {
+          if (prev) {
+            // 기존 정보가 있으면 일부만 업데이트
+            return {
+              ...prev,
+              id: result.workerId,
+              phone: cleanedPhone,
+              name: result.name || prev.name,
+              status: result.status,
+            };
+          }
+          // 기존 정보가 없으면 최소한의 정보로 생성 (전체 정보는 별도 API로 조회 필요)
+          return {
+            id: result.workerId,
+            phone: cleanedPhone,
+            phoneNumber: cleanedPhone,
+            name: result.name || '',
+            birthDate: '',
+            isSenior: false,
+            gender: 'M' as const,
+            nationality: '',
+            jobTitle: '',
+            status: result.status,
+            role: 'WORKER' as const,
+            preRegistered: false,
+            isDataConflict: false,
+            companyId: '',
+            siteId: '',
+            teamId: '',
+            createdAt: new Date().toISOString(),
+          };
+        });
+      }
+
+      // RootNavigator에서 상태에 따라 화면 분기 처리
     } catch (error) {
-      Alert.alert(
-        '로그인 실패',
-        '전화번호 또는 비밀번호가 올바르지 않습니다.',
-      );
+      const apiError =
+        error instanceof ApiError ? error : new ApiError('UNKNOWN_ERROR');
+
+      if (apiError.code === 'USER_NOT_FOUND') {
+        Alert.alert('로그인 실패', '등록되지 않은 전화번호입니다.');
+      } else if (apiError.code === 'INVALID_PASSWORD') {
+        Alert.alert('로그인 실패', '전화번호 또는 비밀번호가 일치하지 않습니다.');
+      } else if (apiError.code === 'WORKER_NOT_ACTIVE') {
+        Alert.alert('로그인 실패', '비활성화된 계정입니다.');
+      } else if (apiError.code === 'FORBIDDEN') {
+        Alert.alert('로그인 실패', '차단된 계정입니다. 관리자에게 문의하세요.');
+      } else {
+        Alert.alert('로그인 실패', apiError.userMessage || '로그인에 실패했습니다.');
+      }
     } finally {
       setLoading(false);
     }
-  }, [isLoginEnabled, phoneNumber, password, isAdminLogin]);
+  }, [isLoginEnabled, phoneNumber, password, isAdminLogin, login, setWorkerStatus, setUserInfo]);
 
   /**
    * 가입하기 버튼 (A01로 이동)

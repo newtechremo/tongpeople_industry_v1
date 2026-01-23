@@ -91,12 +91,16 @@ export default function WorkerAddModal({ isOpen, onClose, teams, onSuccess }: Wo
 
     setLoading(true);
 
+    // 생년월일 8자리를 YYYY-MM-DD 형식으로 변환
+    const rawBirthDate = formData.birthDate.replace(/-/g, '');
+    const formattedBirthDate = `${rawBirthDate.slice(0, 4)}-${rawBirthDate.slice(4, 6)}-${rawBirthDate.slice(6, 8)}`;
+
     try {
       const result = await inviteWorker({
         teamId: parseInt(formData.teamId),
         name: formData.name,
         phone: formData.phone,
-        birthDate: formData.birthDate,
+        birthDate: formattedBirthDate,
         position: formData.position,
         role: formData.role as 'WORKER' | 'TEAM_ADMIN',
         nationality: formData.nationality || 'KR',

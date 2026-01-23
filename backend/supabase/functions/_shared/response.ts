@@ -57,6 +57,8 @@ export function errorResponse(
     UNKNOWN_ERROR: '알 수 없는 오류가 발생했습니다.',
     UNAUTHORIZED: '인증이 필요합니다.',
     FORBIDDEN: '접근 권한이 없습니다.',
+    INVALID_PASSWORD: '비밀번호가 올바르지 않습니다.',
+    LOGIN_FAILED: '로그인에 실패했습니다.',
   };
 
   return new Response(

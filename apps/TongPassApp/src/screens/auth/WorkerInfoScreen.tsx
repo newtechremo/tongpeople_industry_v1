@@ -31,7 +31,7 @@ const WorkerInfoScreen: React.FC<WorkerInfoScreenProps> = ({
   navigation,
   route,
 }) => {
-  const {companyId, siteId, phoneNumber, preRegisteredData, isTransfer, existingUserId} = route.params;
+  const {companyId, siteId, phoneNumber, password, preRegisteredData, isTransfer, existingUserId} = route.params;
 
   // 기본 정보
   const [name, setName] = useState(preRegisteredData?.name || '');
@@ -191,6 +191,7 @@ const WorkerInfoScreen: React.FC<WorkerInfoScreenProps> = ({
           companyId,
           siteId,
           phoneNumber,
+          password,
           teamId: selectedTeamId,
           name: name.trim(),
           birthDate,
@@ -207,6 +208,7 @@ const WorkerInfoScreen: React.FC<WorkerInfoScreenProps> = ({
       companyId,
       siteId,
       phoneNumber,
+      password,
       selectedTeamId,
       name,
       birthDate,

@@ -20,10 +20,23 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const supabase = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
-    );
+    const supabaseUrl = Deno.env.get('SUPABASE_URL') || '';
+    const serviceRoleKey = Deno.env.get('MY_SERVICE_ROLE_KEY') || Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
+
+    const supabase = createClient(supabaseUrl, serviceRoleKey, {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false,
+      },
+      db: {
+        schema: 'public',
+      },
+      global: {
+        headers: {
+          'x-supabase-role': 'service_role',
+        },
+      },
+    });
 
     // 1. JWT 토큰에서 관리자 정보 추출
     const authHeader = req.headers.get('Authorization');
@@ -161,25 +174,63 @@ Deno.serve(async (req) => {
       );
     }
 
-    // 10. 승인 처리 (ACTIVE 상태로 전환)
-    const now = new Date().toISOString();
-    const { data: updatedWorker, error: updateError } = await supabase
+    // 10. 승인 처리 (ACTIVE 상태로 전환) - RLS 우회를 위해 RPC 함수 사용
+    console.log('[admin-approve-worker] Calling RPC admin_approve_worker');
+
+    const { data: rpcResult, error: rpcError } = await supabase.rpc('admin_approve_worker', {
+      p_worker_id: data.workerId,
+      p_partner_id: finalTeamId,
+      p_role: finalRole,
+      p_approved_by: adminUser.id,
+    });
+
+    console.log('[admin-approve-worker] RPC result:', { rpcResult, rpcError });
+
+    if (rpcError) {
+      console.error('[admin-approve-worker] RPC error:', rpcError);
+      return new Response(
+        JSON.stringify({
+          error: '승인 처리 중 오류가 발생했습니다.',
+          details: rpcError.message,
+          hint: 'admin_approve_worker RPC 함수가 데이터베이스에 생성되어 있는지 확인하세요.'
+        }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // RPC 함수 결과 확인
+    if (!rpcResult?.success) {
+      return new Response(
+        JSON.stringify({
+          error: rpcResult?.error || '승인 처리에 실패했습니다.',
+        }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // 승인 후 근로자 정보 다시 조회
+    const { data: updatedWorker, error: fetchError } = await supabase
       .from('users')
-      .update({
-        status: 'ACTIVE',
-        partner_id: finalTeamId,
-        role: finalRole,
-        approved_at: now,
-        approved_by: adminUser.id,
-      })
+      .select('*')
       .eq('id', data.workerId)
-      .select()
       .single();
 
-    if (updateError) {
-      console.error('Worker approval error:', updateError);
+    console.log('[admin-approve-worker] Updated worker:', { updatedWorker, fetchError });
+
+    if (fetchError || !updatedWorker) {
       return new Response(
-        JSON.stringify({ error: '승인 처리 중 오류가 발생했습니다.' }),
+        JSON.stringify({ error: '승인 후 정보 조회 실패' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // 상태가 실제로 ACTIVE로 변경되었는지 확인
+    if (updatedWorker.status !== 'ACTIVE') {
+      return new Response(
+        JSON.stringify({
+          error: '승인 처리가 완료되지 않았습니다.',
+          currentStatus: updatedWorker.status,
+        }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }

@@ -2,6 +2,7 @@
 // 관리자가 근로자를 선등록하고 SMS로 초대 링크 발송
 // 근로자 상태: PENDING (동의대기)
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { encode as base64Encode } from 'https://deno.land/std@0.208.0/encoding/base64.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -31,6 +32,83 @@ function isValidBirthDate(dateStr: string): boolean {
 
   const date = new Date(dateStr);
   return date instanceof Date && !isNaN(date.getTime());
+}
+
+// 네이버 클라우드 SENS API 시그니처 생성
+async function makeSignature(
+  method: string,
+  uri: string,
+  timestamp: string,
+  accessKey: string,
+  secretKey: string
+): Promise<string> {
+  const message = `${method} ${uri}\n${timestamp}\n${accessKey}`;
+  const encoder = new TextEncoder();
+  const keyData = encoder.encode(secretKey);
+  const messageData = encoder.encode(message);
+
+  const cryptoKey = await crypto.subtle.importKey(
+    'raw',
+    keyData,
+    { name: 'HMAC', hash: 'SHA-256' },
+    false,
+    ['sign']
+  );
+
+  const signature = await crypto.subtle.sign('HMAC', cryptoKey, messageData);
+  return base64Encode(new Uint8Array(signature));
+}
+
+// 네이버 클라우드 SENS SMS 발송 (LMS 지원)
+async function sendInviteSms(
+  phone: string,
+  message: string,
+  serviceId: string,
+  accessKey: string,
+  secretKey: string,
+  sendNumber: string
+): Promise<{ success: boolean; error?: string }> {
+  const timestamp = Date.now().toString();
+  const uri = `/sms/v2/services/${serviceId}/messages`;
+  const url = `https://sens.apigw.ntruss.com${uri}`;
+
+  const signature = await makeSignature('POST', uri, timestamp, accessKey, secretKey);
+
+  // 메시지 길이에 따라 SMS/LMS 자동 선택 (90바이트 초과시 LMS)
+  const msgType = new TextEncoder().encode(message).length > 90 ? 'LMS' : 'SMS';
+
+  const body = {
+    type: msgType,
+    from: sendNumber,
+    content: message,
+    messages: [{ to: phone }],
+  };
+
+  try {
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json; charset=utf-8',
+        'x-ncp-apigw-timestamp': timestamp,
+        'x-ncp-iam-access-key': accessKey,
+        'x-ncp-apigw-signature-v2': signature,
+      },
+      body: JSON.stringify(body),
+    });
+
+    const result = await response.json();
+
+    if (response.ok && result.statusCode === '202') {
+      console.log('[SENS] 초대 SMS 발송 성공:', result.requestId);
+      return { success: true };
+    } else {
+      console.error('[SENS] 초대 SMS 발송 실패:', result);
+      return { success: false, error: result.statusMessage || 'SMS 발송 실패' };
+    }
+  } catch (error) {
+    console.error('[SENS] API 호출 오류:', error);
+    return { success: false, error: '네트워크 오류' };
+  }
 }
 
 Deno.serve(async (req) => {
@@ -232,35 +310,54 @@ Deno.serve(async (req) => {
       );
     }
 
-    // 14. 초대 토큰 생성 (JWT 형식)
-    const inviteToken = btoa(JSON.stringify({
+    // 14. 초대 토큰 생성 (Unicode 지원 Base64)
+    const tokenPayload = JSON.stringify({
       userId: newUser.id,
       phone: normalizedPhone,
       name: data.name,
       purpose: 'INVITATION',
       createdAt: Date.now(),
       expiresAt: Date.now() + 7 * 24 * 60 * 60 * 1000, // 7일 유효
-    }));
+    });
+    // Unicode를 지원하기 위해 encodeURIComponent 사용
+    const inviteToken = btoa(encodeURIComponent(tokenPayload));
 
     // 15. 초대 링크 생성 (모바일 앱 딥링크)
     const inviteLink = `tongpass://invite?token=${inviteToken}`;
 
-    // 16. (임시) SMS 발송 대신 콘솔 로그
-    console.log('='.repeat(60));
-    console.log('[근로자 초대 링크 발송]');
-    console.log(`근로자: ${data.name} (${normalizedPhone})`);
-    console.log(`팀: ${team.name}`);
-    console.log(`권한: ${data.role}`);
-    console.log(`초대 링크: ${inviteLink}`);
-    console.log('='.repeat(60));
+    // 16. SMS 발송 (네이버 클라우드 SENS API)
+    const smsAccessKey = Deno.env.get('NCP_ACCESS_KEY');
+    const smsSecretKey = Deno.env.get('NCP_SECRET_KEY');
+    const smsServiceId = Deno.env.get('NCP_SMS_SERVICE_ID');
+    const smsSendNumber = Deno.env.get('NCP_SMS_SEND_NUMBER');
 
-    // TODO: 실제 SMS 발송 로직
-    // await sendSMS(normalizedPhone, `
-    //   [통패스] ${data.name}님, ${team.name}에 초대되었습니다.
-    //   아래 링크를 눌러 가입을 완료해주세요.
-    //   ${inviteLink}
-    //   (7일간 유효)
-    // `);
+    const smsMessage = `[통패스] ${data.name}님, ${team.name}에 초대되었습니다.\n아래 링크를 눌러 가입을 완료해주세요.\n${inviteLink}\n(7일간 유효)`;
+
+    if (smsAccessKey && smsSecretKey && smsServiceId && smsSendNumber) {
+      const smsResult = await sendInviteSms(
+        normalizedPhone,
+        smsMessage,
+        smsServiceId,
+        smsAccessKey,
+        smsSecretKey,
+        smsSendNumber
+      );
+
+      if (!smsResult.success) {
+        console.error('[SMS] 초대 문자 발송 실패:', smsResult.error);
+        // SMS 발송 실패해도 등록은 완료된 상태이므로 경고만 로그
+      } else {
+        console.log('[SMS] 초대 문자 발송 성공');
+      }
+    } else {
+      // 환경변수 미설정: 콘솔에만 출력 (개발 모드)
+      console.log('='.repeat(60));
+      console.log('[개발모드] SMS 환경변수 미설정 - 콘솔 출력만');
+      console.log(`근로자: ${data.name} (${normalizedPhone})`);
+      console.log(`팀: ${team.name}`);
+      console.log(`초대 링크: ${inviteLink}`);
+      console.log('='.repeat(60));
+    }
 
     // 17. 응답
     return new Response(

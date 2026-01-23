@@ -53,7 +53,7 @@ Deno.serve(async (req) => {
     // 1. 전화번호로 사용자 조회
     const { data: user, error: userError } = await supabaseAdmin
       .from('users')
-      .select('id, name, role, is_active, company_id, site_id')
+      .select('id, name, role, status, is_active, company_id, site_id')
       .eq('phone', normalizedPhone)
       .single();
 
@@ -72,8 +72,19 @@ Deno.serve(async (req) => {
       );
     }
 
-    // 2. 계정 활성화 상태 확인
-    if (!user.is_active) {
+    // 2. 계정 활성화 상태 확인 (status 또는 is_active 확인)
+    const isActive = user.status === 'ACTIVE' || user.is_active === true;
+    const isBlocked = user.status === 'BLOCKED';
+    const isInactive = user.status === 'INACTIVE';
+
+    if (isBlocked) {
+      return new Response(
+        JSON.stringify({ error: '차단된 계정입니다. 관리자에게 문의하세요.' }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    if (isInactive || !isActive) {
       return new Response(
         JSON.stringify({ error: '비활성화된 계정입니다. 관리자에게 문의하세요.' }),
         { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }

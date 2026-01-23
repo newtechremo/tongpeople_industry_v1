@@ -12,6 +12,9 @@ interface RegisterWorkerRequest {
   phone: string;
   phoneNumber?: string; // 모바일 앱 호환
 
+  // 비밀번호
+  password?: string;
+
   // 근로자 정보
   name: string;
   birthDate: string; // YYYYMMDD
@@ -53,6 +56,23 @@ function formatBirthDate(birthDate: string): string {
   return `${birthDate.substring(0, 4)}-${birthDate.substring(4, 6)}-${birthDate.substring(6, 8)}`;
 }
 
+// 비밀번호 유효성 검사 (8자 이상, 영문/숫자/특수문자)
+function validatePassword(password: string): { valid: boolean; message?: string } {
+  if (!password || password.length < 8) {
+    return { valid: false, message: '비밀번호는 8자 이상이어야 합니다.' };
+  }
+  if (!/[a-zA-Z]/.test(password)) {
+    return { valid: false, message: '비밀번호에 영문자가 포함되어야 합니다.' };
+  }
+  if (!/[0-9]/.test(password)) {
+    return { valid: false, message: '비밀번호에 숫자가 포함되어야 합니다.' };
+  }
+  if (!/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(password)) {
+    return { valid: false, message: '비밀번호에 특수문자가 포함되어야 합니다.' };
+  }
+  return { valid: true };
+}
+
 Deno.serve(async (req) => {
   // CORS preflight
   const corsResponse = handleCors(req);
@@ -77,10 +97,12 @@ Deno.serve(async (req) => {
     const signatureImage = data.signatureImage || data.signatureBase64;
 
     // 모바일 앱 호환: agreedTerms 배열 처리
+    // 앱에서 보내는 값: 'service', 'privacy', 'thirdParty', 'location'
+    // 기존 값도 호환: 'terms', 'third_party'
     const hasAgreedTerms = data.agreedTerms && data.agreedTerms.length >= 4;
-    const termsAgreed = data.termsAgreed || (hasAgreedTerms && data.agreedTerms!.includes('terms'));
+    const termsAgreed = data.termsAgreed || (hasAgreedTerms && (data.agreedTerms!.includes('terms') || data.agreedTerms!.includes('service')));
     const privacyAgreed = data.privacyAgreed || (hasAgreedTerms && data.agreedTerms!.includes('privacy'));
-    const thirdPartyAgreed = data.thirdPartyAgreed || (hasAgreedTerms && data.agreedTerms!.includes('third_party'));
+    const thirdPartyAgreed = data.thirdPartyAgreed || (hasAgreedTerms && (data.agreedTerms!.includes('third_party') || data.agreedTerms!.includes('thirdParty')));
     const locationAgreed = data.locationAgreed || (hasAgreedTerms && data.agreedTerms!.includes('location'));
 
     // 1. 인증 토큰 검증
@@ -121,6 +143,16 @@ Deno.serve(async (req) => {
 
     if (!data.siteId || !partnerId) {
       return errorResponse('INVALID_TEAM', '현장, 팀 정보가 필요합니다.');
+    }
+
+    // 비밀번호 검증 (있으면 유효성 검사, 없으면 하위 호환을 위해 랜덤 생성)
+    if (data.password) {
+      const passwordValidation = validatePassword(data.password);
+      if (!passwordValidation.valid) {
+        return errorResponse('INVALID_PASSWORD', passwordValidation.message || '비밀번호가 유효하지 않습니다.');
+      }
+    } else {
+      console.log('[WARN] password not provided, generating random password for backward compatibility');
     }
 
     // 서명 검증
@@ -175,11 +207,12 @@ Deno.serve(async (req) => {
 
         // Supabase Auth 계정 생성 (phone 기반 fake email)
         const fakeEmail = `${normalizedPhone}@phone.tongpass.local`;
-        const randomPassword = crypto.randomUUID();
+        // 사용자가 설정한 비밀번호 사용 (없으면 랜덤 - 하위 호환)
+        const userPassword = data.password || crypto.randomUUID();
 
         const { data: authUser, error: authError } = await supabase.auth.admin.createUser({
           email: fakeEmail,
-          password: randomPassword,
+          password: userPassword,
           email_confirm: true,
           user_metadata: {
             name: data.name,
@@ -338,13 +371,13 @@ Deno.serve(async (req) => {
 
     // 5. Supabase Auth 사용자 생성
     // 휴대폰 번호를 이메일 형식으로 변환 (Supabase Auth는 이메일 기반)
-    // 비밀번호는 랜덤 생성 (근로자는 비밀번호 로그인 없음, SMS 로그인만)
+    // 사용자가 설정한 비밀번호 사용 (비밀번호 + SMS 로그인 모두 지원)
     const fakeEmail = `${normalizedPhone}@phone.tongpass.local`;
-    const randomPassword = crypto.randomUUID(); // 랜덤 비밀번호 (사용 안 함)
+    const userPassword = data.password || crypto.randomUUID(); // 하위 호환
 
     const { data: authUser, error: authError } = await supabase.auth.admin.createUser({
       email: fakeEmail,
-      password: randomPassword,
+      password: userPassword,
       email_confirm: true,
       user_metadata: {
         name: data.name,
@@ -383,6 +416,7 @@ Deno.serve(async (req) => {
         job_title: data.jobTitle,
         role: 'WORKER',
         status: 'REQUESTED', // 승인 대기
+        is_active: false,    // 승인 전까지 비활성 (하위 호환성)
         terms_agreed_at: now,
         privacy_agreed_at: now,
         requested_at: now,

@@ -19,13 +19,32 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const supabase = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
-    );
+    const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? '';
+    // MY_SERVICE_ROLE_KEY를 우선 사용, 없으면 기본 SUPABASE_SERVICE_ROLE_KEY 사용
+    const serviceRoleKey = Deno.env.get('MY_SERVICE_ROLE_KEY') || Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
+
+    console.log('[admin-reject-worker] SUPABASE_URL:', supabaseUrl);
+    console.log('[admin-reject-worker] SERVICE_ROLE_KEY exists:', !!serviceRoleKey, 'length:', serviceRoleKey.length);
+
+    const supabase = createClient(supabaseUrl, serviceRoleKey, {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false,
+      },
+      db: {
+        schema: 'public',
+      },
+      global: {
+        headers: {
+          'x-supabase-role': 'service_role',
+        },
+      },
+    });
 
     // 1. JWT 토큰에서 관리자 정보 추출
     const authHeader = req.headers.get('Authorization');
+    console.log('[admin-reject-worker] authHeader:', authHeader?.substring(0, 50));
+
     if (!authHeader) {
       return new Response(
         JSON.stringify({ error: '인증이 필요합니다.' }),
@@ -34,11 +53,14 @@ Deno.serve(async (req) => {
     }
 
     const token = authHeader.replace('Bearer ', '');
+    console.log('[admin-reject-worker] token length:', token.length);
+
     const { data: { user: authUser }, error: authError } = await supabase.auth.getUser(token);
+    console.log('[admin-reject-worker] authUser:', authUser?.id, 'authError:', authError?.message);
 
     if (authError || !authUser) {
       return new Response(
-        JSON.stringify({ error: '유효하지 않은 인증입니다.' }),
+        JSON.stringify({ error: '유효하지 않은 인증입니다.', details: authError?.message }),
         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
@@ -124,39 +146,40 @@ Deno.serve(async (req) => {
       }
     }
 
-    // 8. 반려 처리 (REJECTED 상태로 전환)
-    const now = new Date().toISOString();
-    const { data: updatedWorker, error: updateError } = await supabase
-      .from('users')
-      .update({
-        status: 'REJECTED',
-        rejection_reason: data.reason || null,
-        // rejected_at 필드는 없으므로 updated_at이 자동으로 갱신됨
-      })
-      .eq('id', data.workerId)
-      .select()
-      .single();
+    // 8. 반려 처리 (users 테이블에서 삭제 - 재가입 가능하도록)
+    console.log('[admin-reject-worker] Deleting worker for rejection:', data.workerId);
 
-    if (updateError) {
-      console.error('Worker rejection error:', updateError);
+    const { error: deleteError } = await supabase
+      .from('users')
+      .delete()
+      .eq('id', data.workerId);
+
+    console.log('[admin-reject-worker] Delete result:', { deleteError });
+
+    if (deleteError) {
+      console.error('Worker rejection error:', deleteError);
       return new Response(
-        JSON.stringify({ error: '반려 처리 중 오류가 발생했습니다.' }),
+        JSON.stringify({ error: '반려 처리 중 오류가 발생했습니다.', details: deleteError.message }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
+    }
+
+    // Supabase Auth에서도 사용자 삭제
+    const { error: authDeleteError } = await supabase.auth.admin.deleteUser(data.workerId);
+    if (authDeleteError) {
+      console.warn('[admin-reject-worker] Auth user deletion failed (may not exist):', authDeleteError.message);
+      // Auth 삭제 실패는 무시 (users 테이블 삭제가 메인)
     }
 
     // 9. 성공 응답
     return new Response(
       JSON.stringify({
         success: true,
-        message: `${worker.name}님의 가입을 반려했습니다.`,
+        message: `${worker.name}님의 가입 요청을 반려하고 삭제했습니다.`,
         data: {
-          id: updatedWorker.id,
-          name: updatedWorker.name,
-          phone: updatedWorker.phone,
-          status: updatedWorker.status,
-          rejectionReason: updatedWorker.rejection_reason,
-          rejectedAt: updatedWorker.updated_at,
+          id: worker.id,
+          name: worker.name,
+          phone: worker.phone,
         },
       }),
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }

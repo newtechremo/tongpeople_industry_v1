@@ -39,13 +39,21 @@ export function CompanyCodeModal({ isOpen, onClose }: CompanyCodeModalProps) {
 
   // Load company code on modal open
   useEffect(() => {
-    if (isOpen && user?.companyId) {
-      loadCompanyCode();
+    if (isOpen) {
+      if (user?.companyId) {
+        loadCompanyCode();
+      } else {
+        setLoading(false);
+        showToast('회사 정보를 찾을 수 없습니다. 다시 로그인해주세요.');
+      }
     }
   }, [isOpen, user?.companyId]);
 
   const loadCompanyCode = async () => {
-    if (!user?.companyId) return;
+    if (!user?.companyId) {
+      setLoading(false);
+      return;
+    }
 
     setLoading(true);
     const result = await getCompanyCode(user.companyId);
@@ -53,7 +61,7 @@ export function CompanyCodeModal({ isOpen, onClose }: CompanyCodeModalProps) {
     if (result.success && result.code) {
       setCompanyCode(result.code);
     } else {
-      showToast('회사코드 조회 중 오류가 발생했습니다.');
+      showToast(result.error || '회사코드 조회 중 오류가 발생했습니다.');
     }
     setLoading(false);
   };

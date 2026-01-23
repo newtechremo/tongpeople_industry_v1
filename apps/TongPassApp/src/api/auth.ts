@@ -5,10 +5,32 @@
  * - 근로자 등록
  */
 
+import axios from 'axios';
 import api from './client';
+import {BASEURL, SUPABASE_ANON_KEY} from '@env';
 import {Company, Site, Team} from '@/types/company';
 import {PreRegisteredData, WorkerStatus} from '@/types/user';
 import {ApiError} from '@/types/api';
+
+// 환경 변수 확인
+const API_BASE = BASEURL || 'https://zbqittvnenjgoimlixpn.supabase.co/functions/v1';
+const ANON_KEY = SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpicWl0dHZuZW5qZ29pbWxpeHBuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjgxMjI1MjEsImV4cCI6MjA4MzY5ODUyMX0._oUth5WoSvuUwhMn52yxtLOCpXR6998bvGiG96q8M28';
+
+// 디버그 로그 (개발 시에만)
+if (__DEV__) {
+  console.log('[Auth API] BASEURL:', API_BASE);
+  console.log('[Auth API] ANON_KEY exists:', !!ANON_KEY);
+}
+
+// 공개 API용 클라이언트 (인증 불필요한 엔드포인트용)
+const publicApi = axios.create({
+  baseURL: API_BASE,
+  timeout: 15000,
+  headers: {
+    'Content-Type': 'application/json',
+    'Authorization': `Bearer ${ANON_KEY}`,
+  },
+});
 
 // ==================== 요청/응답 타입 ====================
 
@@ -72,6 +94,9 @@ export interface RegisterWorkerRequest {
   verificationToken?: string;
   phoneNumber: string;
 
+  // 비밀번호
+  password: string;
+
   // 근로자 정보
   name: string;
   birthDate: string; // YYYYMMDD 형식
@@ -85,6 +110,17 @@ export interface RegisterWorkerRequest {
 
   // 전자서명
   signatureBase64: string; // Base64 이미지
+}
+
+// 로그인 응답
+export interface LoginWorkerResponse {
+  success: boolean;
+  message: string;
+  accessToken: string;
+  refreshToken: string;
+  workerId: string;
+  status: WorkerStatus;
+  name?: string;
 }
 
 export interface RegisterWorkerResponse {
@@ -126,7 +162,8 @@ export async function verifyCompanyCode(
   }
 
   try {
-    const response = await api.post<VerifyCompanyCodeResponse>(
+    // 공개 API 사용 (인증 불필요)
+    const response = await publicApi.post<VerifyCompanyCodeResponse>(
       '/verify-company-code',
       {companyCode: trimmedCode},
     );
@@ -137,12 +174,21 @@ export async function verifyCompanyCode(
     }
 
     return response.data;
-  } catch (error) {
+  } catch (error: any) {
+    console.error('[verifyCompanyCode] Error:', error);
+    console.error('[verifyCompanyCode] Error message:', error?.message);
+    console.error('[verifyCompanyCode] Error response:', error?.response?.data);
+
     // ApiError가 아닌 경우 변환
     if (error instanceof ApiError) {
       throw error;
     }
-    throw new ApiError('UNKNOWN_ERROR', '회사코드 검증에 실패했습니다.');
+
+    // Axios 에러에서 상세 정보 추출
+    const errorMessage = error?.response?.data?.error?.message
+      || error?.message
+      || '회사코드 검증에 실패했습니다.';
+    throw new ApiError('UNKNOWN_ERROR', errorMessage);
   }
 }
 
@@ -163,7 +209,8 @@ export async function requestSmsCode(
   }
 
   try {
-    const response = await api.post<RequestSmsCodeResponse>(
+    // 공개 API 사용 (인증 불필요)
+    const response = await publicApi.post<RequestSmsCodeResponse>(
       '/send-sms',
       {
         phone: cleanedPhone,
@@ -205,7 +252,8 @@ export async function verifySms(
   }
 
   try {
-    const response = await api.post<VerifySmsResponse>('/verify-sms', {
+    // 공개 API 사용 (인증 불필요)
+    const response = await publicApi.post<VerifySmsResponse>('/verify-sms', {
       phone: cleanedPhone,
       code: cleanedCode,
       purpose: 'SIGNUP',
@@ -235,7 +283,8 @@ export async function getTeams(siteId: string): Promise<Team[]> {
   }
 
   try {
-    const response = await api.get<Team[]>(`/sites/${siteId}/teams`);
+    // 공개 API 사용 (인증 불필요)
+    const response = await publicApi.get<Team[]>(`/sites-teams?siteId=${siteId}`);
 
     // 빈 배열인 경우도 유효한 응답
     return response.data || [];
@@ -257,6 +306,7 @@ export async function registerWorker(
   // 필수 필드 검증
   if (
     !data.phoneNumber ||
+    !data.password ||
     !data.name ||
     !data.birthDate ||
     !data.gender ||
@@ -266,6 +316,20 @@ export async function registerWorker(
     !data.teamId
   ) {
     throw new ApiError('UNKNOWN_ERROR', '필수 정보가 누락되었습니다.');
+  }
+
+  // 비밀번호 유효성 검사 (8자 이상, 영문/숫자/특수문자)
+  if (data.password.length < 8) {
+    throw new ApiError('INVALID_PASSWORD', '비밀번호는 8자 이상이어야 합니다.');
+  }
+  if (!/[a-zA-Z]/.test(data.password)) {
+    throw new ApiError('INVALID_PASSWORD', '비밀번호에 영문자가 포함되어야 합니다.');
+  }
+  if (!/[0-9]/.test(data.password)) {
+    throw new ApiError('INVALID_PASSWORD', '비밀번호에 숫자가 포함되어야 합니다.');
+  }
+  if (!/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(data.password)) {
+    throw new ApiError('INVALID_PASSWORD', '비밀번호에 특수문자가 포함되어야 합니다.');
   }
 
   // 약관 동의 검증
@@ -279,8 +343,8 @@ export async function registerWorker(
   }
 
   try {
-    // 백엔드 응답 타입 (top-level 토큰 + nested data)
-    const response = await api.post<{
+    // 공개 API 사용 (회원가입 시 인증 토큰 없음)
+    const response = await publicApi.post<{
       success: boolean;
       message: string;
       // 새 형식: top-level 토큰
@@ -303,6 +367,7 @@ export async function registerWorker(
       };
     }>('/register-worker', {
       phone: data.phoneNumber.replace(/[^0-9]/g, ''),
+      password: data.password,
       name: data.name,
       birthDate: data.birthDate.replace(/[^0-9]/g, ''),
       gender: data.gender,
@@ -369,8 +434,8 @@ export async function checkWorkerStatus(
   }
 
   try {
-    // 백엔드 응답: { success: true, status: 'ACTIVE', name: '홍길동', ... }
-    const response = await api.get<{
+    // 공개 API 사용 (회원가입 직후 토큰이 아직 저장되지 않았을 수 있음)
+    const response = await publicApi.get<{
       success?: boolean;
       status: WorkerStatus;
       name?: string;
@@ -409,7 +474,8 @@ export async function requestSmsCodeForReset(
   }
 
   try {
-    const response = await api.post<RequestSmsCodeResponse>('/send-sms', {
+    // 공개 API 사용 (인증 불필요)
+    const response = await publicApi.post<RequestSmsCodeResponse>('/send-sms', {
       phone: cleanedPhone,
       purpose: 'PASSWORD_RESET',
     });
@@ -447,7 +513,8 @@ export async function verifySmsForReset(
   }
 
   try {
-    const response = await api.post<VerifySmsResponse>('/verify-sms', {
+    // 공개 API 사용 (인증 불필요)
+    const response = await publicApi.post<VerifySmsResponse>('/verify-sms', {
       phone: cleanedPhone,
       code: cleanedCode,
       purpose: 'PASSWORD_RESET',
@@ -484,7 +551,8 @@ export async function resetPassword(
   }
 
   try {
-    const response = await api.post<{success: boolean}>('/auth/reset-password', {
+    // 공개 API 사용 (인증 불필요)
+    const response = await publicApi.post<{success: boolean}>('/reset-password', {
       verificationToken,
       newPassword,
     });
@@ -499,5 +567,98 @@ export async function resetPassword(
       throw error;
     }
     throw new ApiError('UNKNOWN_ERROR', '비밀번호 변경에 실패했습니다.');
+  }
+}
+
+// ==================== 로그인 ====================
+
+/**
+ * 비밀번호로 로그인
+ * @param phoneNumber 전화번호
+ * @param password 비밀번호
+ */
+export async function loginWithPassword(
+  phoneNumber: string,
+  password: string,
+): Promise<LoginWorkerResponse> {
+  // 입력값 검증
+  const cleanedPhone = phoneNumber.replace(/[^0-9]/g, '');
+  if (!cleanedPhone || cleanedPhone.length < 10 || cleanedPhone.length > 11) {
+    throw new ApiError('INVALID_PHONE_NUMBER', '올바른 전화번호를 입력해주세요.');
+  }
+
+  if (!password || password.length < 8) {
+    throw new ApiError('INVALID_PASSWORD', '비밀번호를 입력해주세요.');
+  }
+
+  try {
+    const response = await publicApi.post<LoginWorkerResponse>('/login-worker', {
+      phone: cleanedPhone,
+      password,
+      loginType: 'PASSWORD',
+    });
+
+    if (!response.data?.success) {
+      throw new ApiError('LOGIN_FAILED', '로그인에 실패했습니다.');
+    }
+
+    return response.data;
+  } catch (error: any) {
+    if (error instanceof ApiError) {
+      throw error;
+    }
+    // 서버에서 구체적인 에러 메시지가 있으면 사용
+    const errorMessage =
+      error?.response?.data?.error ||
+      error?.response?.data?.message ||
+      '로그인에 실패했습니다.';
+    const errorCode = error?.response?.data?.code || 'LOGIN_FAILED';
+    throw new ApiError(errorCode, errorMessage);
+  }
+}
+
+/**
+ * SMS 인증으로 로그인
+ * @param phoneNumber 전화번호
+ * @param smsCode SMS 인증번호
+ */
+export async function loginWithSms(
+  phoneNumber: string,
+  smsCode: string,
+): Promise<LoginWorkerResponse> {
+  // 입력값 검증
+  const cleanedPhone = phoneNumber.replace(/[^0-9]/g, '');
+  const cleanedCode = smsCode.replace(/[^0-9]/g, '');
+
+  if (!cleanedPhone || cleanedPhone.length < 10 || cleanedPhone.length > 11) {
+    throw new ApiError('INVALID_PHONE_NUMBER', '올바른 전화번호를 입력해주세요.');
+  }
+
+  if (!cleanedCode || cleanedCode.length !== 6) {
+    throw new ApiError('INVALID_CODE', '6자리 인증번호를 입력해주세요.');
+  }
+
+  try {
+    const response = await publicApi.post<LoginWorkerResponse>('/login-worker', {
+      phone: cleanedPhone,
+      smsCode: cleanedCode,
+      loginType: 'SMS',
+    });
+
+    if (!response.data?.success) {
+      throw new ApiError('LOGIN_FAILED', '로그인에 실패했습니다.');
+    }
+
+    return response.data;
+  } catch (error: any) {
+    if (error instanceof ApiError) {
+      throw error;
+    }
+    const errorMessage =
+      error?.response?.data?.error ||
+      error?.response?.data?.message ||
+      '로그인에 실패했습니다.';
+    const errorCode = error?.response?.data?.code || 'LOGIN_FAILED';
+    throw new ApiError(errorCode, errorMessage);
   }
 }

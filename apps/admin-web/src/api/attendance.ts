@@ -228,6 +228,94 @@ export async function getActiveAttendance(siteId: number, workDate: string) {
 }
 
 /**
+ * 근로자 + 출퇴근 현황 조회 (출근 여부 관계없이 ACTIVE 근로자 모두 표시)
+ */
+export async function getWorkersWithAttendance(options: {
+  siteId: number;
+  workDate: string;
+  partnerId?: number;
+  search?: string;
+}) {
+  // 1. 해당 site의 ACTIVE 근로자 조회
+  let workersQuery = supabase
+    .from('users')
+    .select(`
+      id,
+      name,
+      phone,
+      birth_date,
+      gender,
+      job_title,
+      role,
+      partner_id,
+      partners:partner_id(name)
+    `)
+    .eq('site_id', options.siteId)
+    .eq('status', 'ACTIVE');
+
+  if (options.partnerId) {
+    workersQuery = workersQuery.eq('partner_id', options.partnerId);
+  }
+
+  if (options.search) {
+    workersQuery = workersQuery.ilike('name', `%${options.search}%`);
+  }
+
+  const { data: workers, error: workersError } = await workersQuery;
+  if (workersError) throw workersError;
+
+  // 2. 해당 날짜의 출퇴근 기록 조회
+  const { data: attendances, error: attendanceError } = await supabase
+    .from('attendance')
+    .select('*')
+    .eq('site_id', options.siteId)
+    .eq('work_date', options.workDate);
+
+  if (attendanceError) throw attendanceError;
+
+  // 3. worker_id로 attendance 매핑
+  const attendanceMap = new Map(
+    attendances?.map(a => [a.worker_id, a]) || []
+  );
+
+  // 4. 나이 계산 함수
+  const calculateAge = (birthDate: string | null): number => {
+    if (!birthDate) return 0;
+    const today = new Date();
+    const birth = new Date(birthDate);
+    let age = today.getFullYear() - birth.getFullYear();
+    const monthDiff = today.getMonth() - birth.getMonth();
+    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) {
+      age--;
+    }
+    return age;
+  };
+
+  // 5. 근로자 목록 + 출퇴근 정보 합치기
+  return workers?.map(worker => {
+    const attendance = attendanceMap.get(worker.id);
+    const age = calculateAge(worker.birth_date);
+    const isSenior = age >= 65;
+
+    return {
+      id: attendance?.id || 0,
+      worker_id: worker.id,
+      worker_name: worker.name,
+      partnerName: (worker.partners as { name: string } | null)?.name || '미지정',
+      position: worker.job_title || '일반근로자',
+      birth_date: worker.birth_date,
+      age,
+      is_senior: isSenior,
+      role: worker.role,
+      check_in_time: attendance?.check_in_time || null,
+      check_out_time: attendance?.check_out_time || null,
+      is_auto_out: attendance?.is_auto_out || false,
+      has_attendance: !!attendance, // 출근 기록 여부
+    };
+  }) || [];
+}
+
+/**
  * QR 페이로드 타입
  */
 export interface QRPayload {

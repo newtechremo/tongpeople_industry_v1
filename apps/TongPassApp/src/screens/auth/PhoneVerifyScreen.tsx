@@ -151,8 +151,8 @@ const PhoneVerifyScreen: React.FC<PhoneVerifyScreenProps> = ({
               text: '이직하기',
               onPress: () => {
                 setLoading(false);
-                // 기존 유저 정보와 함께 다음 화면으로 이동
-                navigation.navigate('WorkerInfo', {
+                // 비밀번호 설정 화면으로 이동 (이직 정보 포함)
+                navigation.navigate('PasswordSetup', {
                   companyId,
                   siteId,
                   phoneNumber,
@@ -179,8 +179,8 @@ const PhoneVerifyScreen: React.FC<PhoneVerifyScreenProps> = ({
         return;
       }
 
-      // 신규 회원 또는 선등록 회원
-      navigation.navigate('WorkerInfo', {
+      // 신규 회원 또는 선등록 회원 → 비밀번호 설정 화면으로 이동
+      navigation.navigate('PasswordSetup', {
         companyId,
         siteId,
         phoneNumber,

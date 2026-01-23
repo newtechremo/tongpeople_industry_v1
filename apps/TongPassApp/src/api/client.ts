@@ -185,7 +185,7 @@ class ApiClient {
   ): Promise<{accessToken: string; refreshToken?: string}> {
     try {
       const response = await axios.post(
-        `${API_BASE_URL}/auth/refresh`,
+        `${API_BASE_URL}/auth-refresh`,
         {refreshToken},
         {timeout: REFRESH_TIMEOUT},
       );

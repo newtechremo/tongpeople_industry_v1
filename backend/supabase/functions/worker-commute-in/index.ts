@@ -1,5 +1,6 @@
 // 근로자 출근 처리 Edge Function (근로자 본인이 직접 출근)
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { verifyAccessToken } from '../_shared/jwt.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -25,14 +26,6 @@ Deno.serve(async (req) => {
     const token = authHeader.replace('Bearer ', '');
 
     const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? '';
-    const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY') ?? '';
-
-    // 사용자 인증을 위한 클라이언트
-    const supabaseAuth = createClient(supabaseUrl, supabaseAnonKey, {
-      global: {
-        headers: { Authorization: authHeader },
-      },
-    });
 
     // Service Role 클라이언트 (DB 쿼리용)
     const supabaseAdmin = createClient(
@@ -40,11 +33,11 @@ Deno.serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
 
-    // 1. JWT 검증 및 사용자 확인
-    const { data: { user }, error: authError } = await supabaseAuth.auth.getUser(token);
+    // 1. 커스텀 JWT 검증
+    const userId = await verifyAccessToken(token);
 
-    if (authError || !user) {
-      console.error('Auth error:', authError);
+    if (!userId) {
+      console.error('Token verification failed');
       return new Response(
         JSON.stringify({ error: '유효하지 않은 인증 토큰입니다.' }),
         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -71,7 +64,7 @@ Deno.serve(async (req) => {
           senior_age_threshold
         )
       `)
-      .eq('id', user.id)
+      .eq('id', userId)
       .single();
 
     if (workerError || !workerData) {
@@ -123,7 +116,7 @@ Deno.serve(async (req) => {
       .select('id, check_out_time')
       .eq('work_date', workDateStr)
       .eq('site_id', workerData.site_id)
-      .eq('user_id', user.id)
+      .eq('user_id', userId)
       .single();
 
     if (existing && !existing.check_out_time) {
@@ -169,7 +162,7 @@ Deno.serve(async (req) => {
         work_date: workDateStr,
         site_id: workerData.site_id,
         partner_id: workerData.partner_id,
-        user_id: user.id,
+        user_id: userId,
         worker_name: workerData.name,
         role: workerData.role,
         birth_date: workerData.birth_date,

@@ -269,7 +269,9 @@ Deno.serve(async (req) => {
         name: data.name,
         phone: normalizedPhone,
         role: 'SUPER_ADMIN',
-        is_active: true,
+        status: 'ACTIVE',  // 관리자는 바로 ACTIVE
+        is_active: true,   // 하위 호환성 유지
+        exclude_from_list: true,  // 관리자는 근로자 목록에서 제외
         terms_agreed_at: data.termsAgreed ? now : null,
         privacy_agreed_at: data.privacyAgreed ? now : null,
         marketing_agreed: data.marketingAgreed || false,
@@ -288,16 +290,46 @@ Deno.serve(async (req) => {
       );
     }
 
+    // 10. 세션 생성 (로그인하여 토큰 발급)
+    const { data: sessionData, error: sessionError } = await supabase.auth.signInWithPassword({
+      email: fakeEmail,
+      password: data.password,
+    });
+
+    if (sessionError || !sessionData.session) {
+      console.error('Session error:', sessionError);
+      // 회원가입은 완료됐으니 에러를 반환하지 않고 세션 없이 응답
+      return new Response(
+        JSON.stringify({
+          success: true,
+          message: '회원가입이 완료되었습니다. 로그인 해주세요.',
+          user: {
+            id: authUser.user.id,
+            name: data.name,
+            phone: normalizedPhone,
+            role: 'SUPER_ADMIN',
+            companyId: company.id,
+            siteId: site.id,
+          },
+        }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     return new Response(
       JSON.stringify({
         success: true,
         message: '회원가입이 완료되었습니다.',
-        data: {
-          userId: authUser.user.id,
+        user: {
+          id: authUser.user.id,
+          name: data.name,
+          phone: normalizedPhone,
+          role: 'SUPER_ADMIN',
           companyId: company.id,
           siteId: site.id,
-          name: data.name,
         },
+        accessToken: sessionData.session.access_token,
+        refreshToken: sessionData.session.refresh_token,
       }),
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );

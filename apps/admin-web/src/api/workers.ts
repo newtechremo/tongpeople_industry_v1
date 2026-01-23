@@ -23,6 +23,7 @@ export async function getWorkers(options?: {
   partnerId?: number;
   role?: UserRole;
   isActive?: boolean;
+  status?: 'ACTIVE' | 'PENDING' | 'REQUESTED' | 'INACTIVE' | 'BLOCKED' | 'ALL';
   search?: string;
   includeExcluded?: boolean; // 목록 제외된 사용자 포함 여부
 }) {
@@ -49,13 +50,17 @@ export async function getWorkers(options?: {
   }
   // role 필터 없으면 모든 role 포함 (exclude_from_list로 필터링됨)
 
-  // status 필터: 기본적으로 ACTIVE 또는 null인 사용자만 조회
-  // PENDING(동의대기), REQUESTED(승인대기), INACTIVE(비활성), BLOCKED(차단) 제외
-  if (options?.isActive !== undefined && options.isActive) {
+  // status 필터
+  if (options?.status) {
+    if (options.status !== 'ALL') {
+      query = query.eq('status', options.status);
+    }
+    // status가 'ALL'이면 필터 적용 안함
+  } else if (options?.isActive !== undefined && options.isActive) {
     query = query.eq('status', 'ACTIVE');
   } else {
-    // isActive 옵션이 없으면 기본적으로 활성 사용자만 (ACTIVE 또는 null)
-    query = query.or('status.eq.ACTIVE,status.is.null');
+    // 기본: ACTIVE, PENDING, REQUESTED 모두 표시 (관리자가 승인 대기자를 볼 수 있도록)
+    query = query.or('status.eq.ACTIVE,status.eq.PENDING,status.eq.REQUESTED,status.is.null');
   }
 
   // 근로자 목록에서 제외된 사용자 필터링 (기본: 제외)
@@ -68,7 +73,9 @@ export async function getWorkers(options?: {
     query = query.or(`name.ilike.%${options.search}%,phone.ilike.%${options.search}%`);
   }
 
+  console.log('[getWorkers] options:', options);
   const { data, error } = await query;
+  console.log('[getWorkers] result:', { data, error, count: data?.length });
 
   if (error) throw error;
 

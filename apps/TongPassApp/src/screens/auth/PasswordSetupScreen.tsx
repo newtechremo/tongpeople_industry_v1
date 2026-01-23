@@ -54,7 +54,7 @@ const PasswordSetupScreen: React.FC<PasswordSetupScreenProps> = ({
   navigation,
   route,
 }) => {
-  const {companyId, siteId, phoneNumber, preRegisteredData} = route.params;
+  const {companyId, siteId, phoneNumber, preRegisteredData, isTransfer, existingUserId} = route.params;
 
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -96,16 +96,17 @@ const PasswordSetupScreen: React.FC<PasswordSetupScreenProps> = ({
   const handleNext = useCallback(() => {
     if (!isNextEnabled) return;
 
-    // A05 정보 입력 화면으로 이동
+    // A05 정보 입력 화면으로 이동 (비밀번호 포함)
     navigation.navigate('WorkerInfo', {
       companyId,
       siteId,
       phoneNumber,
+      password,
       preRegisteredData,
-      // TODO: 비밀번호는 최종 등록 시 사용
-      // password는 WorkerRegistrationData에 추가 필요
+      isTransfer,
+      existingUserId,
     });
-  }, [isNextEnabled, navigation, companyId, siteId, phoneNumber, preRegisteredData]);
+  }, [isNextEnabled, navigation, companyId, siteId, phoneNumber, password, preRegisteredData, isTransfer, existingUserId]);
 
   return (
     <SafeAreaView style={styles.container}>
