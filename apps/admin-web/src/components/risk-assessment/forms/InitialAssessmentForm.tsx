@@ -16,6 +16,17 @@ import { useApprovalLines } from '@/stores/approvalLinesStore';
 
 let idCounter = 0;
 const generateId = () => `temp-${Date.now()}-${++idCounter}`;
+const formatDateInputValue = (date: Date) => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+const addMonths = (date: Date, months: number) => {
+  const next = new Date(date);
+  next.setMonth(next.getMonth() + months);
+  return next;
+};
 
 interface RiskFactor {
   id: string;
@@ -57,19 +68,22 @@ interface Props {
 
 export default function InitialAssessmentForm({ type, onSubmit, onCancel }: Props) {
   const navigate = useNavigate();
+  const { today, oneMonthLater } = useMemo(() => {
+    const base = new Date();
+    return {
+      today: formatDateInputValue(base),
+      oneMonthLater: formatDateInputValue(addMonths(base, 1)),
+    };
+  }, []);
 
   const [siteName] = useState('통사통사현장');
   const [companyName] = useState('(주)통하는사람들');
-  const [workPeriodStart, setWorkPeriodStart] = useState('2026-01-01');
-  const [workPeriodEnd, setWorkPeriodEnd] = useState('2026-01-31');
+  const [workPeriodStart, setWorkPeriodStart] = useState(today);
+  const [workPeriodEnd, setWorkPeriodEnd] = useState(oneMonthLater);
   const [approvalModalOpen, setApprovalModalOpen] = useState(false);
 
   const approvalLines = useApprovalLines();
-  const availableApprovalLines = useMemo(() => {
-    return approvalLines.filter((line) =>
-      line.tags.includes('RISK_ASSESSMENT') || line.tags.includes('GENERAL')
-    );
-  }, [approvalLines]);
+  const availableApprovalLines = useMemo(() => approvalLines, [approvalLines]);
 
   const defaultApprovalLine = useMemo(() => {
     const pinned = availableApprovalLines.find((line) => line.isPinned);
