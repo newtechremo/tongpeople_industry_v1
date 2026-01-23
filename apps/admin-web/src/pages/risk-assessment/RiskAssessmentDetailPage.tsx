@@ -171,11 +171,7 @@ export default function RiskAssessmentDetailPage() {
   };
 
   const approvalLines = useApprovalLines();
-  const availableApprovalLines = useMemo(() => {
-    return approvalLines.filter((line) =>
-      line.tags.includes('RISK_ASSESSMENT') || line.tags.includes('GENERAL')
-    );
-  }, [approvalLines]);
+  const availableApprovalLines = useMemo(() => approvalLines, [approvalLines]);
 
   const defaultApprovalLine = useMemo(() => {
     const pinned = availableApprovalLines.find((line) => line.isPinned);

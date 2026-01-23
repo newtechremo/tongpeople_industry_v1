@@ -1,7 +1,8 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Check, Search, X } from 'lucide-react';
-import type { ApprovalLine } from '@tong-pass/shared';
+import type { ApprovalDocumentType, ApprovalLine } from '@tong-pass/shared';
 import { APPROVAL_DOCUMENT_TYPE_LABELS } from '@tong-pass/shared';
+import { ApproverPreviewTable } from '@/components/common/ApproverPreviewTable';
 
 // Mock 팀(업체) 데이터
 const MOCK_TEAMS = [
@@ -29,11 +30,28 @@ export default function ApprovalLineSelectModal({
   onCreate,
 }: ApprovalLineSelectModalProps) {
   const [query, setQuery] = useState('');
+  const [tagFilter, setTagFilter] = useState<'ALL' | ApprovalDocumentType>('ALL');
+
+  const tagOptions = useMemo(() => {
+    const tags = new Set<ApprovalDocumentType>();
+    lines.forEach((line) => {
+      line.tags.forEach((tag) => tags.add(tag));
+    });
+    return Array.from(tags);
+  }, [lines]);
+
+  useEffect(() => {
+    if (tagFilter === 'ALL') return;
+    if (!tagOptions.includes(tagFilter)) {
+      setTagFilter('ALL');
+    }
+  }, [tagFilter, tagOptions]);
 
   const filtered = useMemo(() => {
     const keyword = query.trim().toLowerCase();
-    if (!keyword) return lines;
     return lines.filter((line) => {
+      if (tagFilter !== 'ALL' && !line.tags.includes(tagFilter)) return false;
+      if (!keyword) return true;
       const approverText = line.approvers
         .map((approver) => `${approver.userName} ${approver.approvalTitle}`)
         .join(' ')
@@ -43,7 +61,7 @@ export default function ApprovalLineSelectModal({
         approverText.includes(keyword)
       );
     });
-  }, [lines, query]);
+  }, [lines, query, tagFilter]);
 
   if (!isOpen) return null;
 
@@ -59,7 +77,7 @@ export default function ApprovalLineSelectModal({
         </div>
 
         {lines.length > 0 && (
-          <div className="px-6 py-4 border-b border-gray-100">
+          <div className="px-6 py-4 border-b border-gray-100 space-y-3">
             <div className="flex items-center gap-2 px-3 py-2 border border-gray-200 rounded-lg">
               <Search size={16} className="text-slate-400" />
               <input
@@ -68,6 +86,33 @@ export default function ApprovalLineSelectModal({
                 placeholder="결재라인 검색 (이름/결재자)"
                 className="text-sm text-slate-700 placeholder:text-slate-400 focus:outline-none"
               />
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={() => setTagFilter('ALL')}
+                className={`px-3 py-1.5 text-xs font-bold rounded-full border ${
+                  tagFilter === 'ALL'
+                    ? 'bg-orange-100 text-orange-700 border-orange-200'
+                    : 'bg-white text-slate-600 border-gray-200 hover:border-orange-200'
+                }`}
+              >
+                전체
+              </button>
+              {tagOptions.map((tag) => (
+                <button
+                  key={tag}
+                  type="button"
+                  onClick={() => setTagFilter(tag)}
+                  className={`px-3 py-1.5 text-xs font-bold rounded-full border ${
+                    tagFilter === tag
+                      ? 'bg-orange-100 text-orange-700 border-orange-200'
+                      : 'bg-white text-slate-600 border-gray-200 hover:border-orange-200'
+                  }`}
+                >
+                  {APPROVAL_DOCUMENT_TYPE_LABELS[tag]}
+                </button>
+              ))}
             </div>
           </div>
         )}
@@ -129,9 +174,9 @@ export default function ApprovalLineSelectModal({
                             </span>
                           ))}
                         </div>
-                        <p className="text-xs text-slate-500 mt-2">
-                          {line.approvers.map((approver) => approver.userName).join(' · ')}
-                        </p>
+                        <div className="mt-3">
+                          <ApproverPreviewTable approvers={line.approvers} />
+                        </div>
                       </div>
                       {isSelected && <Check size={18} className="text-orange-500 mt-1" />}
                     </div>
