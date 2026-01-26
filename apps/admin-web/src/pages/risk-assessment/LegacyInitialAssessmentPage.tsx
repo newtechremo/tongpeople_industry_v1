@@ -14,6 +14,7 @@ import SubcategoryAddModal from './modals/SubcategoryAddModal';
 import RiskFactorSelectModal from './modals/RiskFactorSelectModal';
 import SuccessModal from './modals/SuccessModal';
 import { useApprovalLines } from '@/stores/approvalLinesStore';
+import { getActiveTeams } from '@/mocks/teams';
 
 let idCounter = 0;
 const generateId = () => `temp-${Date.now()}-${++idCounter}`;
@@ -48,9 +49,12 @@ export default function LegacyInitialAssessmentPage() {
 
   const [siteName] = useState('통사통사현장');
   const [companyName] = useState('(주)통하는사람들');
+  const [teamId, setTeamId] = useState<string>('all');
   const [workPeriodStart, setWorkPeriodStart] = useState('2026-01-01');
   const [workPeriodEnd, setWorkPeriodEnd] = useState('2026-01-31');
   const [approvalModalOpen, setApprovalModalOpen] = useState(false);
+
+  const teams = useMemo(() => getActiveTeams(), []);
 
   const approvalLines = useApprovalLines();
   const availableApprovalLines = useMemo(() => approvalLines, [approvalLines]);
@@ -328,6 +332,8 @@ export default function LegacyInitialAssessmentPage() {
         <BasicInfoSection
           siteName={siteName}
           companyName={companyName}
+          teamId={teamId}
+          teams={teams}
           approvalLineName={selectedApprovalLine?.name || null}
           approvalLineCount={selectedApprovalLine?.approvers.length || null}
           approvalLineApprovers={
@@ -343,6 +349,7 @@ export default function LegacyInitialAssessmentPage() {
             if (field === 'start') setWorkPeriodStart(value);
             else setWorkPeriodEnd(value);
           }}
+          onTeamChange={setTeamId}
         />
 
         <div className="space-y-6">
