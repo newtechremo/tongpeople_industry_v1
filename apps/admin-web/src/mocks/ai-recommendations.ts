@@ -267,6 +267,96 @@ export const MOCK_AI_RECOMMENDATIONS: Record<string, AIRecommendation[]> = {
       reason: "작업명 '용접' 매칭(40) + 고위험 '질식'(30)",
       improvement: '환기 설비 가동 및 방독 마스크 착용'
     }
+  ],
+
+  // 대분류 3 - 가설전선 설치작업
+  '3-101': [
+    {
+      id: 9061,
+      taskName: '가설전선 설치작업',
+      riskFactor: '안전대를 사용하지 않고 고소부위 작업중 추락',
+      accidentType: '떨어짐',
+      score: 90,
+      reason: "작업명 '가설전선' 매칭(40) + 고위험 '떨어짐'(30) + 복합매칭(20)",
+      improvement: '고소부위 작업시 안전대 고리 체결 철저'
+    },
+    {
+      id: 9062,
+      taskName: '전선작업',
+      riskFactor: '전선 접촉으로 인한 감전',
+      accidentType: '감전',
+      score: 80,
+      reason: "위험요인 '전선' 매칭(20) + 고위험 '감전'(30) + 복합매칭(30)",
+      improvement: '절연장갑 착용 및 전원 차단 후 작업'
+    },
+    {
+      id: 9063,
+      taskName: '가설전선 설치작업',
+      riskFactor: '불안전한 작업발판으로 인한 추락',
+      accidentType: '떨어짐',
+      score: 75,
+      reason: "작업명 '가설전선' 매칭(40) + 고위험 '떨어짐'(30)",
+      improvement: '안전 작업발판 설치 후 작업 실시'
+    }
+  ],
+
+  // 대분류 3 - 가설전선 점검작업
+  '3-102': [
+    {
+      id: 9071,
+      taskName: '가설전선 점검작업',
+      riskFactor: '점검 중 충전부 접촉으로 인한 감전',
+      accidentType: '감전',
+      score: 95,
+      reason: "작업명 '가설전선 점검' 매칭(40) + 고위험 '감전'(30) + 복합매칭(30)",
+      improvement: '점검 전 전원 차단 및 무전압 확인'
+    },
+    {
+      id: 9072,
+      taskName: '전선 점검',
+      riskFactor: '사다리 작업 중 균형 상실로 추락',
+      accidentType: '떨어짐',
+      score: 85,
+      reason: "위험요인 '전선' 매칭(20) + 고위험 '떨어짐'(30) + 복합매칭(30)",
+      improvement: '사다리 고정 및 보조자 배치'
+    }
+  ],
+
+  // 대분류 3 - 기타 소분류들
+  '3-103': [
+    {
+      id: 9081,
+      taskName: '꽂음 접속기작업',
+      riskFactor: '접속기 결합 불량으로 인한 감전',
+      accidentType: '감전',
+      score: 90,
+      reason: "작업명 '꽂음 접속기' 매칭(40) + 고위험 '감전'(30) + 복합매칭(20)",
+      improvement: '접속 후 결합 상태 확인 철저'
+    }
+  ],
+
+  '3-104': [
+    {
+      id: 9091,
+      taskName: '이동형 릴 전선작업',
+      riskFactor: '전선 피복 손상으로 인한 감전',
+      accidentType: '감전',
+      score: 92,
+      reason: "작업명 '이동형 릴 전선' 매칭(40) + 고위험 '감전'(30) + 복합매칭(30)",
+      improvement: '작업 전 전선 피복 상태 확인'
+    }
+  ],
+
+  '3-105': [
+    {
+      id: 9101,
+      taskName: '전동공구 사용작업',
+      riskFactor: '접지 미설치로 인한 감전',
+      accidentType: '감전',
+      score: 88,
+      reason: "작업명 '전동공구' 매칭(40) + 고위험 '감전'(30) + 복합매칭(20)",
+      improvement: '전동공구 접지 확인 후 사용'
+    }
   ]
 };
 

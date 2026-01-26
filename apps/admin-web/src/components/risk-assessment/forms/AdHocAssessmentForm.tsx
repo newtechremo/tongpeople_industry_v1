@@ -234,6 +234,8 @@ export default function AdHocAssessmentForm({ onSubmit, onCancel }: Props) {
         onRemove={handleRemoveFactor}
         disabled={!formData.category_id}
         error={errors.selected_factors}
+        categoryId={formData.category_id ? Number(formData.category_id) : undefined}
+        subcategoryId={formData.subcategory_id ? Number(formData.subcategory_id) : undefined}
       />
 
       {/* 빈도/강도 평가 */}
