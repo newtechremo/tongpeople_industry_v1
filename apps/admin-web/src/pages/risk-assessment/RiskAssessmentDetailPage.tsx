@@ -315,7 +315,6 @@ export default function RiskAssessmentDetailPage() {
           </button>
           <div>
             <h1 className="text-2xl font-black tracking-tight text-slate-800">위험성평가 상세</h1>
-            <p className="text-base text-slate-500 mt-1">문서 번호: {documentId}</p>
           </div>
         </div>
         <div className="flex items-center gap-2">
