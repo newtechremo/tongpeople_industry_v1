@@ -6,6 +6,7 @@ import ApprovalLineSelectModal from './modals/ApprovalLineSelectModal';
 import ConfirmDialog from '@/components/common/ConfirmDialog';
 import { getAssessmentById, type MockRiskAssessment } from '@/mocks/risk-assessment';
 import { useApprovalLines } from '@/stores/approvalLinesStore';
+import { getActiveTeams } from '@/mocks/teams';
 import type { ApprovalLine, Approver } from '@tong-pass/shared';
 
 const STATUS_LABELS: Record<string, { label: string; className: string }> = {
@@ -189,9 +190,12 @@ export default function RiskAssessmentDetailPage() {
   const [workPeriodEnd, setWorkPeriodEnd] = useState(
     localAssessment?.workPeriodEnd || assessment?.work_end_date || ''
   );
+  const [teamId, setTeamId] = useState<string>('all');
   const [items, setItems] = useState(
     localAssessment ? buildItemsFromCategories(localAssessment.categories) : assessment?.items || []
   );
+
+  const teams = useMemo(() => getActiveTeams(), []);
 
   useEffect(() => {
     if (!selectedApprovalLine || !availableApprovalLines.some((line) => line.id === selectedApprovalLine.id)) {
@@ -360,8 +364,9 @@ export default function RiskAssessmentDetailPage() {
       <BasicInfoSection
         assessmentTitle={localAssessment?.title || mergedAssessment?.title || ''}
         siteName={displaySiteName}
-        teamName={displayTeamName}
         companyName={displayCompanyName}
+        teamId={teamId}
+        teams={teams}
         approvalLineName={selectedApprovalLine?.name || null}
         approvalLineCount={selectedApprovalLine?.approvers.length || null}
         approvalLineApprovers={approvalLineApprovers.map((approver) => ({
@@ -374,7 +379,9 @@ export default function RiskAssessmentDetailPage() {
         workPeriodEnd={workPeriodEnd}
         onApprovalLineChange={() => setApprovalModalOpen(true)}
         onDateChange={handleDateChange}
+        onTeamChange={setTeamId}
         canChangeApprovalLine={canEdit}
+        canChangeTeam={canEdit}
         disableStartDate={disableStartDate}
         disableEndDate={disableEndDate}
         signatures={appliedSignatures}

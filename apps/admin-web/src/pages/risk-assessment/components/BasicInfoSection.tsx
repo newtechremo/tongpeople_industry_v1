@@ -1,18 +1,24 @@
 ﻿/**
  * 기본 정보 섹션 - 최초 위험성평가
  *
- * 현장명, 업체, 소속회사, 결재라인, 작업기간, 위험성 수준
+ * 현장명, 소속(회사+팀), 결재라인, 작업기간, 위험성 수준
  */
 
-import { Calendar } from 'lucide-react';
+import { Calendar, ChevronDown } from 'lucide-react';
 import ApprovalLineDisplay from '@/components/approval/ApprovalLineDisplay';
 import type { Approver } from '@tong-pass/shared';
+
+interface Team {
+  id: string;
+  name: string;
+}
 
 interface BasicInfoSectionProps {
   assessmentTitle?: string;
   siteName: string;
-  teamName?: string;
   companyName: string;
+  teamId?: string;
+  teams?: Team[];
   approvalLineName: string | null;
   approvalLineCount: number | null;
   approvalLineApprovers: Approver[];
@@ -20,7 +26,9 @@ interface BasicInfoSectionProps {
   workPeriodEnd: string;
   onApprovalLineChange: () => void;
   onDateChange: (field: 'start' | 'end', value: string) => void;
+  onTeamChange?: (teamId: string) => void;
   canChangeApprovalLine?: boolean;
+  canChangeTeam?: boolean;
   disableStartDate?: boolean;
   disableEndDate?: boolean;
   signatures?: Record<string, string>;
@@ -31,8 +39,9 @@ interface BasicInfoSectionProps {
 export default function BasicInfoSection({
   assessmentTitle,
   siteName,
-  teamName,
   companyName,
+  teamId,
+  teams = [],
   approvalLineName,
   approvalLineCount,
   approvalLineApprovers,
@@ -40,13 +49,19 @@ export default function BasicInfoSection({
   workPeriodEnd,
   onApprovalLineChange,
   onDateChange,
+  onTeamChange,
   canChangeApprovalLine = true,
+  canChangeTeam = true,
   disableStartDate = false,
   disableEndDate = false,
   signatures = {},
   onApplySignature,
   canEdit = true,
 }: BasicInfoSectionProps) {
+  const selectedTeam = teams.find(t => t.id === teamId);
+  const teamDisplayText = teamId && teamId !== 'all'
+    ? selectedTeam?.name || '선택된 팀'
+    : '전체 (팀 미지정)';
   return (
     <div className="bg-white rounded-xl border border-gray-200 p-6 space-y-6">
       <h3 className="text-xl font-bold text-slate-700">기본 정보</h3>
@@ -63,16 +78,39 @@ export default function BasicInfoSection({
         <span className="text-slate-800">{siteName}</span>
       </div>
 
-      {teamName && (
-        <div className="flex items-center gap-4">
-          <label className="text-base font-medium text-slate-600 w-24">업체</label>
-          <span className="text-slate-800">{teamName}</span>
-        </div>
-      )}
+      <div>
+        <label className="block text-base font-medium text-slate-600 mb-2">소속</label>
+        <div className="space-y-3">
+          {/* 회사 (고정) */}
+          <div className="flex items-center gap-4">
+            <label className="text-base font-medium text-slate-600 w-20">회사</label>
+            <span className="text-slate-800">{companyName}</span>
+          </div>
 
-      <div className="flex items-center gap-4">
-        <label className="text-base font-medium text-slate-600 w-24">소속 회사</label>
-        <span className="text-slate-800">{companyName}</span>
+          {/* 팀 선택 */}
+          <div className="flex items-center gap-4">
+            <label className="text-base font-medium text-slate-600 w-20">팀(업체)</label>
+            {canChangeTeam && onTeamChange ? (
+              <div className="relative flex-1 max-w-md">
+                <select
+                  value={teamId || 'all'}
+                  onChange={(e) => onTeamChange(e.target.value)}
+                  className="w-full px-4 py-2 pr-10 border border-gray-300 rounded-lg text-base focus:outline-none focus:border-orange-500 focus:ring-1 focus:ring-orange-500 appearance-none bg-white"
+                >
+                  <option value="all">전체 (팀 미지정)</option>
+                  {teams.map((team) => (
+                    <option key={team.id} value={team.id}>
+                      {team.name}
+                    </option>
+                  ))}
+                </select>
+                <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 pointer-events-none" />
+              </div>
+            ) : (
+              <span className="text-slate-800">{teamDisplayText}</span>
+            )}
+          </div>
+        </div>
       </div>
 
       <div className="flex items-center gap-4">
