@@ -101,3 +101,10 @@ apps/TongPassApp/__tests__/__snapshots__/
 
 # Mock server
 apps/TongPassApp/mock-server/node_modules/
+*.tsbuildinfo
+
+# Claude Code local settings
+.claude/settings.local.json
+
+# Supabase local branches
+backend/supabase/.branches/
