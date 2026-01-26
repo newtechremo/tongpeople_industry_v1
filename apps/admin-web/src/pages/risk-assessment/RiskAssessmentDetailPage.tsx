@@ -122,7 +122,7 @@ function SignatureBox({
   return (
     <div className="border border-dashed border-gray-300 rounded-lg p-3 min-h-[72px] flex flex-col justify-between">
       {signature ? (
-        <div className="text-sm text-slate-700">
+        <div className="text-base text-slate-700">
           {signature.startsWith('data:image') ? (
             <img src={signature} alt="전자서명" className="h-10 object-contain" />
           ) : (
@@ -130,14 +130,14 @@ function SignatureBox({
           )}
         </div>
       ) : (
-        <span className="text-xs text-slate-400">서명 필요</span>
+        <span className="text-sm text-slate-400">서명 필요</span>
       )}
       <button
         type="button"
         onClick={onApply}
         disabled={!canApply}
         title={storedSignature ? '' : '저장된 서명이 없습니다.'}
-        className="mt-2 text-xs font-bold text-orange-600 hover:text-orange-700 disabled:text-slate-300"
+        className="mt-2 text-sm font-bold text-orange-600 hover:text-orange-700 disabled:text-slate-300"
       >
         서명 불러오기
       </button>
@@ -222,7 +222,7 @@ export default function RiskAssessmentDetailPage() {
     return (
       <div className="space-y-6">
         <div className="flex items-center justify-between">
-          <h1 className="text-xl font-black tracking-tight text-slate-800">위험성평가 상세</h1>
+          <h1 className="text-2xl font-black tracking-tight text-slate-800">위험성평가 상세</h1>
           <button
             type="button"
             onClick={() => navigate('/safety/risk')}
@@ -310,8 +310,8 @@ export default function RiskAssessmentDetailPage() {
             <ChevronLeft size={18} />
           </button>
           <div>
-            <h1 className="text-xl font-black tracking-tight text-slate-800">위험성평가 상세</h1>
-            <p className="text-sm text-slate-500 mt-1">문서 번호: {documentId}</p>
+            <h1 className="text-2xl font-black tracking-tight text-slate-800">위험성평가 상세</h1>
+            <p className="text-base text-slate-500 mt-1">문서 번호: {documentId}</p>
           </div>
         </div>
         <div className="flex items-center gap-2">
@@ -350,10 +350,10 @@ export default function RiskAssessmentDetailPage() {
 
       <div className="bg-white rounded-xl border border-gray-200 p-6 space-y-4">
         <div className="flex items-center gap-3">
-          <span className={`px-2 py-1 text-xs font-medium rounded ${statusInfo.className}`}>
+          <span className={`px-2 py-1 text-sm font-medium rounded ${statusInfo.className}`}>
             {statusInfo.label}
           </span>
-          <span className="text-sm text-slate-500">{TYPE_LABELS[assessmentType] || assessmentType} 위험성평가</span>
+          <span className="text-base text-slate-500">{TYPE_LABELS[assessmentType] || assessmentType} 위험성평가</span>
         </div>
       </div>
 
@@ -383,21 +383,21 @@ export default function RiskAssessmentDetailPage() {
       />
 
       <div className="space-y-6">
-        <h2 className="text-lg font-bold text-slate-700">작업 공종</h2>
+        <h2 className="text-xl font-bold text-slate-700">작업 공종</h2>
 
         {localAssessment ? (
           <div className="space-y-6">
             {localAssessment.categories.length === 0 && (
-              <div className="text-sm text-slate-500">작업 공종이 없습니다.</div>
+              <div className="text-base text-slate-500">작업 공종이 없습니다.</div>
             )}
             {localAssessment.categories.map((category, index) => (
               <div key={category.id} className="bg-gray-50 rounded-xl border border-gray-200 p-6 space-y-4">
                 {/* 대분류 헤더 */}
                 <div>
-                  <label className="block text-sm font-medium text-slate-600 mb-2">
+                  <label className="block text-base font-medium text-slate-600 mb-2">
                     대분류{index + 1}
                   </label>
-                  <div className="px-4 py-2 bg-white border border-gray-300 rounded-lg text-sm text-slate-800">
+                  <div className="px-4 py-2 bg-white border border-gray-300 rounded-lg text-base text-slate-800">
                     {category.categoryName || '-'}
                   </div>
                 </div>
@@ -410,7 +410,7 @@ export default function RiskAssessmentDetailPage() {
                   return (
                     <div key={subcategory.id} className="bg-orange-50/30 rounded-lg p-4 ml-4 space-y-4">
                       {/* 소분류 헤더 */}
-                      <h4 className="text-sm font-bold text-slate-700">
+                      <h4 className="text-base font-bold text-slate-700">
                         소분류{circledNumbers[subIndex] || `${subIndex + 1}`} {subcategory.name}
                       </h4>
 
@@ -436,7 +436,7 @@ export default function RiskAssessmentDetailPage() {
                             <div key={factor.id} className={`rounded-xl p-4 space-y-4 ${getLevelStyles()}`}>
                               {/* 위험 요인 */}
                               <div>
-                                <label className="block text-sm font-medium text-slate-600 mb-2">
+                                <label className="block text-base font-medium text-slate-600 mb-2">
                                   위험 요인
                                 </label>
                                 {canEdit ? (
@@ -452,10 +452,10 @@ export default function RiskAssessmentDetailPage() {
                                         )
                                       )
                                     }
-                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:border-orange-500 focus:ring-1 focus:ring-orange-500"
+                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg text-base focus:outline-none focus:border-orange-500 focus:ring-1 focus:ring-orange-500"
                                   />
                                 ) : (
-                                  <div className="px-4 py-2 text-sm text-slate-800">
+                                  <div className="px-4 py-2 text-base text-slate-800">
                                     {factor.factor}
                                   </div>
                                 )}
@@ -464,7 +464,7 @@ export default function RiskAssessmentDetailPage() {
                               {/* 위험성 수준 */}
                               <div>
                                 <div className="flex items-center gap-6">
-                                  <span className="text-sm font-medium text-slate-600">위험성 수준</span>
+                                  <span className="text-base font-medium text-slate-600">위험성 수준</span>
                                   {canEdit ? (
                                     <div className="flex items-center gap-4">
                                       {[
@@ -489,19 +489,19 @@ export default function RiskAssessmentDetailPage() {
                                             }}
                                             className="w-4 h-4 text-orange-500 focus:ring-orange-500"
                                           />
-                                          <span className="text-sm text-slate-700">{option.label}</span>
+                                          <span className="text-base text-slate-700">{option.label}</span>
                                         </label>
                                       ))}
                                     </div>
                                   ) : (
-                                    <span className="text-sm text-slate-700">{levelLabel || '-'}</span>
+                                    <span className="text-base text-slate-700">{levelLabel || '-'}</span>
                                   )}
                                 </div>
                               </div>
 
                               {/* 개선 대책 */}
                               <div>
-                                <label className="block text-sm font-medium text-slate-600 mb-2">
+                                <label className="block text-base font-medium text-slate-600 mb-2">
                                   개선 대책
                                 </label>
                                 {canEdit ? (
@@ -517,10 +517,10 @@ export default function RiskAssessmentDetailPage() {
                                         )
                                       )
                                     }
-                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:border-orange-500 focus:ring-1 focus:ring-orange-500"
+                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg text-base focus:outline-none focus:border-orange-500 focus:ring-1 focus:ring-orange-500"
                                   />
                                 ) : (
-                                  <div className="px-4 py-2 text-sm text-slate-700">
+                                  <div className="px-4 py-2 text-base text-slate-700">
                                     {factor.improvement || '-'}
                                   </div>
                                 )}
@@ -528,7 +528,7 @@ export default function RiskAssessmentDetailPage() {
 
                               {/* 작업 기간 */}
                               <div>
-                                <label className="block text-sm font-medium text-slate-600 mb-2">
+                                <label className="block text-base font-medium text-slate-600 mb-2">
                                   작업 기간
                                 </label>
                                 <div className="flex items-center gap-3">
@@ -537,7 +537,7 @@ export default function RiskAssessmentDetailPage() {
                                       type="date"
                                       value={factor.workPeriodStart}
                                       disabled={!canEdit}
-                                      className="w-full px-4 py-2 pr-10 border border-gray-300 rounded-lg text-sm focus:outline-none focus:border-orange-500 focus:ring-1 focus:ring-orange-500 disabled:bg-gray-100 disabled:text-slate-500"
+                                      className="w-full px-4 py-2 pr-10 border border-gray-300 rounded-lg text-base focus:outline-none focus:border-orange-500 focus:ring-1 focus:ring-orange-500 disabled:bg-gray-100 disabled:text-slate-500"
                                       readOnly
                                     />
                                     <Calendar className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
@@ -548,7 +548,7 @@ export default function RiskAssessmentDetailPage() {
                                       type="date"
                                       value={factor.workPeriodEnd}
                                       disabled={!canEdit}
-                                      className="w-full px-4 py-2 pr-10 border border-gray-300 rounded-lg text-sm focus:outline-none focus:border-orange-500 focus:ring-1 focus:ring-orange-500 disabled:bg-gray-100 disabled:text-slate-500"
+                                      className="w-full px-4 py-2 pr-10 border border-gray-300 rounded-lg text-base focus:outline-none focus:border-orange-500 focus:ring-1 focus:ring-orange-500 disabled:bg-gray-100 disabled:text-slate-500"
                                       readOnly
                                     />
                                     <Calendar className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
@@ -568,15 +568,15 @@ export default function RiskAssessmentDetailPage() {
         ) : (
           <div className="bg-gray-50 rounded-xl border border-gray-200 p-6">
             <div>
-              <label className="block text-sm font-medium text-slate-600 mb-2">대분류</label>
-              <div className="px-4 py-2 bg-white border border-gray-300 rounded-lg text-sm text-slate-800">
+              <label className="block text-base font-medium text-slate-600 mb-2">대분류</label>
+              <div className="px-4 py-2 bg-white border border-gray-300 rounded-lg text-base text-slate-800">
                 {mergedAssessment?.category_name || '-'}
               </div>
             </div>
             {mergedAssessment?.subcategory_name && (
               <div className="mt-4">
-                <label className="block text-sm font-medium text-slate-600 mb-2">세부 공종</label>
-                <div className="px-3 py-1.5 bg-orange-50 text-orange-700 text-sm rounded-lg border border-orange-200 inline-block">
+                <label className="block text-base font-medium text-slate-600 mb-2">세부 공종</label>
+                <div className="px-3 py-1.5 bg-orange-50 text-orange-700 text-base rounded-lg border border-orange-200 inline-block">
                   {mergedAssessment.subcategory_name}
                 </div>
               </div>
