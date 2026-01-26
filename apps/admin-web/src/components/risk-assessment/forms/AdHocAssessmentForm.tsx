@@ -5,6 +5,7 @@
  */
 
 import { useState } from 'react';
+import { addMonths } from 'date-fns';
 import BasicInfoFieldset from './fieldsets/BasicInfoFieldset';
 import TriggerReasonFieldset from './fieldsets/TriggerReasonFieldset';
 import WorkPeriodFieldset from './fieldsets/WorkPeriodFieldset';
@@ -47,17 +48,20 @@ interface Props {
 }
 
 export default function AdHocAssessmentForm({ onSubmit, onCancel }: Props) {
-  const [formData, setFormData] = useState<AdHocAssessmentData>({
-    title: '',
-    site_id: '',
-    team_id: '',
-    trigger_reason: '',
-    work_start_date: new Date(),
-    work_end_date: new Date(),
-    category_id: '',
-    subcategory_id: '',
-    selected_factors: [],
-    assessments: [],
+  const [formData, setFormData] = useState<AdHocAssessmentData>(() => {
+    const today = new Date();
+    return {
+      title: '',
+      site_id: '',
+      team_id: '',
+      trigger_reason: '',
+      work_start_date: today,
+      work_end_date: addMonths(today, 1),
+      category_id: '',
+      subcategory_id: '',
+      selected_factors: [],
+      assessments: [],
+    };
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
