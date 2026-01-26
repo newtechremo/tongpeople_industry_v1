@@ -78,38 +78,30 @@ export default function BasicInfoSection({
         <span className="text-slate-800">{siteName}</span>
       </div>
 
-      <div>
-        <label className="block text-base font-medium text-slate-600 mb-2">소속</label>
-        <div className="space-y-3">
-          {/* 회사 (고정) */}
-          <div className="flex items-center gap-4">
-            <label className="text-base font-medium text-slate-600 w-20">회사</label>
-            <span className="text-slate-800">{companyName}</span>
-          </div>
-
-          {/* 팀 선택 */}
-          <div className="flex items-center gap-4">
-            <label className="text-base font-medium text-slate-600 w-20">팀(업체)</label>
-            {canChangeTeam && onTeamChange ? (
-              <div className="relative flex-1 max-w-md">
-                <select
-                  value={teamId || 'all'}
-                  onChange={(e) => onTeamChange(e.target.value)}
-                  className="w-full px-4 py-2 pr-10 border border-gray-300 rounded-lg text-base focus:outline-none focus:border-orange-500 focus:ring-1 focus:ring-orange-500 appearance-none bg-white"
-                >
-                  <option value="all">전체 (팀 미지정)</option>
-                  {teams.map((team) => (
-                    <option key={team.id} value={team.id}>
-                      {team.name}
-                    </option>
-                  ))}
-                </select>
-                <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 pointer-events-none" />
-              </div>
-            ) : (
-              <span className="text-slate-800">{teamDisplayText}</span>
-            )}
-          </div>
+      <div className="flex items-center gap-4">
+        <label className="text-base font-medium text-slate-600 w-24">소속</label>
+        <div className="flex items-center gap-2 flex-1">
+          <span className="text-slate-800">{companyName}</span>
+          <span className="text-slate-400">/</span>
+          {canChangeTeam && onTeamChange ? (
+            <div className="relative flex-1 max-w-xs">
+              <select
+                value={teamId || 'all'}
+                onChange={(e) => onTeamChange(e.target.value)}
+                className="w-full px-3 py-1.5 pr-8 border border-gray-300 rounded-lg text-base focus:outline-none focus:border-orange-500 focus:ring-1 focus:ring-orange-500 appearance-none bg-white"
+              >
+                <option value="all">전체 (팀 미지정)</option>
+                {teams.map((team) => (
+                  <option key={team.id} value={team.id}>
+                    {team.name}
+                  </option>
+                ))}
+              </select>
+              <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+            </div>
+          ) : (
+            <span className="text-slate-800">{teamDisplayText}</span>
+          )}
         </div>
       </div>
 
