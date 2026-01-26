@@ -732,9 +732,9 @@ export default function RiskAssessmentPage() {
 
           <div>
 
-            <h1 className="text-xl font-black tracking-tight text-slate-800">위험성 평가</h1>
+            <h1 className="text-2xl font-black tracking-tight text-slate-800">위험성 평가</h1>
 
-            <p className="text-sm text-slate-500 mt-1">현장의 위험성평가 문서를 관리합니다</p>
+            <p className="text-base text-slate-500 mt-1">현장의 위험성평가 문서를 관리합니다</p>
 
           </div>
 
@@ -766,7 +766,7 @@ export default function RiskAssessmentPage() {
 
         <div className="flex items-center gap-4">
 
-          <span className="text-sm font-medium text-slate-600">구분</span>
+          <span className="text-base font-medium text-slate-600">구분</span>
 
           <div className="flex gap-2">
 
@@ -774,7 +774,7 @@ export default function RiskAssessmentPage() {
 
               onClick={() => setFilterType('ALL')}
 
-              className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors
+              className={`px-4 py-2 text-base font-medium rounded-lg transition-colors
 
                 ${filterType === 'ALL'
 
@@ -798,7 +798,7 @@ export default function RiskAssessmentPage() {
 
                 onClick={() => setFilterType(type.id)}
 
-                className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors
+                className={`px-4 py-2 text-base font-medium rounded-lg transition-colors
 
                   ${filterType === type.id
 
@@ -832,19 +832,19 @@ export default function RiskAssessmentPage() {
 
               <tr>
 
-                <th className="px-4 py-3 text-left text-xs font-bold text-slate-500 uppercase">작업기간</th>
+                <th className="px-4 py-3 text-left text-sm font-bold text-slate-500 uppercase">작업기간</th>
 
-                <th className="px-4 py-3 text-left text-xs font-bold text-slate-500 uppercase">작업공종(대분류)</th>
+                <th className="px-4 py-3 text-left text-sm font-bold text-slate-500 uppercase">작업공종(대분류)</th>
 
-                <th className="px-4 py-3 text-left text-xs font-bold text-slate-500 uppercase">작업자</th>
+                <th className="px-4 py-3 text-left text-sm font-bold text-slate-500 uppercase">작업자</th>
 
-                <th className="px-4 py-3 text-left text-xs font-bold text-slate-500 uppercase">구분</th>
+                <th className="px-4 py-3 text-left text-sm font-bold text-slate-500 uppercase">구분</th>
 
-                <th className="px-4 py-3 text-left text-xs font-bold text-slate-500 uppercase">상태</th>
+                <th className="px-4 py-3 text-left text-sm font-bold text-slate-500 uppercase">상태</th>
 
-                <th className="px-4 py-3 text-left text-xs font-bold text-slate-500 uppercase">결재 근로자</th>
+                <th className="px-4 py-3 text-left text-sm font-bold text-slate-500 uppercase">결재 근로자</th>
 
-                <th className="px-4 py-3 text-left text-xs font-bold text-slate-500 uppercase">근 미확인 근로자</th>
+                <th className="px-4 py-3 text-left text-sm font-bold text-slate-500 uppercase">근 미확인 근로자</th>
 
               </tr>
 
@@ -879,19 +879,19 @@ export default function RiskAssessmentPage() {
 
                   >
 
-                    <td className="px-4 py-4 text-sm text-slate-600">
+                    <td className="px-4 py-4 text-base text-slate-600">
 
                       {assessment.workPeriodStart.slice(5)} ~ {assessment.workPeriodEnd.slice(5)}
 
                     </td>
 
-                    <td className="px-4 py-4 text-sm text-slate-700 font-medium">
+                    <td className="px-4 py-4 text-base text-slate-700 font-medium">
 
                       {assessment.workCategory}
 
                     </td>
 
-                    <td className="px-4 py-4 text-sm text-slate-600">
+                    <td className="px-4 py-4 text-base text-slate-600">
 
                       {assessment.assignee}
 
@@ -899,7 +899,7 @@ export default function RiskAssessmentPage() {
 
                     <td className="px-4 py-4">
 
-                      <span className="text-sm text-slate-600">
+                      <span className="text-base text-slate-600">
 
                         {typeInfo?.shortLabel} 위험성평가
 
@@ -909,7 +909,7 @@ export default function RiskAssessmentPage() {
 
                     <td className="px-4 py-4">
 
-                      <span className={`px-2 py-1 text-xs font-medium rounded ${statusInfo.color}`}>
+                      <span className={`px-2 py-1 text-sm font-medium rounded ${statusInfo.color}`}>
 
                         {statusInfo.label}
 
@@ -917,13 +917,13 @@ export default function RiskAssessmentPage() {
 
                     </td>
 
-                    <td className="px-4 py-4 text-sm text-slate-600">
+                    <td className="px-4 py-4 text-base text-slate-600">
 
                       {assessment.workerCount}명
 
                     </td>
 
-                    <td className="px-4 py-4 text-sm">
+                    <td className="px-4 py-4 text-base">
 
                       {assessment.unconfirmedCount && assessment.unconfirmedCount > 0 ? (
 
@@ -955,9 +955,9 @@ export default function RiskAssessmentPage() {
 
               <FileText size={48} className="mx-auto mb-4 text-slate-300" />
 
-              <p className="text-slate-500 font-medium">등록된 위험성평가가 없습니다</p>
+              <p className="text-base text-slate-500 font-medium">등록된 위험성평가가 없습니다</p>
 
-              <p className="text-sm text-slate-400 mt-1">위험성평가를 추가해주세요</p>
+              <p className="text-base text-slate-400 mt-1">위험성평가를 추가해주세요</p>
 
             </div>
 
@@ -971,19 +971,19 @@ export default function RiskAssessmentPage() {
 
         <div className="flex justify-center gap-1">
 
-          <button className="w-8 h-8 flex items-center justify-center text-sm text-slate-400">&lt;</button>
+          <button className="w-10 h-10 flex items-center justify-center text-base text-slate-400">&lt;</button>
 
-          <button className="w-8 h-8 flex items-center justify-center text-sm font-bold text-white bg-orange-500 rounded">1</button>
+          <button className="w-10 h-10 flex items-center justify-center text-base font-bold text-white bg-orange-500 rounded">1</button>
 
-          <button className="w-8 h-8 flex items-center justify-center text-sm text-slate-600 hover:bg-gray-100 rounded">2</button>
+          <button className="w-10 h-10 flex items-center justify-center text-base text-slate-600 hover:bg-gray-100 rounded">2</button>
 
-          <button className="w-8 h-8 flex items-center justify-center text-sm text-slate-600 hover:bg-gray-100 rounded">3</button>
+          <button className="w-10 h-10 flex items-center justify-center text-base text-slate-600 hover:bg-gray-100 rounded">3</button>
 
-          <button className="w-8 h-8 flex items-center justify-center text-sm text-slate-600 hover:bg-gray-100 rounded">4</button>
+          <button className="w-10 h-10 flex items-center justify-center text-base text-slate-600 hover:bg-gray-100 rounded">4</button>
 
-          <button className="w-8 h-8 flex items-center justify-center text-sm text-slate-600 hover:bg-gray-100 rounded">5</button>
+          <button className="w-10 h-10 flex items-center justify-center text-base text-slate-600 hover:bg-gray-100 rounded">5</button>
 
-          <button className="w-8 h-8 flex items-center justify-center text-sm text-slate-400">&gt;</button>
+          <button className="w-10 h-10 flex items-center justify-center text-base text-slate-400">&gt;</button>
 
         </div>
 

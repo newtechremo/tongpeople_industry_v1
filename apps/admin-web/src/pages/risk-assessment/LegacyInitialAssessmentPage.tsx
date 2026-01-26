@@ -320,7 +320,7 @@ export default function LegacyInitialAssessmentPage() {
           >
             <ChevronLeft size={20} className="text-slate-600" />
           </button>
-          <h1 className="text-xl font-black tracking-tight text-slate-800">
+          <h1 className="text-2xl font-black tracking-tight text-slate-800">
             최초 위험성 평가 만들기 (레거시)
           </h1>
         </div>

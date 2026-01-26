@@ -84,12 +84,12 @@ export default function CreateAssessmentPage() {
           >
             <ChevronLeft size={20} className="text-slate-600" />
           </button>
-          <h1 className="text-xl font-black tracking-tight text-slate-800">
+          <h1 className="text-2xl font-black tracking-tight text-slate-800">
             위험성평가 만들기
           </h1>
         </div>
         <div className="bg-white rounded-xl border border-gray-200 p-8">
-          <p className="text-slate-500 text-center">
+          <p className="text-base text-slate-500 text-center">
             지원하지 않는 평가 유형입니다.
           </p>
         </div>
@@ -107,7 +107,7 @@ export default function CreateAssessmentPage() {
         >
           <ChevronLeft size={20} className="text-slate-600" />
         </button>
-        <h1 className="text-xl font-black tracking-tight text-slate-800">
+        <h1 className="text-2xl font-black tracking-tight text-slate-800">
           {typeLabel} 위험성평가 만들기
         </h1>
       </div>
@@ -115,14 +115,14 @@ export default function CreateAssessmentPage() {
       {submitStatus === 'success' && (
         <div className="p-4 rounded-xl bg-green-50 border border-green-200 flex items-center gap-3">
           <CheckCircle className="w-5 h-5 text-green-600" />
-          <p className="text-green-800 font-medium">평가가 성공적으로 생성되었습니다.</p>
+          <p className="text-base text-green-800 font-medium">평가가 성공적으로 생성되었습니다.</p>
         </div>
       )}
 
       {submitStatus === 'error' && (
         <div className="p-4 rounded-xl bg-red-50 border border-red-200 flex items-center gap-3">
           <AlertCircle className="w-5 h-5 text-red-600" />
-          <p className="text-red-800 font-medium">평가 생성 중 오류가 발생했습니다. 다시 시도해주세요.</p>
+          <p className="text-base text-red-800 font-medium">평가 생성 중 오류가 발생했습니다. 다시 시도해주세요.</p>
         </div>
       )}
 
@@ -130,7 +130,7 @@ export default function CreateAssessmentPage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
           <div className="bg-white rounded-2xl p-8 text-center">
             <div className="inline-block animate-spin rounded-full h-12 w-12 border-4 border-orange-500 border-t-transparent mb-4"></div>
-            <p className="text-slate-700 font-bold">평가를 생성하는 중...</p>
+            <p className="text-lg text-slate-700 font-bold">평가를 생성하는 중...</p>
           </div>
         </div>
       )}
