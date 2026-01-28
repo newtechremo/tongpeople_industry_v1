@@ -13,6 +13,8 @@ interface Props {
   onRemove: (factorId: string) => void;
   disabled?: boolean;
   error?: string;
+  categoryId?: number;      // AI 추천용
+  subcategoryId?: number;   // AI 추천용
 }
 
 export default function RiskItemsFieldset({
@@ -22,6 +24,8 @@ export default function RiskItemsFieldset({
   onRemove,
   disabled = false,
   error,
+  categoryId,
+  subcategoryId,
 }: Props) {
   return (
     <div className="p-8 rounded-2xl border border-gray-200 bg-white space-y-6">
@@ -39,6 +43,8 @@ export default function RiskItemsFieldset({
         selectedFactorIds={selectedFactors.map(f => f.id)}
         onAdd={onAdd}
         disabled={disabled}
+        categoryId={categoryId}
+        subcategoryId={subcategoryId}
       />
 
       {selectedFactors.length > 0 && (

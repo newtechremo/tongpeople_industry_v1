@@ -5,6 +5,7 @@
  */
 
 import { useState } from 'react';
+import { addMonths } from 'date-fns';
 import BasicInfoFieldset from './fieldsets/BasicInfoFieldset';
 import TriggerReasonFieldset from './fieldsets/TriggerReasonFieldset';
 import WorkPeriodFieldset from './fieldsets/WorkPeriodFieldset';
@@ -47,17 +48,20 @@ interface Props {
 }
 
 export default function AdHocAssessmentForm({ onSubmit, onCancel }: Props) {
-  const [formData, setFormData] = useState<AdHocAssessmentData>({
-    title: '',
-    site_id: '',
-    team_id: '',
-    trigger_reason: '',
-    work_start_date: new Date(),
-    work_end_date: new Date(),
-    category_id: '',
-    subcategory_id: '',
-    selected_factors: [],
-    assessments: [],
+  const [formData, setFormData] = useState<AdHocAssessmentData>(() => {
+    const today = new Date();
+    return {
+      title: '',
+      site_id: '',
+      team_id: '',
+      trigger_reason: '',
+      work_start_date: today,
+      work_end_date: addMonths(today, 1),
+      category_id: '',
+      subcategory_id: '',
+      selected_factors: [],
+      assessments: [],
+    };
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -230,6 +234,8 @@ export default function AdHocAssessmentForm({ onSubmit, onCancel }: Props) {
         onRemove={handleRemoveFactor}
         disabled={!formData.category_id}
         error={errors.selected_factors}
+        categoryId={formData.category_id ? Number(formData.category_id) : undefined}
+        subcategoryId={formData.subcategory_id ? Number(formData.subcategory_id) : undefined}
       />
 
       {/* 빈도/강도 평가 */}

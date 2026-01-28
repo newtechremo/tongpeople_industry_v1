@@ -6,6 +6,8 @@ import { Plus, FileText, Calendar, RefreshCw, Clock } from 'lucide-react';
 
 import AssessmentTypeSelectModal, { AssessmentType } from '../components/risk-assessment/AssessmentTypeSelectModal';
 
+import { getActiveTeams, getTeamById } from '@/mocks/teams';
+
 
 
 // ============================================
@@ -62,13 +64,19 @@ interface RiskAssessment {
 
   workCategory: string;
 
-  assignee: string;
+  author: string; // 작성자
+
+  teamId?: string; // 소속 팀 ID
 
   createdAt: string;
 
   workerCount?: number;
 
   unconfirmedCount?: number;
+
+  // 레거시 필드 (하위 호환성)
+
+  assignee?: string;
 
 }
 
@@ -198,7 +206,7 @@ const ASSESSMENT_TYPES: AssessmentTypeInfo[] = [
 
 ];
 
-const AVAILABLE_CREATE_TYPES: AssessmentType[] = ['INITIAL', 'OCCASIONAL', 'CONTINUOUS'];
+const AVAILABLE_CREATE_TYPES: AssessmentType[] = ['INITIAL'];
 
 
 
@@ -238,13 +246,15 @@ const MOCK_ASSESSMENTS: RiskAssessment[] = [
 
     status: 'IN_PROGRESS',
 
-    workPeriodStart: '2026-01-10',
+    workPeriodStart: '2026-01-28',
 
-    workPeriodEnd: '2026-01-20',
+    workPeriodEnd: '2026-02-05',
 
     workCategory: '가설사무실 설치',
 
-    assignee: '강일동',
+    author: '강일동',
+
+    teamId: 'team-001',
 
     createdAt: '2026-01-10',
 
@@ -270,7 +280,9 @@ const MOCK_ASSESSMENTS: RiskAssessment[] = [
 
     workCategory: '가설펜스 설치',
 
-    assignee: '강일동',
+    author: '강일동',
+
+    teamId: 'team-001',
 
     createdAt: '2026-01-05',
 
@@ -290,13 +302,15 @@ const MOCK_ASSESSMENTS: RiskAssessment[] = [
 
     status: 'APPROVED',
 
-    workPeriodStart: '2026-01-01',
+    workPeriodStart: '2026-01-20',
 
-    workPeriodEnd: '2026-12-31',
+    workPeriodEnd: '2026-02-20',
 
     workCategory: '전체 공종',
 
-    assignee: '김안전',
+    author: '김안전',
+
+    teamId: 'all',
 
     createdAt: '2026-01-01',
 
@@ -322,7 +336,9 @@ const MOCK_ASSESSMENTS: RiskAssessment[] = [
 
     workCategory: '철근 콘크리트',
 
-    assignee: '박현장',
+    author: '박현장',
+
+    teamId: 'team-002',
 
     createdAt: '2026-01-03',
 
@@ -342,13 +358,15 @@ const MOCK_ASSESSMENTS: RiskAssessment[] = [
 
     status: 'PENDING',
 
-    workPeriodStart: '2026-01-08',
+    workPeriodStart: '2026-01-30',
 
-    workPeriodEnd: '2026-01-18',
+    workPeriodEnd: '2026-02-10',
 
     workCategory: '양중작업',
 
-    assignee: '이기사',
+    author: '이기사',
+
+    teamId: 'team-003',
 
     createdAt: '2026-01-08',
 
@@ -368,13 +386,15 @@ const MOCK_ASSESSMENTS: RiskAssessment[] = [
 
     status: 'IN_PROGRESS',
 
-    workPeriodStart: '2026-01-01',
+    workPeriodStart: '2026-01-15',
 
     workPeriodEnd: '2026-03-31',
 
     workCategory: '고소작업',
 
-    assignee: '최안전',
+    author: '최안전',
+
+    teamId: 'team-004',
 
     createdAt: '2026-01-02',
 
@@ -392,15 +412,17 @@ const MOCK_ASSESSMENTS: RiskAssessment[] = [
 
     title: '전기배선 작업',
 
-    status: 'DRAFT',
+    status: 'PENDING',
 
-    workPeriodStart: '2026-01-12',
+    workPeriodStart: '2026-02-01',
 
-    workPeriodEnd: '2026-01-25',
+    workPeriodEnd: '2026-02-15',
 
     workCategory: '전기공사',
 
-    assignee: '정전기',
+    author: '정전기',
+
+    teamId: 'team-005',
 
     createdAt: '2026-01-11',
 
@@ -426,7 +448,9 @@ const MOCK_ASSESSMENTS: RiskAssessment[] = [
 
     workCategory: '배관공사',
 
-    assignee: '김배관',
+    author: '김배관',
+
+    teamId: 'team-002',
 
     createdAt: '2026-01-06',
 
@@ -452,7 +476,9 @@ const MOCK_ASSESSMENTS: RiskAssessment[] = [
 
     workCategory: '전체 공종',
 
-    assignee: '박현장',
+    author: '박현장',
+
+    teamId: 'all',
 
     createdAt: '2025-12-01',
 
@@ -478,7 +504,9 @@ const MOCK_ASSESSMENTS: RiskAssessment[] = [
 
     workCategory: '용접공사',
 
-    assignee: '이용접',
+    author: '이용접',
+
+    teamId: 'team-003',
 
     createdAt: '2026-01-09',
 
@@ -594,9 +622,9 @@ function loadDrafts(): RiskAssessment[] {
 
         type: mappedType,
 
-        title: parsed.title || '최초 위험성평가(임시)',
+        title: parsed.title || '최초 위험성평가',
 
-        status: 'DRAFT',
+        status: parsed.status || 'PENDING',
 
         workPeriodStart: parsed.workPeriodStart || '',
 
@@ -604,7 +632,9 @@ function loadDrafts(): RiskAssessment[] {
 
         workCategory,
 
-        assignee: '-',
+        author: '-',
+
+        teamId: 'all',
 
         createdAt,
 
@@ -630,6 +660,35 @@ function loadDrafts(): RiskAssessment[] {
 
 
 
+// 작업기간 상태 계산
+const getWorkPeriodStatus = (startDate: string, endDate: string): string => {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  const start = new Date(startDate);
+  start.setHours(0, 0, 0, 0);
+
+  const end = new Date(endDate);
+  end.setHours(0, 0, 0, 0);
+
+  if (today < start) {
+    return '작업기간 전';
+  } else if (today > end) {
+    return '작업완료';
+  } else {
+    return '작업기간 중';
+  }
+};
+
+// 결재상태 계산
+const getApprovalStatus = (status: AssessmentStatus): { label: string; color: string } => {
+  if (status === 'APPROVED' || status === 'COMPLETED') {
+    return { label: '결재완료', color: 'bg-green-100 text-green-700' };
+  } else {
+    return { label: '결재진행중', color: 'bg-blue-100 text-blue-700' };
+  }
+};
+
 export default function RiskAssessmentPage() {
 
   const navigate = useNavigate();
@@ -639,6 +698,8 @@ export default function RiskAssessmentPage() {
   const [showTypeModal, setShowTypeModal] = useState(false);
 
   const [drafts, setDrafts] = useState<RiskAssessment[]>([]);
+
+  const teams = useMemo(() => getActiveTeams(), []);
 
 
 
@@ -732,9 +793,9 @@ export default function RiskAssessmentPage() {
 
           <div>
 
-            <h1 className="text-xl font-black tracking-tight text-slate-800">위험성 평가</h1>
+            <h1 className="text-2xl font-black tracking-tight text-slate-800">위험성 평가</h1>
 
-            <p className="text-sm text-slate-500 mt-1">현장의 위험성평가 문서를 관리합니다</p>
+            <p className="text-base text-slate-500 mt-1">현장의 위험성평가 문서를 관리합니다</p>
 
           </div>
 
@@ -766,7 +827,7 @@ export default function RiskAssessmentPage() {
 
         <div className="flex items-center gap-4">
 
-          <span className="text-sm font-medium text-slate-600">구분</span>
+          <span className="text-base font-medium text-slate-600">구분</span>
 
           <div className="flex gap-2">
 
@@ -774,7 +835,7 @@ export default function RiskAssessmentPage() {
 
               onClick={() => setFilterType('ALL')}
 
-              className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors
+              className={`px-4 py-2 text-base font-medium rounded-lg transition-colors
 
                 ${filterType === 'ALL'
 
@@ -798,7 +859,7 @@ export default function RiskAssessmentPage() {
 
                 onClick={() => setFilterType(type.id)}
 
-                className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors
+                className={`px-4 py-2 text-base font-medium rounded-lg transition-colors
 
                   ${filterType === type.id
 
@@ -832,19 +893,17 @@ export default function RiskAssessmentPage() {
 
               <tr>
 
-                <th className="px-4 py-3 text-left text-xs font-bold text-slate-500 uppercase">작업기간</th>
+                <th className="px-4 py-3 text-left text-sm font-bold text-slate-500 uppercase">소속</th>
 
-                <th className="px-4 py-3 text-left text-xs font-bold text-slate-500 uppercase">작업공종(대분류)</th>
+                <th className="px-4 py-3 text-left text-sm font-bold text-slate-500 uppercase">작업기간</th>
 
-                <th className="px-4 py-3 text-left text-xs font-bold text-slate-500 uppercase">작업자</th>
+                <th className="px-4 py-3 text-left text-sm font-bold text-slate-500 uppercase">작업공종(대분류)</th>
 
-                <th className="px-4 py-3 text-left text-xs font-bold text-slate-500 uppercase">구분</th>
+                <th className="px-4 py-3 text-left text-sm font-bold text-slate-500 uppercase">작성자</th>
 
-                <th className="px-4 py-3 text-left text-xs font-bold text-slate-500 uppercase">상태</th>
+                <th className="px-4 py-3 text-left text-sm font-bold text-slate-500 uppercase">구분</th>
 
-                <th className="px-4 py-3 text-left text-xs font-bold text-slate-500 uppercase">결재 근로자</th>
-
-                <th className="px-4 py-3 text-left text-xs font-bold text-slate-500 uppercase">근 미확인 근로자</th>
+                <th className="px-4 py-3 text-left text-sm font-bold text-slate-500 uppercase">결재상태</th>
 
               </tr>
 
@@ -854,10 +913,11 @@ export default function RiskAssessmentPage() {
 
               {filteredAssessments.map((assessment) => {
 
-                const typeInfo = ASSESSMENT_TYPES.find(t => t.id === assessment.type);
-
-                const statusInfo = STATUS_LABELS[assessment.status];
-                const isDraft = assessment.status === 'DRAFT';
+                const teamName = assessment.teamId === 'all'
+                  ? '전체'
+                  : getTeamById(assessment.teamId || '')?.name || '미지정';
+                const workPeriodStatus = getWorkPeriodStatus(assessment.workPeriodStart, assessment.workPeriodEnd);
+                const approvalStatus = getApprovalStatus(assessment.status);
 
                 return (
 
@@ -866,74 +926,73 @@ export default function RiskAssessmentPage() {
                     key={assessment.id}
 
                     onClick={() => {
-                      if (isDraft) {
-                        alert('작성중인 문서는 아직 상세 화면을 지원하지 않습니다.');
+                      // 최초 위험성평가는 모두 열람 가능
+                      if (assessment.type === 'INITIAL') {
+                        navigate(`/safety/risk/${assessment.id}`);
                         return;
                       }
-                      navigate(`/safety/risk/${assessment.id}`);
+
+                      // 수시/정기/상시는 개발중
+                      alert('해당 유형의 위험성평가는 현재 개발중입니다.\n최초 위험성평가만 상세보기가 가능합니다.');
                     }}
 
-                    className={`border-b border-gray-100 transition-colors cursor-pointer ${
-                      isDraft ? 'bg-gray-50 text-slate-400 hover:bg-gray-100' : 'hover:bg-orange-50'
-                    }`}
+                    className="border-b border-gray-100 transition-colors cursor-pointer hover:bg-orange-50"
 
                   >
 
-                    <td className="px-4 py-4 text-sm text-slate-600">
+                    {/* 소속 */}
+                    <td className="px-4 py-4 text-base text-slate-600">
 
-                      {assessment.workPeriodStart.slice(5)} ~ {assessment.workPeriodEnd.slice(5)}
+                      {teamName}
 
                     </td>
 
-                    <td className="px-4 py-4 text-sm text-slate-700 font-medium">
+                    {/* 작업기간 */}
+                    <td className="px-4 py-4 text-base text-slate-600">
+
+                      {assessment.workPeriodStart.slice(2)} ~ {assessment.workPeriodEnd.slice(2)}
+
+                    </td>
+
+                    {/* 작업공종(대분류) */}
+                    <td className="px-4 py-4 text-base text-slate-700 font-medium">
 
                       {assessment.workCategory}
 
                     </td>
 
-                    <td className="px-4 py-4 text-sm text-slate-600">
+                    {/* 작성자 */}
+                    <td className="px-4 py-4 text-base text-slate-600">
 
-                      {assessment.assignee}
+                      {assessment.author}
 
                     </td>
 
+                    {/* 구분 (작업기간 상태) */}
                     <td className="px-4 py-4">
 
-                      <span className="text-sm text-slate-600">
+                      <span className={`px-2 py-1 text-sm font-medium rounded ${
+                        workPeriodStatus === '작업기간 전'
+                          ? 'bg-gray-100 text-gray-700'
+                          : workPeriodStatus === '작업기간 중'
+                          ? 'bg-blue-100 text-blue-700'
+                          : 'bg-slate-100 text-slate-600'
+                      }`}>
 
-                        {typeInfo?.shortLabel} 위험성평가
+                        {workPeriodStatus}
 
                       </span>
 
                     </td>
 
+                    {/* 결재상태 */}
                     <td className="px-4 py-4">
 
-                      <span className={`px-2 py-1 text-xs font-medium rounded ${statusInfo.color}`}>
+                      <span className={`px-2 py-1 text-sm font-medium rounded ${approvalStatus.color}`}>
 
-                        {statusInfo.label}
+                        {approvalStatus.label}
 
                       </span>
-
-                    </td>
-
-                    <td className="px-4 py-4 text-sm text-slate-600">
-
-                      {assessment.workerCount}명
-
-                    </td>
-
-                    <td className="px-4 py-4 text-sm">
-
-                      {assessment.unconfirmedCount && assessment.unconfirmedCount > 0 ? (
-
-                        <span className="text-red-600 font-medium">{assessment.unconfirmedCount}명</span>
-
-                      ) : (
-
-                        <span className="text-slate-400">-</span>
-
-                      )}
 
                     </td>
 
@@ -955,9 +1014,9 @@ export default function RiskAssessmentPage() {
 
               <FileText size={48} className="mx-auto mb-4 text-slate-300" />
 
-              <p className="text-slate-500 font-medium">등록된 위험성평가가 없습니다</p>
+              <p className="text-base text-slate-500 font-medium">등록된 위험성평가가 없습니다</p>
 
-              <p className="text-sm text-slate-400 mt-1">위험성평가를 추가해주세요</p>
+              <p className="text-base text-slate-400 mt-1">위험성평가를 추가해주세요</p>
 
             </div>
 
@@ -971,19 +1030,19 @@ export default function RiskAssessmentPage() {
 
         <div className="flex justify-center gap-1">
 
-          <button className="w-8 h-8 flex items-center justify-center text-sm text-slate-400">&lt;</button>
+          <button className="w-10 h-10 flex items-center justify-center text-base text-slate-400">&lt;</button>
 
-          <button className="w-8 h-8 flex items-center justify-center text-sm font-bold text-white bg-orange-500 rounded">1</button>
+          <button className="w-10 h-10 flex items-center justify-center text-base font-bold text-white bg-orange-500 rounded">1</button>
 
-          <button className="w-8 h-8 flex items-center justify-center text-sm text-slate-600 hover:bg-gray-100 rounded">2</button>
+          <button className="w-10 h-10 flex items-center justify-center text-base text-slate-600 hover:bg-gray-100 rounded">2</button>
 
-          <button className="w-8 h-8 flex items-center justify-center text-sm text-slate-600 hover:bg-gray-100 rounded">3</button>
+          <button className="w-10 h-10 flex items-center justify-center text-base text-slate-600 hover:bg-gray-100 rounded">3</button>
 
-          <button className="w-8 h-8 flex items-center justify-center text-sm text-slate-600 hover:bg-gray-100 rounded">4</button>
+          <button className="w-10 h-10 flex items-center justify-center text-base text-slate-600 hover:bg-gray-100 rounded">4</button>
 
-          <button className="w-8 h-8 flex items-center justify-center text-sm text-slate-600 hover:bg-gray-100 rounded">5</button>
+          <button className="w-10 h-10 flex items-center justify-center text-base text-slate-600 hover:bg-gray-100 rounded">5</button>
 
-          <button className="w-8 h-8 flex items-center justify-center text-sm text-slate-400">&gt;</button>
+          <button className="w-10 h-10 flex items-center justify-center text-base text-slate-400">&gt;</button>
 
         </div>
 
