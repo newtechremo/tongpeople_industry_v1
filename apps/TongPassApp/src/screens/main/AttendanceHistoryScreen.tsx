@@ -17,6 +17,7 @@ import {
   RefreshControl,
 } from 'react-native';
 import {colors} from '@/constants/colors';
+import {getMonthlyAttendance} from '@/api/worker';
 
 // 타입 정의
 interface AttendanceSummary {
@@ -74,60 +75,35 @@ const AttendanceHistoryScreen: React.FC = () => {
       }
 
       try {
-        // TODO: 실제 API 연동 (GET /attendance-history?year=&month=)
-        // 현재는 더미 데이터 사용
-        await new Promise<void>(resolve => setTimeout(resolve, 500));
+        const data = await getMonthlyAttendance(currentYear, currentMonth);
 
-        // 더미 데이터 생성
-        const dummyRecords: AttendanceRecord[] = [];
-        const daysInMonth = new Date(currentYear, currentMonth, 0).getDate();
+        const convertedRecords: AttendanceRecord[] = data.records.map(r => {
+          // workHours(시간) → totalMinutes(분) 변환
+          const totalMinutes = r.workHours != null ? Math.round(r.workHours * 60) : 0;
 
-        for (let day = Math.min(daysInMonth, today.day); day >= 1; day--) {
-          // 현재 달이고 오늘 이후면 스킵
-          if (
-            currentYear === today.year &&
-            currentMonth === today.month &&
-            day > today.day
-          ) {
-            continue;
+          // 상태 변환
+          let status: 'WORK_ON' | 'WORK_DONE' | 'NO_RECORD' = 'NO_RECORD';
+          if (r.status === '근무중') {
+            status = 'WORK_ON';
+          } else if (r.status === '완료') {
+            status = 'WORK_DONE';
           }
 
-          const dateString = `${currentYear}-${String(currentMonth).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-          const isToday = dateString === today.dateString;
+          return {
+            id: `attendance-${r.workDate}`,
+            workDate: r.workDate,
+            checkInTime: r.checkInTime,
+            checkOutTime: r.checkOutTime,
+            status,
+            totalMinutes,
+            isAutoOut: r.isAutoOut,
+          };
+        });
 
-          // 주말(토,일) 또는 랜덤으로 일부 날짜 제외
-          const date = new Date(currentYear, currentMonth - 1, day);
-          const dayOfWeek = date.getDay();
-          const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
-
-          if (isWeekend || (!isToday && Math.random() > 0.7)) {
-            continue;
-          }
-
-          const checkInHour = 8 + Math.floor(Math.random() * 2);
-          const checkInMin = Math.floor(Math.random() * 60);
-          const checkOutHour = 17 + Math.floor(Math.random() * 2);
-          const checkOutMin = Math.floor(Math.random() * 60);
-
-          dummyRecords.push({
-            id: `attendance-${dateString}`,
-            workDate: dateString,
-            checkInTime: `${String(checkInHour).padStart(2, '0')}:${String(checkInMin).padStart(2, '0')}`,
-            checkOutTime: isToday
-              ? null
-              : `${String(checkOutHour).padStart(2, '0')}:${String(checkOutMin).padStart(2, '0')}`,
-            status: isToday ? 'WORK_ON' : 'WORK_DONE',
-            totalMinutes: isToday
-              ? Math.floor((Date.now() - new Date(currentYear, currentMonth - 1, day, checkInHour, checkInMin).getTime()) / 60000)
-              : (checkOutHour - checkInHour) * 60 + (checkOutMin - checkInMin),
-            isAutoOut: !isToday && Math.random() > 0.8,
-          });
-        }
-
-        setRecords(dummyRecords);
+        setRecords(convertedRecords);
         setSummary({
-          workDays: dummyRecords.length,
-          totalMinutes: dummyRecords.reduce((acc, r) => acc + r.totalMinutes, 0),
+          workDays: data.summary.totalDays,
+          totalMinutes: Math.round(data.summary.totalHours * 60),
         });
       } catch (error) {
         console.error('Failed to fetch attendance data:', error);

@@ -15,7 +15,7 @@ import {getStorageData, setStorageData} from '@/utils/storage';
 import {ApiError, ApiErrorCode, ApiErrorResponse} from '@/types/api';
 
 // 환경 변수 기본값 (BASEURL이 undefined인 경우 대비)
-const API_BASE_URL = BASEURL || 'http://localhost:3000';
+const API_BASE_URL = BASEURL || 'https://zbqittvnenjgoimlixpn.supabase.co/functions/v1';
 
 // 타임아웃 설정 (ms)
 const REQUEST_TIMEOUT = 15000;
@@ -58,10 +58,9 @@ class ApiClient {
 
     this.setupInterceptors();
 
-    // 개발 환경에서 API URL 로깅
-    if (__DEV__) {
-      console.log('[API Client] Base URL:', API_BASE_URL);
-    }
+    // API URL 로깅 (디버깅용)
+    console.log('[API Client] Base URL:', API_BASE_URL);
+    console.log('[API Client] BASEURL env:', BASEURL);
   }
 
   private setupInterceptors() {
@@ -94,6 +93,10 @@ class ApiClient {
         if (!originalRequest) {
           return Promise.reject(this.normalizeError(error));
         }
+
+        // 디버깅: 모든 에러 로깅
+        console.log('[API Client] Response error:', error.response?.status, error.config?.url, error.message);
+        console.log('[API Client] Error data:', JSON.stringify(error.response?.data));
 
         // 401 에러: 토큰 갱신 시도
         if (error.response?.status === 401 && !originalRequest._retry) {

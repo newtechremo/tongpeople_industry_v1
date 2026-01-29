@@ -146,16 +146,8 @@ Deno.serve(async (req) => {
       isSenior = age >= (site.senior_age_threshold || 65);
     }
 
-    // 7. 자동 퇴근 시간 계산 (AUTO_8H 모드)
-    let checkOutTime = null;
-    let isAutoOut = false;
-    if (site.checkout_policy === 'AUTO_8H') {
-      const autoHours = site.auto_hours || 8;
-      checkOutTime = new Date(checkInTime.getTime() + autoHours * 60 * 60 * 1000);
-      isAutoOut = true;
-    }
-
-    // 8. 출근 기록 생성
+    // 7. 출근 기록 생성
+    // check_out_time은 출근 시 null. AUTO_8H인 경우 Cron이 자동 퇴근 처리.
     const { data: attendance, error: insertError } = await supabaseAdmin
       .from('attendance')
       .insert({
@@ -169,8 +161,8 @@ Deno.serve(async (req) => {
         age: age,
         is_senior: isSenior,
         check_in_time: checkInTime.toISOString(),
-        check_out_time: checkOutTime?.toISOString() || null,
-        is_auto_out: isAutoOut,
+        check_out_time: null,
+        is_auto_out: false,
       })
       .select()
       .single();

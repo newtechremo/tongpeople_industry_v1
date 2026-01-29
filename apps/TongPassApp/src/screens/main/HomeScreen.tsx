@@ -46,6 +46,7 @@ const HomeScreen: React.FC = () => {
   const [commuteStatus, setCommuteStatus] = useRecoilState(commuteStatusState);
 
   const [loading, setLoading] = useState(false);
+  const [initialLoading, setInitialLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [checkInTime, setCheckInTime] = useState<string | null>(null);
 
@@ -81,6 +82,7 @@ const HomeScreen: React.FC = () => {
         }
       } finally {
         setRefreshing(false);
+        setInitialLoading(false);
       }
     },
     [setCommuteStatus],
@@ -312,51 +314,60 @@ const HomeScreen: React.FC = () => {
             })}
           </Text>
 
-          {/* 상태 카드 */}
-          <View style={[styles.statusCard, getStatusCardStyle()]}>
-            <Text style={styles.statusLabel}>현재 상태</Text>
-            <Text style={[styles.statusText, getStatusTextStyle()]}>
-              {getStatusText()}
-            </Text>
-            {checkInTime && commuteStatus !== 'WORK_OFF' && (
-              <Text style={styles.checkInTimeText}>
-                출근 시간: {formatTime(checkInTime)}
-              </Text>
-            )}
-          </View>
-
-          {/* M02 상태: QR 코드 표시 */}
-          {commuteStatus === 'WORK_ON' && (
-            <View style={styles.qrSection}>
-              <DynamicQRCode size={180} />
+          {initialLoading ? (
+            <View style={styles.initialLoadingContainer}>
+              <ActivityIndicator size="large" color={colors.primary} />
+              <Text style={styles.initialLoadingText}>상태 확인 중...</Text>
             </View>
-          )}
-
-          {/* M03 상태: 완료 메시지 */}
-          {commuteStatus === 'WORK_DONE' && (
-            <View style={styles.completedSection}>
-              <View style={styles.checkIcon}>
-                <Text style={styles.checkIconText}>✓</Text>
+          ) : (
+            <>
+              {/* 상태 카드 */}
+              <View style={[styles.statusCard, getStatusCardStyle()]}>
+                <Text style={styles.statusLabel}>현재 상태</Text>
+                <Text style={[styles.statusText, getStatusTextStyle()]}>
+                  {getStatusText()}
+                </Text>
+                {checkInTime && commuteStatus !== 'WORK_OFF' && (
+                  <Text style={styles.checkInTimeText}>
+                    출근 시간: {formatTime(checkInTime)}
+                  </Text>
+                )}
               </View>
-              <Text style={styles.completedTitle}>오늘 근무 완료</Text>
-              <Text style={styles.completedSubtitle}>
-                내일도 안전한 하루 되세요!
-              </Text>
-            </View>
-          )}
 
-          {/* 출퇴근 버튼 */}
-          <TouchableOpacity
-            style={[styles.commuteButton, getButtonStyle()]}
-            onPress={handleCommute}
-            disabled={commuteStatus === 'WORK_DONE' || loading}
-            activeOpacity={0.8}>
-            {loading ? (
-              <ActivityIndicator size="large" color="#FFFFFF" />
-            ) : (
-              <Text style={styles.commuteButtonText}>{getButtonText()}</Text>
-            )}
-          </TouchableOpacity>
+              {/* M02 상태: QR 코드 표시 */}
+              {commuteStatus === 'WORK_ON' && (
+                <View style={styles.qrSection}>
+                  <DynamicQRCode size={180} />
+                </View>
+              )}
+
+              {/* M03 상태: 완료 메시지 */}
+              {commuteStatus === 'WORK_DONE' && (
+                <View style={styles.completedSection}>
+                  <View style={styles.checkIcon}>
+                    <Text style={styles.checkIconText}>✓</Text>
+                  </View>
+                  <Text style={styles.completedTitle}>오늘 근무 완료</Text>
+                  <Text style={styles.completedSubtitle}>
+                    내일도 안전한 하루 되세요!
+                  </Text>
+                </View>
+              )}
+
+              {/* 출퇴근 버튼 */}
+              <TouchableOpacity
+                style={[styles.commuteButton, getButtonStyle()]}
+                onPress={handleCommute}
+                disabled={commuteStatus === 'WORK_DONE' || loading}
+                activeOpacity={0.8}>
+                {loading ? (
+                  <ActivityIndicator size="large" color="#FFFFFF" />
+                ) : (
+                  <Text style={styles.commuteButtonText}>{getButtonText()}</Text>
+                )}
+              </TouchableOpacity>
+            </>
+          )}
         </View>
       </ScrollView>
 
@@ -417,6 +428,17 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: colors.textSecondary,
     marginBottom: 16,
+  },
+  initialLoadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 80,
+  },
+  initialLoadingText: {
+    marginTop: 12,
+    fontSize: 15,
+    color: colors.textSecondary,
   },
   // 상태 카드 기본
   statusCard: {

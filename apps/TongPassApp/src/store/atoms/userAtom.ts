@@ -35,9 +35,11 @@ export const userInfoState = atom<Worker | null>({
 export const workerStatusState = atom<WorkerStatus>({
   key: 'workerStatusState',
   default: 'PENDING',
+  effects: [asyncStorageEffect('workerStatus')],
 });
 
 export const commuteStatusState = atom<CommuteStatus>({
   key: 'commuteStatusState',
   default: 'WORK_OFF',
+  effects: [asyncStorageEffect('commuteStatus')],
 });

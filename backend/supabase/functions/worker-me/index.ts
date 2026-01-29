@@ -30,6 +30,7 @@ Deno.serve(async (req) => {
 
     // 1. 커스텀 JWT 검증
     const userId = await verifyAccessToken(token);
+    console.log('[worker-me] userId from JWT:', userId);
 
     if (!userId) {
       console.error('Token verification failed');
@@ -40,34 +41,17 @@ Deno.serve(async (req) => {
     const { data: workerData, error: workerError } = await supabaseAdmin
       .from('users')
       .select(`
-        id,
-        name,
-        phone,
-        email,
-        birth_date,
-        gender,
-        nationality,
-        job_title,
-        role,
-        status,
-        pre_registered,
-        is_data_conflict,
-        signature_url,
-        company_id,
-        site_id,
-        partner_id,
-        created_at,
+        *,
         companies (
           id,
-          name,
-          address
+          name
         ),
         sites (
           id,
           name,
-          address,
           checkout_policy,
-          auto_hours
+          auto_hours,
+          work_day_start_hour
         ),
         partners (
           id,
@@ -78,7 +62,8 @@ Deno.serve(async (req) => {
       .single();
 
     if (workerError || !workerData) {
-      console.error('Worker query error:', workerError);
+      console.error('[worker-me] Worker query error:', workerError);
+      console.error('[worker-me] userId used for query:', userId);
       return errorResponse('NOT_FOUND', '사용자 정보를 찾을 수 없습니다.', 404);
     }
 
@@ -118,11 +103,7 @@ Deno.serve(async (req) => {
     // 5. 출퇴근 상태 계산
     let commuteStatus: 'WORK_OFF' | 'WORK_ON' | 'WORK_DONE' = 'WORK_OFF';
     if (todayAttendance) {
-      if (todayAttendance.check_out_time) {
-        commuteStatus = 'WORK_DONE';
-      } else {
-        commuteStatus = 'WORK_ON';
-      }
+      commuteStatus = todayAttendance.check_out_time ? 'WORK_DONE' : 'WORK_ON';
     }
 
     // 6. 고령자 여부 계산
@@ -137,17 +118,12 @@ Deno.serve(async (req) => {
           phone: workerData.phone,
           phoneNumber: workerData.phone, // 프론트엔드 호환
           name: workerData.name,
+          phone: workerData.phone || null,
           birthDate: birthDateStr.replace(/-/g, ''), // YYYYMMDD 형식
           isSenior: isSeniorWorker,
-          email: workerData.email || null,
-          gender: workerData.gender,
-          nationality: workerData.nationality,
-          jobTitle: workerData.job_title,
+          gender: workerData.gender || null,
           role: workerData.role,
           status: workerData.status,
-          preRegistered: workerData.pre_registered || false,
-          isDataConflict: workerData.is_data_conflict || false,
-          signatureUrl: workerData.signature_url || null,
           companyId: workerData.company_id?.toString() || '',
           siteId: workerData.site_id?.toString() || '',
           teamId: workerData.partner_id?.toString() || '',
@@ -157,12 +133,10 @@ Deno.serve(async (req) => {
         company: workerData.companies ? {
           id: (workerData.companies as any).id?.toString(),
           name: (workerData.companies as any).name,
-          address: (workerData.companies as any).address,
         } : null,
         site: workerData.sites ? {
           id: (workerData.sites as any).id?.toString(),
           name: (workerData.sites as any).name,
-          address: (workerData.sites as any).address,
           checkoutPolicy: (workerData.sites as any).checkout_policy,
           autoHours: (workerData.sites as any).auto_hours,
         } : null,

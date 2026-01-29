@@ -186,3 +186,52 @@ export async function getQRPayload(): Promise<QRPayloadResponse> {
     throw new ApiError('SERVER_ERROR', 'QR 코드 생성에 실패했습니다.');
   }
 }
+
+// ==================== 월별 출퇴근 기록 ====================
+
+export interface MonthlyAttendanceRecord {
+  workDate: string;
+  dayOfWeek: string;
+  checkInTime: string | null;
+  checkOutTime: string | null;
+  workHours: number | null;
+  status: string;
+  isAutoOut: boolean;
+  hasAccident: boolean;
+  isToday: boolean;
+}
+
+export interface MonthlyAttendanceSummary {
+  totalDays: number;
+  totalHours: number;
+  year: number;
+  month: number;
+}
+
+export interface MonthlyAttendanceResponse {
+  summary: MonthlyAttendanceSummary;
+  records: MonthlyAttendanceRecord[];
+}
+
+export async function getMonthlyAttendance(
+  year: number,
+  month: number,
+): Promise<MonthlyAttendanceResponse> {
+  try {
+    const response = await api.get<{
+      success: boolean;
+      data: MonthlyAttendanceResponse;
+    }>(`/worker-attendance-monthly?year=${year}&month=${month}`);
+
+    if (!response.data?.success) {
+      throw new ApiError('SERVER_ERROR', '출퇴근 기록을 불러올 수 없습니다.');
+    }
+
+    return response.data.data;
+  } catch (error) {
+    if (error instanceof ApiError) {
+      throw error;
+    }
+    throw new ApiError('SERVER_ERROR', '출퇴근 기록 조회에 실패했습니다.');
+  }
+}

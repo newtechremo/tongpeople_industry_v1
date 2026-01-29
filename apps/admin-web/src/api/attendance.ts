@@ -273,9 +273,9 @@ export async function getWorkersWithAttendance(options: {
 
   if (attendanceError) throw attendanceError;
 
-  // 3. worker_id로 attendance 매핑
+  // 3. user_id로 attendance 매핑
   const attendanceMap = new Map(
-    attendances?.map(a => [a.worker_id, a]) || []
+    attendances?.map(a => [a.user_id, a]) || []
   );
 
   // 4. 나이 계산 함수
