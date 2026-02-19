@@ -7,7 +7,7 @@
 
 // ============ 타입 정의 ============
 
-export type AssessmentType = 'INITIAL' | 'REGULAR' | 'ADHOC' | 'FREQUENCY_INTENSITY';
+export type AssessmentType = 'INITIAL' | 'REGULAR' | 'OCCASIONAL' | 'FREQUENCY_INTENSITY';
 export type AssessmentStatus = 'DRAFT' | 'IN_PROGRESS' | 'COMPLETED' | 'APPROVED' | 'REJECTED';
 export type RiskGradeLevel = '하' | '중' | '고';
 
@@ -307,7 +307,7 @@ export const mockAssessments: MockRiskAssessment[] = [
   // 수시 위험성평가 (빈도강도)
   {
     id: 'ra-3',
-    type: 'ADHOC',
+    type: 'OCCASIONAL',
     status: 'IN_PROGRESS',
     title: '신규 설비 도입에 따른 수시 위험성평가',
     site_id: 'site-2',
@@ -384,7 +384,7 @@ export const mockAssessments: MockRiskAssessment[] = [
 
   {
     id: 'ra-5',
-    type: 'ADHOC',
+    type: 'OCCASIONAL',
     status: 'COMPLETED',
     title: '작업방법 변경에 따른 수시평가',
     site_id: 'site-2',

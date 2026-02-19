@@ -11,12 +11,12 @@ const TYPE_LABELS: Record<string, string> = {
   continuous: '상시',
 };
 
-type AssessmentType = 'INITIAL' | 'REGULAR' | 'ADHOC' | 'FREQUENCY_INTENSITY';
+type AssessmentType = 'INITIAL' | 'REGULAR' | 'OCCASIONAL' | 'FREQUENCY_INTENSITY';
 
 const TYPE_MAPPING: Record<string, AssessmentType> = {
   initial: 'INITIAL',
   regular: 'REGULAR',
-  occasional: 'ADHOC',
+  occasional: 'OCCASIONAL',
   continuous: 'FREQUENCY_INTENSITY',
 };
 
@@ -143,7 +143,7 @@ export default function CreateAssessmentPage() {
         />
       )}
 
-      {(assessmentType === 'ADHOC' || assessmentType === 'FREQUENCY_INTENSITY') && (
+      {(assessmentType === 'OCCASIONAL' || assessmentType === 'FREQUENCY_INTENSITY') && (
         <div className="bg-white rounded-xl border border-gray-200 p-12">
           <div className="text-center">
             <div className="mb-4">

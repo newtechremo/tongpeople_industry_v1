@@ -18,7 +18,7 @@ const STATUS_LABELS: Record<string, { label: string; className: string }> = {
 const TYPE_LABELS: Record<string, string> = {
   INITIAL: '최초',
   REGULAR: '정기',
-  ADHOC: '수시',
+  OCCASIONAL: '수시',
   FREQUENCY_INTENSITY: '상시',
 };
 
