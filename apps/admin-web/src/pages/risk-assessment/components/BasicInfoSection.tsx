@@ -5,6 +5,8 @@
  */
 
 import { Calendar } from 'lucide-react';
+import ApprovalLineDisplay from '@/components/approval/ApprovalLineDisplay';
+import type { Approver } from '@tong-pass/shared';
 
 interface BasicInfoSectionProps {
   assessmentTitle?: string;
@@ -13,12 +15,7 @@ interface BasicInfoSectionProps {
   companyName: string;
   approvalLineName: string | null;
   approvalLineCount: number | null;
-  approvalLineApprovers: {
-    approvalTitle: string;
-    userName: string;
-    userId: string;
-    position: string;
-  }[];
+  approvalLineApprovers: Approver[];
   workPeriodStart: string;
   workPeriodEnd: string;
   onApprovalLineChange: () => void;
@@ -98,77 +95,13 @@ export default function BasicInfoSection({
         </div>
       </div>
 
-      {approvalLineApprovers.length > 0 && (
-        <div className="border border-gray-200 rounded-lg overflow-x-auto">
-          <table className="min-w-max w-full text-sm">
-            <thead className="bg-gray-50 border-b border-gray-200">
-              <tr>
-                {approvalLineApprovers.map((approver, index) => (
-                  <th
-                    key={`${approver.approvalTitle}-${index}`}
-                    className="px-4 py-2 text-left text-slate-600 font-medium border-r border-gray-200 last:border-r-0"
-                  >
-                    {approver.approvalTitle}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {/* 이름 행 */}
-              <tr>
-                {approvalLineApprovers.map((approver, index) => (
-                  <td
-                    key={`${approver.userName}-${index}`}
-                    className="px-4 py-2 text-slate-800 border-r border-gray-200 last:border-r-0 border-b border-gray-200"
-                  >
-                    <div className="text-sm font-medium">{approver.userName}</div>
-                    {approver.position && (
-                      <div className="text-xs text-slate-500 mt-0.5">{approver.position}</div>
-                    )}
-                  </td>
-                ))}
-              </tr>
-              {/* 서명 행 */}
-              <tr>
-                {approvalLineApprovers.map((approver, index) => {
-                  const signature = signatures[approver.userId];
-                  const hasSignature = Boolean(signature);
-
-                  return (
-                    <td
-                      key={`signature-${approver.userId}-${index}`}
-                      className="px-4 py-3 border-r border-gray-200 last:border-r-0"
-                    >
-                      <div className="min-h-[60px] flex flex-col justify-between">
-                        {hasSignature ? (
-                          <div className="text-sm text-slate-700">
-                            {signature.startsWith('data:image') ? (
-                              <img src={signature} alt="전자서명" className="h-10 object-contain" />
-                            ) : (
-                              <span className="font-semibold">{signature}</span>
-                            )}
-                          </div>
-                        ) : (
-                          <span className="text-xs text-slate-400">서명 필요</span>
-                        )}
-                        {canEdit && onApplySignature && !hasSignature && (
-                          <button
-                            type="button"
-                            onClick={() => onApplySignature(approver.userId)}
-                            className="mt-2 text-xs font-bold text-orange-600 hover:text-orange-700 transition-colors"
-                          >
-                            서명 불러오기
-                          </button>
-                        )}
-                      </div>
-                    </td>
-                  );
-                })}
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      )}
+      <ApprovalLineDisplay
+        mode={onApplySignature ? 'document' : 'preview'}
+        approvers={approvalLineApprovers}
+        signatures={signatures}
+        onApplySignature={onApplySignature}
+        canEdit={canEdit}
+      />
 
       <div>
         <label className="block text-sm font-medium text-slate-600 mb-2">작업 기간</label>

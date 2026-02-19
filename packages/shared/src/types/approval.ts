@@ -35,6 +35,7 @@ export interface ApprovalLine {
   id: string;
   name: string;                           // 결재라인 명칭
   tags: ApprovalDocumentType[];           // 문서 태그
+  teamId?: number | null;                 // 팀(업체) ID (null이면 공용)
   isPinned: boolean;                      // 고정 여부
   approvers: Approver[];                  // 결재자 목록 (순서대로)
   createdAt: string;
