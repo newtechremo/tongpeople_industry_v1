@@ -17,8 +17,9 @@ const STATUS_LABELS: Record<string, { label: string; className: string }> = {
 
 const TYPE_LABELS: Record<string, string> = {
   INITIAL: '최초',
+  REGULAR: '정기',
   ADHOC: '수시',
-  FREQUENCY_INTENSITY: '정기',
+  FREQUENCY_INTENSITY: '상시',
 };
 
 const SIGNATURE_STORAGE_PREFIX = 'tong-pass:signature:';
@@ -314,7 +315,9 @@ export default function RiskAssessmentDetailPage() {
             <ChevronLeft size={18} />
           </button>
           <div>
-            <h1 className="text-2xl font-black tracking-tight text-slate-800">위험성평가 상세</h1>
+            <h1 className="text-2xl font-black tracking-tight text-slate-800">
+              {TYPE_LABELS[assessmentType] || assessmentType} 위험성평가 상세
+            </h1>
           </div>
         </div>
         <div className="flex items-center gap-2">

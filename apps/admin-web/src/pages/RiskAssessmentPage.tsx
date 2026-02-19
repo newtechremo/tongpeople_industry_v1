@@ -206,7 +206,7 @@ const ASSESSMENT_TYPES: AssessmentTypeInfo[] = [
 
 ];
 
-const AVAILABLE_CREATE_TYPES: AssessmentType[] = ['INITIAL'];
+const AVAILABLE_CREATE_TYPES: AssessmentType[] = ['INITIAL', 'REGULAR'];
 
 
 
@@ -568,6 +568,8 @@ const TYPE_FROM_DRAFT: Record<string, AssessmentType> = {
 
   INITIAL: 'INITIAL',
 
+  REGULAR: 'REGULAR',
+
   ADHOC: 'OCCASIONAL',
 
   FREQUENCY_INTENSITY: 'CONTINUOUS',
@@ -927,13 +929,13 @@ export default function RiskAssessmentPage() {
 
                     onClick={() => {
                       // 최초 위험성평가는 모두 열람 가능
-                      if (assessment.type === 'INITIAL') {
+                      if (assessment.type === 'INITIAL' || assessment.type === 'REGULAR') {
                         navigate(`/safety/risk/${assessment.id}`);
                         return;
                       }
 
-                      // 수시/정기/상시는 개발중
-                      alert('해당 유형의 위험성평가는 현재 개발중입니다.\n최초 위험성평가만 상세보기가 가능합니다.');
+                      // 수시/상시는 개발중
+                      alert('해당 유형의 위험성평가는 현재 개발중입니다.\n최초 및 정기 위험성평가만 상세보기가 가능합니다.');
                     }}
 
                     className="border-b border-gray-100 transition-colors cursor-pointer hover:bg-orange-50"

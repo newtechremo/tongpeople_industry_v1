@@ -7,7 +7,7 @@
 
 // ============ 타입 정의 ============
 
-export type AssessmentType = 'INITIAL' | 'ADHOC' | 'FREQUENCY_INTENSITY';
+export type AssessmentType = 'INITIAL' | 'REGULAR' | 'ADHOC' | 'FREQUENCY_INTENSITY';
 export type AssessmentStatus = 'DRAFT' | 'IN_PROGRESS' | 'COMPLETED' | 'APPROVED' | 'REJECTED';
 export type RiskGradeLevel = '하' | '중' | '고';
 

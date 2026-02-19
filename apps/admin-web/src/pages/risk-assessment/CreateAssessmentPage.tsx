@@ -11,11 +11,11 @@ const TYPE_LABELS: Record<string, string> = {
   continuous: '상시',
 };
 
-type AssessmentType = 'INITIAL' | 'ADHOC' | 'FREQUENCY_INTENSITY';
+type AssessmentType = 'INITIAL' | 'REGULAR' | 'ADHOC' | 'FREQUENCY_INTENSITY';
 
 const TYPE_MAPPING: Record<string, AssessmentType> = {
   initial: 'INITIAL',
-  regular: 'INITIAL',
+  regular: 'REGULAR',
   occasional: 'ADHOC',
   continuous: 'FREQUENCY_INTENSITY',
 };
@@ -135,7 +135,7 @@ export default function CreateAssessmentPage() {
         </div>
       )}
 
-      {assessmentType === 'INITIAL' && (
+      {(assessmentType === 'INITIAL' || assessmentType === 'REGULAR') && (
         <InitialAssessmentForm
           type={type as 'initial' | 'regular'}
           onSubmit={handleSubmit}
