@@ -28,10 +28,21 @@ const LOCAL_STORAGE_PREFIX = 'risk-assessment:draft:';
 interface LocalRiskFactor {
   id: string;
   factor: string;
-  level: 'HIGH' | 'MEDIUM' | 'LOW' | null;
+  level?: 'HIGH' | 'MEDIUM' | 'LOW' | null;
   improvement: string;
   workPeriodStart: string;
   workPeriodEnd: string;
+  // 수시 평가 - 빈도강도 방식
+  frequency?: number | null;
+  intensity?: number | null;
+  riskScore?: number | null;
+  gradeLevel?: 'LOW' | 'MEDIUM' | 'HIGH' | null;
+  // 수시 평가 - 공통 조치 필드
+  actionDate?: string;
+  actionAssigneeIds?: string[];
+  actionConfirmerIds?: string[];
+  // 수시 평가 - 검토내용
+  reviewComments?: string[];
 }
 
 interface LocalSubcategory {
@@ -59,6 +70,10 @@ interface LocalAssessmentDraft {
   workPeriodStart: string;
   workPeriodEnd: string;
   categories: LocalCategory[];
+  // 수시 평가 전용 필드
+  triggerReason?: string;
+  triggerDate?: string;
+  riskMethod?: 'LEVEL' | 'FREQUENCY_INTENSITY';
 }
 
 function getWorkflowStatus(startDate: string, endDate: string) {
@@ -391,6 +406,42 @@ export default function RiskAssessmentDetailPage() {
         canEdit={canEdit}
       />
 
+      {/* 수시 평가 정보 (OCCASIONAL 타입만) */}
+      {assessmentType === 'OCCASIONAL' && localAssessment && (
+        <div className="bg-white rounded-xl border border-gray-200 p-6 space-y-4">
+          <h3 className="text-lg font-bold text-slate-700">수시 평가 정보</h3>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-bold text-slate-600 mb-2">
+                발생일
+              </label>
+              <div className="px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-slate-700">
+                {localAssessment.triggerDate || '-'}
+              </div>
+            </div>
+            <div>
+              <label className="block text-sm font-bold text-slate-600 mb-2">
+                위험성 산정 방식
+              </label>
+              <div className="px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-slate-700">
+                {localAssessment.riskMethod === 'LEVEL' ? '상중하 방식' :
+                 localAssessment.riskMethod === 'FREQUENCY_INTENSITY' ? '빈도강도 방식' : '-'}
+              </div>
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-bold text-slate-600 mb-2">
+              수시 평가 사유
+            </label>
+            <div className="px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg text-slate-700 whitespace-pre-wrap">
+              {localAssessment.triggerReason || '-'}
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="space-y-6">
         <h2 className="text-xl font-bold text-slate-700">작업 공종</h2>
 
@@ -470,42 +521,82 @@ export default function RiskAssessmentDetailPage() {
                                 )}
                               </div>
 
-                              {/* 위험성 수준 */}
+                              {/* 위험성 평가 - 방식별 분기 */}
                               <div>
-                                <div className="flex items-center gap-6">
-                                  <span className="text-base font-medium text-slate-600">위험성 수준</span>
-                                  {canEdit ? (
-                                    <div className="flex items-center gap-4">
-                                      {[
-                                        { value: 'HIGH', label: '상' },
-                                        { value: 'MEDIUM', label: '중' },
-                                        { value: 'LOW', label: '하' },
-                                      ].map((option) => (
-                                        <label key={option.value} className="flex items-center gap-2 cursor-pointer">
-                                          <input
-                                            type="radio"
-                                            name={`risk-level-${factor.id}`}
-                                            value={option.value}
-                                            checked={factor.level === option.value}
-                                            onChange={() => {
-                                              setItems((prev) =>
-                                                prev.map((item) =>
-                                                  item.id === factor.id
-                                                    ? { ...item, level: option.value as 'HIGH' | 'MEDIUM' | 'LOW' }
-                                                    : item
-                                                )
-                                              );
-                                            }}
-                                            className="w-4 h-4 text-orange-500 focus:ring-orange-500"
-                                          />
-                                          <span className="text-base text-slate-700">{option.label}</span>
-                                        </label>
-                                      ))}
+                                {/* 상중하 방식 또는 빈도강도 방식 구분 */}
+                                {factor.level !== undefined ? (
+                                  // 상중하 방식
+                                  <div className="flex items-center gap-6">
+                                    <span className="text-base font-medium text-slate-600">위험성 수준</span>
+                                    {canEdit ? (
+                                      <div className="flex items-center gap-4">
+                                        {[
+                                          { value: 'HIGH', label: '상' },
+                                          { value: 'MEDIUM', label: '중' },
+                                          { value: 'LOW', label: '하' },
+                                        ].map((option) => (
+                                          <label key={option.value} className="flex items-center gap-2 cursor-pointer">
+                                            <input
+                                              type="radio"
+                                              name={`risk-level-${factor.id}`}
+                                              value={option.value}
+                                              checked={factor.level === option.value}
+                                              onChange={() => {
+                                                setItems((prev) =>
+                                                  prev.map((item) =>
+                                                    item.id === factor.id
+                                                      ? { ...item, level: option.value as 'HIGH' | 'MEDIUM' | 'LOW' }
+                                                      : item
+                                                  )
+                                                );
+                                              }}
+                                              className="w-4 h-4 text-orange-500 focus:ring-orange-500"
+                                            />
+                                            <span className="text-base text-slate-700">{option.label}</span>
+                                          </label>
+                                        ))}
+                                      </div>
+                                    ) : (
+                                      <span className="text-base text-slate-700">{levelLabel || '-'}</span>
+                                    )}
+                                  </div>
+                                ) : factor.frequency !== undefined && factor.intensity !== undefined ? (
+                                  // 빈도강도 방식
+                                  <div className="space-y-3 p-4 rounded-lg bg-slate-50 border border-slate-200">
+                                    <h4 className="text-sm font-bold text-slate-700">빈도강도 평가</h4>
+                                    <div className="grid grid-cols-3 gap-4">
+                                      <div>
+                                        <span className="text-xs font-semibold text-slate-600">빈도</span>
+                                        <div className="text-base font-bold text-orange-600 mt-1">
+                                          {factor.frequency ?? '-'}
+                                        </div>
+                                      </div>
+                                      <div>
+                                        <span className="text-xs font-semibold text-slate-600">강도</span>
+                                        <div className="text-base font-bold text-orange-600 mt-1">
+                                          {factor.intensity ?? '-'}
+                                        </div>
+                                      </div>
+                                      <div>
+                                        <span className="text-xs font-semibold text-slate-600">위험성 점수</span>
+                                        <div className="text-base font-bold text-slate-800 mt-1">
+                                          {factor.riskScore ?? '-'}점
+                                        </div>
+                                      </div>
                                     </div>
-                                  ) : (
-                                    <span className="text-base text-slate-700">{levelLabel || '-'}</span>
-                                  )}
-                                </div>
+                                    {factor.gradeLevel && (
+                                      <div className="pt-2 border-t border-slate-300">
+                                        <span className="text-xs font-semibold text-slate-600">등급: </span>
+                                        <span className={`text-base font-bold ${
+                                          factor.gradeLevel === 'HIGH' ? 'text-red-600' :
+                                          factor.gradeLevel === 'MEDIUM' ? 'text-orange-600' : 'text-green-600'
+                                        }`}>
+                                          {factor.gradeLevel === 'HIGH' ? '상' : factor.gradeLevel === 'MEDIUM' ? '중' : '하'}
+                                        </span>
+                                      </div>
+                                    )}
+                                  </div>
+                                ) : null}
                               </div>
 
                               {/* 개선 대책 */}
@@ -564,6 +655,56 @@ export default function RiskAssessmentDetailPage() {
                                   </div>
                                 </div>
                               </div>
+
+                              {/* 조치 필드 (수시 평가만) */}
+                              {(factor.actionDate || factor.actionAssigneeIds || factor.actionConfirmerIds) && (
+                                <div className="pt-4 border-t border-gray-300 space-y-3">
+                                  <h5 className="text-sm font-bold text-slate-700">조치 정보</h5>
+
+                                  {factor.actionDate && (
+                                    <div>
+                                      <span className="text-sm font-semibold text-slate-600">조치일: </span>
+                                      <span className="text-sm text-slate-700">{factor.actionDate}</span>
+                                    </div>
+                                  )}
+
+                                  {factor.actionAssigneeIds && factor.actionAssigneeIds.length > 0 && (
+                                    <div>
+                                      <span className="text-sm font-semibold text-slate-600">조치자: </span>
+                                      <span className="text-sm text-slate-700">
+                                        {factor.actionAssigneeIds.length}명
+                                      </span>
+                                    </div>
+                                  )}
+
+                                  {factor.actionConfirmerIds && factor.actionConfirmerIds.length > 0 && (
+                                    <div>
+                                      <span className="text-sm font-semibold text-slate-600">조치확인자: </span>
+                                      <span className="text-sm text-slate-700">
+                                        {factor.actionConfirmerIds.length}명
+                                      </span>
+                                    </div>
+                                  )}
+
+                                  {/* 검토내용 */}
+                                  {factor.reviewComments && factor.reviewComments.length > 0 && (
+                                    <div>
+                                      <span className="text-sm font-semibold text-slate-600 block mb-2">검토내용:</span>
+                                      <div className="space-y-2">
+                                        {factor.reviewComments.map((comment, idx) => (
+                                          <div
+                                            key={idx}
+                                            className="flex items-start gap-2 p-2 rounded bg-gray-50 border border-gray-200"
+                                          >
+                                            <span className="text-sm text-slate-600 font-semibold">{idx + 1}.</span>
+                                            <span className="text-sm text-slate-700 flex-1">{comment}</span>
+                                          </div>
+                                        ))}
+                                      </div>
+                                    </div>
+                                  )}
+                                </div>
+                              )}
                             </div>
                           );
                         })}

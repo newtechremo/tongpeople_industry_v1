@@ -2,7 +2,7 @@
 import { useParams, useNavigate } from 'react-router-dom';
 import { ChevronLeft, CheckCircle, AlertCircle } from 'lucide-react';
 import InitialAssessmentForm from '@/components/risk-assessment/forms/InitialAssessmentForm';
-import AdHocAssessmentForm from '@/components/risk-assessment/forms/AdHocAssessmentForm';
+import OccasionalAssessmentForm from '@/components/risk-assessment/forms/OccasionalAssessmentForm';
 
 const TYPE_LABELS: Record<string, string> = {
   initial: '최초',
@@ -143,7 +143,14 @@ export default function CreateAssessmentPage() {
         />
       )}
 
-      {(assessmentType === 'OCCASIONAL' || assessmentType === 'FREQUENCY_INTENSITY') && (
+      {assessmentType === 'OCCASIONAL' && (
+        <OccasionalAssessmentForm
+          onSubmit={handleSubmit}
+          onCancel={handleCancel}
+        />
+      )}
+
+      {assessmentType === 'FREQUENCY_INTENSITY' && (
         <div className="bg-white rounded-xl border border-gray-200 p-12">
           <div className="text-center">
             <div className="mb-4">
@@ -152,11 +159,11 @@ export default function CreateAssessmentPage() {
               </svg>
             </div>
             <h3 className="text-xl font-bold text-slate-700 mb-2">
-              {typeLabel} 위험성평가 개발중
+              상시 위험성평가 개발중
             </h3>
             <p className="text-base text-slate-500 mb-6">
               해당 유형의 위험성평가는 현재 개발중입니다.<br />
-              최초 위험성평가만 이용 가능합니다.
+              최초/정기/수시 위험성평가만 이용 가능합니다.
             </p>
             <button
               type="button"
