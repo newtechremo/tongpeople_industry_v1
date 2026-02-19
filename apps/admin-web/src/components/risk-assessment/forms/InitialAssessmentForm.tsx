@@ -13,6 +13,7 @@ import ApprovalLineSelectModal from '@/pages/risk-assessment/modals/ApprovalLine
 import SubcategoryAddModal from '@/pages/risk-assessment/modals/SubcategoryAddModal';
 import RiskFactorSelectModal from '@/pages/risk-assessment/modals/RiskFactorSelectModal';
 import { useApprovalLines } from '@/stores/approvalLinesStore';
+import { getActiveTeams } from '@/mocks/teams';
 
 let idCounter = 0;
 const generateId = () => `temp-${Date.now()}-${++idCounter}`;
@@ -78,9 +79,12 @@ export default function InitialAssessmentForm({ type, onSubmit, onCancel }: Prop
 
   const [siteName] = useState('통사통사현장');
   const [companyName] = useState('(주)통하는사람들');
+  const [teamId, setTeamId] = useState<string>('all');
   const [workPeriodStart, setWorkPeriodStart] = useState(today);
   const [workPeriodEnd, setWorkPeriodEnd] = useState(oneMonthLater);
   const [approvalModalOpen, setApprovalModalOpen] = useState(false);
+
+  const teams = useMemo(() => getActiveTeams(), []);
 
   const approvalLines = useApprovalLines();
   const availableApprovalLines = useMemo(() => approvalLines, [approvalLines]);
@@ -342,6 +346,8 @@ export default function InitialAssessmentForm({ type, onSubmit, onCancel }: Prop
         <BasicInfoSection
           siteName={siteName}
           companyName={companyName}
+          teamId={teamId}
+          teams={teams}
           approvalLineName={selectedApprovalLine?.name || null}
           approvalLineCount={selectedApprovalLine?.approvers.length || null}
           approvalLineApprovers={
@@ -359,6 +365,7 @@ export default function InitialAssessmentForm({ type, onSubmit, onCancel }: Prop
             if (field === 'start') setWorkPeriodStart(value);
             else setWorkPeriodEnd(value);
           }}
+          onTeamChange={setTeamId}
         />
 
         <div className="space-y-6">
