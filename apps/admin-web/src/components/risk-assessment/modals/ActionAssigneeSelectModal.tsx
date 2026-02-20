@@ -7,6 +7,7 @@
  */
 
 import { useState, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import { Search, X, Check } from 'lucide-react';
 import { searchUsers, getUsersByIds, type MockUser } from '@/mocks/users';
 
@@ -79,10 +80,14 @@ export default function ActionAssigneeSelectModal({
 
   if (!isOpen) return null;
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
-      <div className="absolute inset-0 bg-black/50" onClick={handleCancel} />
-      <div className="relative bg-white rounded-2xl shadow-xl w-full max-w-3xl mx-4 overflow-hidden">
+  const modalContent = (
+    <>
+      {/* 배경 오버레이 - 전체 페이지 */}
+      <div className="fixed inset-0 z-[100] bg-black/50" onClick={handleCancel} />
+
+      {/* 모달 - 현재 viewport 중앙 */}
+      <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-[101] w-full max-w-3xl mx-4">
+        <div className="bg-white rounded-2xl shadow-xl overflow-hidden max-h-[90vh] flex flex-col">
         {/* 헤더 */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
           <h3 className="text-lg font-bold text-slate-800">{title}</h3>
@@ -163,7 +168,7 @@ export default function ActionAssigneeSelectModal({
         </div>
 
         {/* 사용자 목록 */}
-        <div className="max-h-[50vh] overflow-y-auto">
+        <div className="flex-1 overflow-y-auto">
           {filtered.length === 0 ? (
             <div className="px-6 py-12 text-center text-slate-400">
               검색 결과가 없습니다
@@ -227,7 +232,10 @@ export default function ActionAssigneeSelectModal({
             확인 ({tempSelectedIds.length}명)
           </button>
         </div>
+        </div>
       </div>
-    </div>
+    </>
   );
+
+  return createPortal(modalContent, document.body);
 }

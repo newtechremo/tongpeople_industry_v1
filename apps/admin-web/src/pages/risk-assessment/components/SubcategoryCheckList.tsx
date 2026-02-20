@@ -20,6 +20,7 @@ interface SubcategoryCheckListProps {
   customItems: Subcategory[];
   onChange: (selectedIds: number[]) => void;
   onAddCustom: () => void;
+  excludedIds?: number[]; // 다른 대분류에서 이미 사용된 소분류 ID 목록
 }
 
 export default function SubcategoryCheckList({
@@ -28,6 +29,7 @@ export default function SubcategoryCheckList({
   customItems,
   onChange,
   onAddCustom,
+  excludedIds = [],
 }: SubcategoryCheckListProps) {
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -78,11 +80,16 @@ export default function SubcategoryCheckList({
         {filteredSubcategories.length > 0 ? (
           filteredSubcategories.map((sub) => {
             const isSelected = selectedIds.includes(sub.id);
+            const isExcluded = excludedIds.includes(sub.id) && !isSelected;
 
             return (
               <label
                 key={sub.id}
-                className="flex items-center gap-3 py-2 px-2 cursor-pointer hover:bg-gray-50 rounded transition-colors"
+                className={`flex items-center gap-3 py-2 px-2 rounded transition-colors ${
+                  isExcluded
+                    ? 'opacity-50 cursor-not-allowed'
+                    : 'cursor-pointer hover:bg-gray-50'
+                }`}
               >
                 {isSelected ? (
                   <CheckCircle size={20} className="text-red-500 flex-shrink-0" />
@@ -91,13 +98,17 @@ export default function SubcategoryCheckList({
                     type="checkbox"
                     checked={false}
                     onChange={() => handleToggle(sub.id)}
-                    className="w-5 h-5 rounded border-gray-300 text-orange-500 focus:ring-orange-500 focus:ring-offset-0"
+                    disabled={isExcluded}
+                    className="w-5 h-5 rounded border-gray-300 text-orange-500 focus:ring-orange-500 focus:ring-offset-0 disabled:opacity-50 disabled:cursor-not-allowed"
                   />
                 )}
-                <span className="text-sm text-slate-700 flex-1">
+                <span className={`text-sm flex-1 ${isExcluded ? 'text-slate-400' : 'text-slate-700'}`}>
                   {sub.name}
                   {sub.isCustom && (
                     <span className="ml-2 text-xs text-orange-600">(직접 추가)</span>
+                  )}
+                  {isExcluded && (
+                    <span className="ml-2 text-xs text-red-600">(이미 사용됨)</span>
                   )}
                 </span>
               </label>

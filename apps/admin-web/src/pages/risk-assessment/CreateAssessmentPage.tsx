@@ -2,7 +2,7 @@
 import { useParams, useNavigate } from 'react-router-dom';
 import { ChevronLeft, CheckCircle, AlertCircle } from 'lucide-react';
 import InitialAssessmentForm from '@/components/risk-assessment/forms/InitialAssessmentForm';
-import OccasionalAssessmentForm from '@/components/risk-assessment/forms/OccasionalAssessmentForm';
+import OccasionalAssessmentForm from '@/components/risk-assessment/forms/OccasionalAssessmentForm_Workflow';
 
 const TYPE_LABELS: Record<string, string> = {
   initial: '최초',
