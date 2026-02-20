@@ -17,7 +17,6 @@ import BasicInfoSection from '@/pages/risk-assessment/components/BasicInfoSectio
 import OccasionalCategoryItem from '@/pages/risk-assessment/components/OccasionalCategoryItem';
 import RiskMethodSelector from './components/RiskMethodSelector';
 import WorkflowSection from './components/WorkflowSection';
-import WorkflowProgress from './components/WorkflowProgress';
 import ScrollToTop from './components/ScrollToTop';
 import SubcategoryAddModal from '@/pages/risk-assessment/modals/SubcategoryAddModal';
 import RiskFactorSelectModal from '@/pages/risk-assessment/modals/RiskFactorSelectModal';
@@ -25,7 +24,7 @@ import ApprovalLineSelectModal from '@/pages/risk-assessment/modals/ApprovalLine
 import { useApprovalLines } from '@/stores/approvalLinesStore';
 import { getActiveTeams } from '@/mocks/teams';
 import { validateOccasionalAssessment } from '../validation/occasional';
-import { useWorkflow, SECTION_METADATA, SECTION_ORDER } from '../hooks/useWorkflow';
+import { useWorkflow, SECTION_METADATA } from '../hooks/useWorkflow';
 import { useAutoScroll } from '../hooks/useAutoScroll';
 import {
   validateBasicInfo,
@@ -45,22 +44,11 @@ import type {
   RiskFactorLevel,
   RiskFactorFrequencyIntensity,
 } from '../types/occasional';
-
-let idCounter = 0;
-const generateId = () => `temp-${Date.now()}-${++idCounter}`;
-
-const formatDateInputValue = (date: Date) => {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const day = String(date.getDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
-};
-
-const addMonths = (date: Date, months: number) => {
-  const next = new Date(date);
-  next.setMonth(next.getMonth() + months);
-  return next;
-};
+import {
+  generateId,
+  formatDateInputValue,
+  addMonths,
+} from '../types/common';
 
 interface OccasionalSubcategory {
   id: number;
@@ -83,9 +71,14 @@ interface OccasionalCategory {
 interface Props {
   onSubmit: (data: OccasionalAssessmentPayload) => void;
   onCancel: () => void;
+  onProgressChange?: (completed: number, total: number) => void;
 }
 
-export default function OccasionalAssessmentForm({ onSubmit, onCancel }: Props) {
+export default function OccasionalAssessmentForm({
+  onSubmit,
+  onCancel,
+  onProgressChange,
+}: Props) {
   const navigate = useNavigate();
   const { today, oneMonthLater } = useMemo(() => {
     const base = new Date();
@@ -98,6 +91,10 @@ export default function OccasionalAssessmentForm({ onSubmit, onCancel }: Props) 
   // ==================== Workflow 상태 ====================
   const workflow = useWorkflow();
   const { scrollToSection } = useAutoScroll();
+
+  useEffect(() => {
+    onProgressChange?.(workflow.completedCount, workflow.totalSections);
+  }, [workflow.completedCount, workflow.totalSections, onProgressChange]);
 
   // ==================== Form 데이터 ====================
 
@@ -182,23 +179,14 @@ export default function OccasionalAssessmentForm({ onSubmit, onCancel }: Props) 
   // ==================== Workflow 핸들러 ====================
 
   const handleBasicInfoNext = () => {
-    const validation = validateBasicInfo(getBasicInfoData());
-    workflow.handleNext('BASIC_INFO', validation.isValid);
+    const basicValidation = validateBasicInfo(getBasicInfoData());
+    const occasionalValidation = validateOccasionalInfo(getOccasionalInfoData());
+    const isValid = basicValidation.isValid && occasionalValidation.isValid;
+    workflow.handleNext('BASIC_INFO', isValid);
 
-    if (!validation.isValid) {
-      alert(`입력 오류:\n\n${validation.errors.join('\n')}`);
-    } else {
-      // 다음 섹션으로 스크롤
-      setTimeout(() => scrollToSection('OCCASIONAL_INFO'), 100);
-    }
-  };
-
-  const handleOccasionalInfoNext = () => {
-    const validation = validateOccasionalInfo(getOccasionalInfoData());
-    workflow.handleNext('OCCASIONAL_INFO', validation.isValid);
-
-    if (!validation.isValid) {
-      alert(`입력 오류:\n\n${validation.errors.join('\n')}`);
+    if (!isValid) {
+      const allErrors = [...basicValidation.errors, ...occasionalValidation.errors];
+      alert(`입력 오류:\n\n${allErrors.join('\n')}`);
     } else {
       setTimeout(() => scrollToSection('RISK_METHOD'), 100);
     }
@@ -448,10 +436,14 @@ export default function OccasionalAssessmentForm({ onSubmit, onCancel }: Props) 
                 ? ({ ...baseFactor, level: null } as RiskFactorLevel)
                 : ({
                     ...baseFactor,
-                    frequency: null,
-                    intensity: null,
-                    riskScore: null,
-                    gradeLevel: null,
+                    beforeFrequency: null,
+                    beforeIntensity: null,
+                    beforeRiskScore: null,
+                    beforeGradeLevel: null,
+                    afterFrequency: null,
+                    afterIntensity: null,
+                    afterRiskScore: null,
+                    afterGradeLevel: null,
                   } as RiskFactorFrequencyIntensity);
             });
 
@@ -577,13 +569,7 @@ export default function OccasionalAssessmentForm({ onSubmit, onCancel }: Props) 
 
   return (
     <>
-      <form onSubmit={handleSubmit} className="space-y-6">
-        {/* 진행률 표시 */}
-        <WorkflowProgress
-          completedCount={workflow.completedCount}
-          totalSections={workflow.totalSections}
-        />
-
+      <form onSubmit={handleSubmit} className="space-y-3">
         {/* Section 1: 기본 정보 */}
         <div id="section-BASIC_INFO">
           <WorkflowSection
@@ -619,59 +605,48 @@ export default function OccasionalAssessmentForm({ onSubmit, onCancel }: Props) 
                 else handleWorkPeriodEndChange(value);
               }}
               onTeamChange={setTeamId}
+              compact
+              embedded
+              hideSectionTitle
             />
-          </WorkflowSection>
-        </div>
 
-        {/* Section 2: 수시 평가 정보 */}
-        <div id="section-OCCASIONAL_INFO">
-          <WorkflowSection
-            sectionNumber={2}
-            title={SECTION_METADATA.OCCASIONAL_INFO.title}
-            description={SECTION_METADATA.OCCASIONAL_INFO.description}
-            state={workflow.sections.OCCASIONAL_INFO}
-            isExpanded={workflow.isSectionExpanded('OCCASIONAL_INFO')}
-            onHeaderClick={() => workflow.handleSectionClick('OCCASIONAL_INFO')}
-            onPrevClick={() => {
-              workflow.handlePrev('OCCASIONAL_INFO');
-              setTimeout(() => scrollToSection('BASIC_INFO'), 100);
-            }}
-            onNextClick={handleOccasionalInfoNext}
-          >
-            <div className="space-y-4">
-              <div className="flex items-center gap-6">
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="radio"
-                    name="includeTriggerInfo"
-                    checked={!includeTriggerInfo}
-                    onChange={() => {
-                      setIncludeTriggerInfo(false);
-                      workflow.handleEditField('OCCASIONAL_INFO');
-                    }}
-                    className="w-4 h-4 text-orange-600 focus:ring-orange-500"
-                  />
-                  <span className="text-sm font-medium text-slate-700">포함하지 않음</span>
-                </label>
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="radio"
-                    name="includeTriggerInfo"
-                    checked={includeTriggerInfo}
-                    onChange={() => {
-                      setIncludeTriggerInfo(true);
-                      workflow.handleEditField('OCCASIONAL_INFO');
-                    }}
-                    className="w-4 h-4 text-orange-600 focus:ring-orange-500"
-                  />
-                  <span className="text-sm font-medium text-slate-700">포함</span>
-                </label>
+            <div className="border-t border-gray-200 pt-3 space-y-3">
+              <div className="flex items-center justify-between">
+                <h4 className="text-sm font-bold text-slate-700">수시 평가 정보</h4>
+                <div className="flex items-center gap-5">
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="radio"
+                      name="includeTriggerInfo"
+                      checked={!includeTriggerInfo}
+                      onChange={() => {
+                        setIncludeTriggerInfo(false);
+                        workflow.handleEditField('BASIC_INFO');
+                      }}
+                      className="w-4 h-4 text-orange-600 focus:ring-orange-500"
+                    />
+                    <span className="text-xs font-medium text-slate-700">미포함</span>
+                  </label>
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="radio"
+                      name="includeTriggerInfo"
+                      checked={includeTriggerInfo}
+                      onChange={() => {
+                        setIncludeTriggerInfo(true);
+                        workflow.handleEditField('BASIC_INFO');
+                      }}
+                      className="w-4 h-4 text-orange-600 focus:ring-orange-500"
+                    />
+                    <span className="text-xs font-medium text-slate-700">포함</span>
+                  </label>
+                </div>
               </div>
 
               {includeTriggerInfo ? (
-                <>
+                <div className="grid grid-cols-1 gap-3 md:grid-cols-[220px,1fr]">
                   <div>
-                    <label className="block text-sm font-bold text-slate-700 mb-2">
+                    <label className="block text-xs font-bold text-slate-700 mb-1.5">
                       발생일 <span className="text-red-500">*</span>
                     </label>
                     <input
@@ -679,44 +654,32 @@ export default function OccasionalAssessmentForm({ onSubmit, onCancel }: Props) 
                       value={triggerDate}
                       onChange={(e) => {
                         setTriggerDate(e.target.value);
-                        workflow.handleEditField('OCCASIONAL_INFO');
+                        workflow.handleEditField('BASIC_INFO');
                       }}
-                      className="w-full px-4 py-2.5 rounded-lg border border-gray-200 text-slate-700 focus:outline-none focus:ring-2 focus:ring-orange-500"
+                      className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-orange-500"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-sm font-bold text-slate-700 mb-2">
+                    <label className="block text-xs font-bold text-slate-700 mb-1.5">
                       수시 평가 사유 <span className="text-red-500">*</span>
                     </label>
                     <textarea
                       value={triggerReason}
                       onChange={(e) => {
                         setTriggerReason(e.target.value);
-                        workflow.handleEditField('OCCASIONAL_INFO');
+                        workflow.handleEditField('BASIC_INFO');
                       }}
-                      placeholder="수시 위험성평가를 실시하게 된 구체적인 사유를 입력해주세요&#10;예: 신규 기계 도입, 작업방법 변경, 산업재해 발생 등"
-                      rows={4}
-                      className="w-full px-4 py-2.5 rounded-lg border border-gray-200 text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-orange-500 resize-none"
+                      placeholder="예: 신규 기계 도입, 작업방법 변경, 산업재해 발생"
+                      rows={3}
+                      className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-orange-500 resize-none"
                     />
                   </div>
-
-                  <div className="p-4 rounded-lg bg-blue-50 border border-blue-200">
-                    <p className="text-sm text-blue-800">
-                      <span className="font-bold">수시평가 실시 사유 예시:</span>
-                    </p>
-                    <ul className="mt-2 text-sm text-blue-700 space-y-1 list-disc list-inside">
-                      <li>사업장 건설물의 설치·이전·변경 또는 해체</li>
-                      <li>기계·기구, 설비, 원재료 등의 신규 도입 또는 변경</li>
-                      <li>작업방법 또는 작업절차의 신규 도입 또는 변경</li>
-                      <li>중대산업사고 또는 산업재해 발생</li>
-                    </ul>
-                  </div>
-                </>
+                </div>
               ) : (
-                <div className="p-4 rounded-lg bg-gray-50 border border-gray-200">
-                  <p className="text-sm text-slate-500 text-center">
-                    수시 평가 정보를 포함하지 않습니다
+                <div className="py-2 px-3 rounded-lg bg-gray-50 border border-gray-200">
+                  <p className="text-xs text-slate-500">
+                    수시 평가 정보 미포함 (발생일/사유 입력 생략)
                   </p>
                 </div>
               )}
@@ -724,10 +687,10 @@ export default function OccasionalAssessmentForm({ onSubmit, onCancel }: Props) 
           </WorkflowSection>
         </div>
 
-        {/* Section 3: 위험성 산정 방식 */}
+        {/* Section 2: 위험성 산정 방식 */}
         <div id="section-RISK_METHOD">
           <WorkflowSection
-            sectionNumber={3}
+            sectionNumber={2}
             title={SECTION_METADATA.RISK_METHOD.title}
             description={SECTION_METADATA.RISK_METHOD.description}
             state={workflow.sections.RISK_METHOD}
@@ -735,7 +698,7 @@ export default function OccasionalAssessmentForm({ onSubmit, onCancel }: Props) 
             onHeaderClick={() => workflow.handleSectionClick('RISK_METHOD')}
             onPrevClick={() => {
               workflow.handlePrev('RISK_METHOD');
-              setTimeout(() => scrollToSection('OCCASIONAL_INFO'), 100);
+              setTimeout(() => scrollToSection('BASIC_INFO'), 100);
             }}
             onNextClick={handleRiskMethodNext}
           >
@@ -743,10 +706,10 @@ export default function OccasionalAssessmentForm({ onSubmit, onCancel }: Props) 
           </WorkflowSection>
         </div>
 
-        {/* Section 4: 작업 공종 */}
+        {/* Section 3: 작업 공종 */}
         <div id="section-WORK_CATEGORY">
           <WorkflowSection
-            sectionNumber={4}
+            sectionNumber={3}
             title={SECTION_METADATA.WORK_CATEGORY.title}
             description={SECTION_METADATA.WORK_CATEGORY.description}
             state={workflow.sections.WORK_CATEGORY}
@@ -758,7 +721,7 @@ export default function OccasionalAssessmentForm({ onSubmit, onCancel }: Props) 
             }}
             onNextClick={handleWorkCategoryNext}
           >
-            <div className="space-y-6">
+            <div className="space-y-4">
               {categories.map((category, index) => (
                 <OccasionalCategoryItem
                   key={category.id}

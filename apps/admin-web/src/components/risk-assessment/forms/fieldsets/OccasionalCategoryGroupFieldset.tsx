@@ -16,6 +16,7 @@ import type {
   RiskFactorLevel,
   RiskFactorFrequencyIntensity,
 } from '../../types/occasional';
+import { generateId } from '../../types/common';
 
 interface Props {
   categories: OccasionalCategory[];
@@ -25,9 +26,6 @@ interface Props {
   onChange: (categories: OccasionalCategory[]) => void;
   disabled?: boolean;
 }
-
-let idCounter = 0;
-const generateId = () => `temp-${Date.now()}-${++idCounter}`;
 
 export default function OccasionalCategoryGroupFieldset({
   categories,

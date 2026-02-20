@@ -26,22 +26,11 @@ import type {
   RiskFactorLevel,
   RiskFactorFrequencyIntensity,
 } from '../types/occasional';
-
-let idCounter = 0;
-const generateId = () => `temp-${Date.now()}-${++idCounter}`;
-
-const formatDateInputValue = (date: Date) => {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const day = String(date.getDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
-};
-
-const addMonths = (date: Date, months: number) => {
-  const next = new Date(date);
-  next.setMonth(next.getMonth() + months);
-  return next;
-};
+import {
+  generateId,
+  formatDateInputValue,
+  addMonths,
+} from '../types/common';
 
 interface OccasionalSubcategory {
   id: number;
@@ -176,6 +165,10 @@ export default function OccasionalAssessmentForm({ onSubmit, onCancel }: Props) 
           id,
           name: getMockSubcategoryName(id),
           riskFactors: [],
+          actionDate: '',
+          actionAssigneeIds: [],
+          actionConfirmerIds: [],
+          reviewComments: [],
         }));
 
         return {
@@ -207,6 +200,10 @@ export default function OccasionalAssessmentForm({ onSubmit, onCancel }: Props) 
               name,
               isCustom: true,
               riskFactors: [],
+              actionDate: '',
+              actionAssigneeIds: [],
+              actionConfirmerIds: [],
+              reviewComments: [],
             },
           ],
         };
@@ -240,9 +237,6 @@ export default function OccasionalAssessmentForm({ onSubmit, onCancel }: Props) 
                 improvement: f.improvement,
                 workPeriodStart,
                 workPeriodEnd,
-                actionDate: '',
-                actionAssigneeIds: [],
-                actionConfirmerIds: [],
               };
 
               return riskMethod === 'LEVEL'
@@ -312,6 +306,25 @@ export default function OccasionalAssessmentForm({ onSubmit, onCancel }: Props) 
               riskFactors: sub.riskFactors.filter((factor) => factor.id !== factorId),
             };
           }),
+        };
+      })
+    );
+  };
+
+  const handleUpdateSubcategory = (
+    categoryId: string,
+    subcategoryId: number,
+    updatedSubcategory: OccasionalSubcategory
+  ) => {
+    setCategories(
+      categories.map((cat) => {
+        if (cat.id !== categoryId) return cat;
+
+        return {
+          ...cat,
+          subcategories: cat.subcategories.map((sub) =>
+            sub.id === subcategoryId ? updatedSubcategory : sub
+          ),
         };
       })
     );
@@ -493,6 +506,9 @@ export default function OccasionalAssessmentForm({ onSubmit, onCancel }: Props) 
                 handleDeleteRiskFactor(category.id, subId, factorId)
               }
               onSearchRiskFactor={(subId) => handleAddRiskFactor(category.id, subId)}
+              onUpdateSubcategory={(subId, updatedSub) =>
+                handleUpdateSubcategory(category.id, subId, updatedSub)
+              }
               onDelete={() => handleDeleteCategory(category.id)}
               index={index}
             />

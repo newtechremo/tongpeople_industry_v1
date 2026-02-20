@@ -8,6 +8,9 @@ import { getAssessmentById, type MockRiskAssessment } from '@/mocks/risk-assessm
 import { useApprovalLines } from '@/stores/approvalLinesStore';
 import { getActiveTeams } from '@/mocks/teams';
 import type { ApprovalLine, Approver } from '@tong-pass/shared';
+import { useAuth } from '@/context/AuthContext';
+import { createConfirmation } from '@/api/confirmationApi';
+import ConfirmationSection from './components/ConfirmationSection';
 
 const STATUS_LABELS: Record<string, { label: string; className: string }> = {
   pre_start: { label: '작업기간 전', className: 'bg-blue-100 text-blue-700' },
@@ -32,23 +35,31 @@ interface LocalRiskFactor {
   improvement: string;
   workPeriodStart: string;
   workPeriodEnd: string;
-  // 수시 평가 - 빈도강도 방식
+  // 수시 평가 - 빈도강도 방식 (개선 전/후)
+  beforeFrequency?: number | null;
+  beforeIntensity?: number | null;
+  beforeRiskScore?: number | null;
+  beforeGradeLevel?: 'LOW' | 'MEDIUM' | 'HIGH' | null;
+  afterFrequency?: number | null;
+  afterIntensity?: number | null;
+  afterRiskScore?: number | null;
+  afterGradeLevel?: 'LOW' | 'MEDIUM' | 'HIGH' | null;
+  // 하위 호환 (기존 필드)
   frequency?: number | null;
   intensity?: number | null;
   riskScore?: number | null;
   gradeLevel?: 'LOW' | 'MEDIUM' | 'HIGH' | null;
-  // 수시 평가 - 공통 조치 필드
-  actionDate?: string;
-  actionAssigneeIds?: string[];
-  actionConfirmerIds?: string[];
-  // 수시 평가 - 검토내용
-  reviewComments?: string[];
 }
 
 interface LocalSubcategory {
   id: number;
   name: string;
   riskFactors: LocalRiskFactor[];
+  // 수시 평가 - 소분류별 조치 정보
+  actionDate?: string;
+  actionAssigneeIds?: string[];
+  actionConfirmerIds?: string[];
+  reviewComments?: string[];
 }
 
 interface LocalCategory {
@@ -122,49 +133,51 @@ function buildItemsFromCategories(categories: LocalCategory[]) {
   );
 }
 
-function SignatureBox({
-  approver,
-  signature,
-  onApply,
-  disabled,
-}: {
-  approver: Approver;
-  signature: string | null;
-  onApply: () => void;
-  disabled: boolean;
-}) {
-  const storedSignature = loadSignature(approver.userId);
-  const canApply = Boolean(storedSignature) && !disabled && !signature;
-
-  return (
-    <div className="border border-dashed border-gray-300 rounded-lg p-3 min-h-[72px] flex flex-col justify-between">
-      {signature ? (
-        <div className="text-base text-slate-700">
-          {signature.startsWith('data:image') ? (
-            <img src={signature} alt="전자서명" className="h-10 object-contain" />
-          ) : (
-            <span className="font-semibold">{signature}</span>
-          )}
-        </div>
-      ) : (
-        <span className="text-sm text-slate-400">서명 필요</span>
-      )}
-      <button
-        type="button"
-        onClick={onApply}
-        disabled={!canApply}
-        title={storedSignature ? '' : '저장된 서명이 없습니다.'}
-        className="mt-2 text-sm font-bold text-orange-600 hover:text-orange-700 disabled:text-slate-300"
-      >
-        서명 불러오기
-      </button>
-    </div>
-  );
-}
+// 향후 서명 기능 사용 예정
+// function SignatureBox({
+//   approver,
+//   signature,
+//   onApply,
+//   disabled,
+// }: {
+//   approver: Approver;
+//   signature: string | null;
+//   onApply: () => void;
+//   disabled: boolean;
+// }) {
+//   const storedSignature = loadSignature(approver.userId);
+//   const canApply = Boolean(storedSignature) && !disabled && !signature;
+//
+//   return (
+//     <div className="border border-dashed border-gray-300 rounded-lg p-3 min-h-[72px] flex flex-col justify-between">
+//       {signature ? (
+//         <div className="text-base text-slate-700">
+//           {signature.startsWith('data:image') ? (
+//             <img src={signature} alt="전자서명" className="h-10 object-contain" />
+//           ) : (
+//             <span className="font-semibold">{signature}</span>
+//           )}
+//         </div>
+//       ) : (
+//         <span className="text-sm text-slate-400">서명 필요</span>
+//       )}
+//       <button
+//         type="button"
+//         onClick={onApply}
+//         disabled={!canApply}
+//         title={storedSignature ? '' : '저장된 서명이 없습니다.'}
+//         className="mt-2 text-sm font-bold text-orange-600 hover:text-orange-700 disabled:text-slate-300"
+//       >
+//         서명 불러오기
+//       </button>
+//     </div>
+//   );
+// }
 
 export default function RiskAssessmentDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { user } = useAuth();
   const localAssessment = useMemo(() => (id ? loadLocalAssessment(id) : null), [id]);
   const assessment = useMemo(
     () => (localAssessment || !id ? undefined : getAssessmentById(id)),
@@ -207,7 +220,8 @@ export default function RiskAssessmentDetailPage() {
     localAssessment?.workPeriodEnd || assessment?.work_end_date || ''
   );
   const [teamId, setTeamId] = useState<string>('all');
-  const [items, setItems] = useState(
+  // items 상태는 향후 편집 모드에서 사용 예정
+  const [_items, setItems] = useState(
     localAssessment ? buildItemsFromCategories(localAssessment.categories) : assessment?.items || []
   );
 
@@ -238,6 +252,40 @@ export default function RiskAssessmentDetailPage() {
       setSelectedApprovalLine(match);
     }
   }, [availableApprovalLines, localAssessment]);
+
+  // 수시 위험성평가: 열람 시 자동 확인 등록
+  useEffect(() => {
+    // 수시 평가가 아니면 무시
+    const assessmentType = localAssessment?.type || assessment?.type;
+    if (assessmentType !== 'OCCASIONAL') return;
+
+    // 사용자 정보가 없으면 무시
+    if (!user || !id) return;
+
+    // 확인 이벤트 등록 (비동기)
+    const registerConfirmation = async () => {
+      try {
+        await createConfirmation(
+          {
+            assessmentId: id,
+            assessmentType: 'OCCASIONAL',
+            source: 'PC',
+          },
+          {
+            id: user.id,
+            name: user.name || '알 수 없음',
+            department: user.partnerName || undefined,
+          }
+        );
+        console.log('수시 평가 확인 이벤트 등록 완료');
+      } catch (error) {
+        console.error('확인 이벤트 등록 실패:', error);
+      }
+    };
+
+    registerConfirmation();
+  }, [id, user, localAssessment?.type, assessment?.type]);
+
   if (!assessment && !localAssessment) {
     return (
       <div className="space-y-6">
@@ -262,11 +310,9 @@ export default function RiskAssessmentDetailPage() {
     ? { ...assessment, ...displayOverrides[assessment.id] }
     : assessment;
 
-  const documentId = localAssessment?.id || assessment?.id || id || '';
   const assessmentType = localAssessment?.type || mergedAssessment?.type || 'INITIAL';
   const displaySiteName = localAssessment?.siteName || mergedAssessment?.site_name || '';
   const displayCompanyName = localAssessment?.companyName || '(주)통하는사람들';
-  const displayTeamName = localAssessment ? undefined : mergedAssessment?.team_name;
 
   const workflowStatus = getWorkflowStatus(workPeriodStart, workPeriodEnd);
   const statusInfo = STATUS_LABELS[workflowStatus];
@@ -386,7 +432,7 @@ export default function RiskAssessmentDetailPage() {
         teams={teams}
         approvalLineName={selectedApprovalLine?.name || null}
         approvalLineCount={selectedApprovalLine?.approvers.length || null}
-        approvalLineApprovers={approvalLineApprovers.map((approver) => ({
+        approvalLineApprovers={approvalLineApprovers.map((approver: Approver) => ({
           approvalTitle: approver.approvalTitle,
           userName: approver.userName,
           userId: approver.userId,
@@ -442,6 +488,17 @@ export default function RiskAssessmentDetailPage() {
         </div>
       )}
 
+      {/* 문서 확인자 섹션 (OCCASIONAL 타입만) */}
+      {assessmentType === 'OCCASIONAL' && id && (
+        <ConfirmationSection
+          assessmentId={id}
+          assessmentTitle={localAssessment?.title || mergedAssessment?.title || '수시 위험성평가'}
+          siteName={displaySiteName}
+          workPeriodStart={workPeriodStart}
+          workPeriodEnd={workPeriodEnd}
+        />
+      )}
+
       <div className="space-y-6">
         <h2 className="text-xl font-bold text-slate-700">작업 공종</h2>
 
@@ -490,8 +547,6 @@ export default function RiskAssessmentDetailPage() {
                             }
                           };
 
-                          const levelLabel = factor.level === 'HIGH' ? '상' : factor.level === 'MEDIUM' ? '중' : factor.level === 'LOW' ? '하' : null;
-
                           return (
                             <div key={factor.id} className={`rounded-xl p-4 space-y-4 ${getLevelStyles()}`}>
                               {/* 위험 요인 */}
@@ -526,75 +581,170 @@ export default function RiskAssessmentDetailPage() {
                                 {/* 상중하 방식 또는 빈도강도 방식 구분 */}
                                 {factor.level !== undefined ? (
                                   // 상중하 방식
-                                  <div className="flex items-center gap-6">
-                                    <span className="text-base font-medium text-slate-600">위험성 수준</span>
-                                    {canEdit ? (
-                                      <div className="flex items-center gap-4">
-                                        {[
-                                          { value: 'HIGH', label: '상' },
-                                          { value: 'MEDIUM', label: '중' },
-                                          { value: 'LOW', label: '하' },
-                                        ].map((option) => (
-                                          <label key={option.value} className="flex items-center gap-2 cursor-pointer">
-                                            <input
-                                              type="radio"
-                                              name={`risk-level-${factor.id}`}
-                                              value={option.value}
-                                              checked={factor.level === option.value}
-                                              onChange={() => {
-                                                setItems((prev) =>
-                                                  prev.map((item) =>
-                                                    item.id === factor.id
-                                                      ? { ...item, level: option.value as 'HIGH' | 'MEDIUM' | 'LOW' }
-                                                      : item
-                                                  )
-                                                );
-                                              }}
-                                              className="w-4 h-4 text-orange-500 focus:ring-orange-500"
-                                            />
-                                            <span className="text-base text-slate-700">{option.label}</span>
+                                  <div className="grid grid-cols-[40px,1fr] items-center gap-2">
+                                    <span className="text-xs font-semibold text-slate-600">수준</span>
+                                    <div className="grid grid-cols-3 gap-1.5">
+                                      {[
+                                        { value: 'HIGH', label: '상' },
+                                        { value: 'MEDIUM', label: '중' },
+                                        { value: 'LOW', label: '하' },
+                                      ].map((option) => {
+                                        const isSelected = factor.level === option.value;
+                                        const colorClasses = option.value === 'HIGH'
+                                          ? 'border-red-500 bg-red-100 text-red-700'
+                                          : option.value === 'MEDIUM'
+                                          ? 'border-orange-500 bg-orange-100 text-orange-700'
+                                          : 'border-green-500 bg-green-100 text-green-700';
+
+                                        return (
+                                          <label
+                                            key={option.value}
+                                            className={`h-8 rounded-md border text-xs font-semibold flex items-center justify-center transition-colors ${
+                                              isSelected
+                                                ? colorClasses
+                                                : canEdit
+                                                ? 'border-gray-200 bg-white text-slate-600 hover:border-slate-300 cursor-pointer'
+                                                : 'border-gray-200 bg-gray-50 text-slate-400'
+                                            }`}
+                                          >
+                                            {canEdit && (
+                                              <input
+                                                type="radio"
+                                                name={`risk-level-${factor.id}`}
+                                                value={option.value}
+                                                checked={isSelected}
+                                                onChange={() => {
+                                                  setItems((prev) =>
+                                                    prev.map((item) =>
+                                                      item.id === factor.id
+                                                        ? { ...item, level: option.value as 'HIGH' | 'MEDIUM' | 'LOW' }
+                                                        : item
+                                                    )
+                                                  );
+                                                }}
+                                                className="hidden"
+                                              />
+                                            )}
+                                            {option.label}
                                           </label>
-                                        ))}
-                                      </div>
-                                    ) : (
-                                      <span className="text-base text-slate-700">{levelLabel || '-'}</span>
-                                    )}
+                                        );
+                                      })}
+                                    </div>
                                   </div>
-                                ) : factor.frequency !== undefined && factor.intensity !== undefined ? (
-                                  // 빈도강도 방식
-                                  <div className="space-y-3 p-4 rounded-lg bg-slate-50 border border-slate-200">
-                                    <h4 className="text-sm font-bold text-slate-700">빈도강도 평가</h4>
-                                    <div className="grid grid-cols-3 gap-4">
-                                      <div>
+                                ) : (factor.beforeFrequency !== undefined && factor.beforeIntensity !== undefined) || (factor.frequency !== undefined && factor.intensity !== undefined) ? (
+                                  // 빈도강도 방식 (개선 전/후 또는 단일 평가)
+                                  <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                                    {/* 개선 전 */}
+                                    <div className="rounded-lg border border-blue-200 bg-blue-50/50 p-3 space-y-2.5">
+                                      <div className="flex items-center justify-between">
+                                        <h6 className="text-sm font-bold text-blue-700">개선 전</h6>
+                                        {((factor.beforeRiskScore ?? factor.riskScore) !== null && (factor.beforeGradeLevel ?? factor.gradeLevel) !== null) ? (
+                                          <span className="text-xs font-semibold text-blue-700">
+                                            점수 {factor.beforeRiskScore ?? factor.riskScore} /{' '}
+                                            <span className={
+                                              (factor.beforeGradeLevel ?? factor.gradeLevel) === 'HIGH' ? 'text-red-600' :
+                                              (factor.beforeGradeLevel ?? factor.gradeLevel) === 'MEDIUM' ? 'text-orange-600' : 'text-green-600'
+                                            }>
+                                              {(factor.beforeGradeLevel ?? factor.gradeLevel) === 'HIGH' ? '상' : (factor.beforeGradeLevel ?? factor.gradeLevel) === 'MEDIUM' ? '중' : '하'}
+                                            </span>
+                                          </span>
+                                        ) : (
+                                          <span className="text-xs text-slate-500">미입력</span>
+                                        )}
+                                      </div>
+
+                                      <div className="grid grid-cols-[46px,1fr] items-center gap-2">
                                         <span className="text-xs font-semibold text-slate-600">빈도</span>
-                                        <div className="text-base font-bold text-orange-600 mt-1">
-                                          {factor.frequency ?? '-'}
+                                        <div className="grid grid-cols-4 gap-1.5">
+                                          {[1, 2, 3, 4].map((freq) => (
+                                            <div
+                                              key={freq}
+                                              className={`h-8 rounded-md border text-sm font-semibold flex items-center justify-center ${
+                                                (factor.beforeFrequency ?? factor.frequency) === freq
+                                                  ? 'border-blue-500 bg-blue-100 text-blue-700'
+                                                  : 'border-gray-200 bg-white text-slate-400'
+                                              }`}
+                                            >
+                                              {freq}
+                                            </div>
+                                          ))}
                                         </div>
                                       </div>
-                                      <div>
+
+                                      <div className="grid grid-cols-[46px,1fr] items-center gap-2">
                                         <span className="text-xs font-semibold text-slate-600">강도</span>
-                                        <div className="text-base font-bold text-orange-600 mt-1">
-                                          {factor.intensity ?? '-'}
-                                        </div>
-                                      </div>
-                                      <div>
-                                        <span className="text-xs font-semibold text-slate-600">위험성 점수</span>
-                                        <div className="text-base font-bold text-slate-800 mt-1">
-                                          {factor.riskScore ?? '-'}점
+                                        <div className="grid grid-cols-5 gap-1.5">
+                                          {[1, 2, 3, 4, 5].map((intens) => (
+                                            <div
+                                              key={intens}
+                                              className={`h-8 rounded-md border text-sm font-semibold flex items-center justify-center ${
+                                                (factor.beforeIntensity ?? factor.intensity) === intens
+                                                  ? 'border-blue-500 bg-blue-100 text-blue-700'
+                                                  : 'border-gray-200 bg-white text-slate-400'
+                                              }`}
+                                            >
+                                              {intens}
+                                            </div>
+                                          ))}
                                         </div>
                                       </div>
                                     </div>
-                                    {factor.gradeLevel && (
-                                      <div className="pt-2 border-t border-slate-300">
-                                        <span className="text-xs font-semibold text-slate-600">등급: </span>
-                                        <span className={`text-base font-bold ${
-                                          factor.gradeLevel === 'HIGH' ? 'text-red-600' :
-                                          factor.gradeLevel === 'MEDIUM' ? 'text-orange-600' : 'text-green-600'
-                                        }`}>
-                                          {factor.gradeLevel === 'HIGH' ? '상' : factor.gradeLevel === 'MEDIUM' ? '중' : '하'}
-                                        </span>
+
+                                    {/* 개선 후 */}
+                                    <div className="rounded-lg border border-green-200 bg-green-50/50 p-3 space-y-2.5">
+                                      <div className="flex items-center justify-between">
+                                        <h6 className="text-sm font-bold text-green-700">개선 후</h6>
+                                        {factor.afterRiskScore !== null && factor.afterGradeLevel !== null ? (
+                                          <span className="text-xs font-semibold text-green-700">
+                                            점수 {factor.afterRiskScore} /{' '}
+                                            <span className={
+                                              factor.afterGradeLevel === 'HIGH' ? 'text-red-600' :
+                                              factor.afterGradeLevel === 'MEDIUM' ? 'text-orange-600' : 'text-green-600'
+                                            }>
+                                              {factor.afterGradeLevel === 'HIGH' ? '상' : factor.afterGradeLevel === 'MEDIUM' ? '중' : '하'}
+                                            </span>
+                                          </span>
+                                        ) : (
+                                          <span className="text-xs text-slate-500">미입력</span>
+                                        )}
                                       </div>
-                                    )}
+
+                                      <div className="grid grid-cols-[46px,1fr] items-center gap-2">
+                                        <span className="text-xs font-semibold text-slate-600">빈도</span>
+                                        <div className="grid grid-cols-4 gap-1.5">
+                                          {[1, 2, 3, 4].map((freq) => (
+                                            <div
+                                              key={freq}
+                                              className={`h-8 rounded-md border text-sm font-semibold flex items-center justify-center ${
+                                                factor.afterFrequency === freq
+                                                  ? 'border-green-500 bg-green-100 text-green-700'
+                                                  : 'border-gray-200 bg-white text-slate-400'
+                                              }`}
+                                            >
+                                              {freq}
+                                            </div>
+                                          ))}
+                                        </div>
+                                      </div>
+
+                                      <div className="grid grid-cols-[46px,1fr] items-center gap-2">
+                                        <span className="text-xs font-semibold text-slate-600">강도</span>
+                                        <div className="grid grid-cols-5 gap-1.5">
+                                          {[1, 2, 3, 4, 5].map((intens) => (
+                                            <div
+                                              key={intens}
+                                              className={`h-8 rounded-md border text-sm font-semibold flex items-center justify-center ${
+                                                factor.afterIntensity === intens
+                                                  ? 'border-green-500 bg-green-100 text-green-700'
+                                                  : 'border-gray-200 bg-white text-slate-400'
+                                              }`}
+                                            >
+                                              {intens}
+                                            </div>
+                                          ))}
+                                        </div>
+                                      </div>
+                                    </div>
                                   </div>
                                 ) : null}
                               </div>
@@ -655,60 +805,60 @@ export default function RiskAssessmentDetailPage() {
                                   </div>
                                 </div>
                               </div>
-
-                              {/* 조치 필드 (수시 평가만) */}
-                              {(factor.actionDate || factor.actionAssigneeIds || factor.actionConfirmerIds) && (
-                                <div className="pt-4 border-t border-gray-300 space-y-3">
-                                  <h5 className="text-sm font-bold text-slate-700">조치 정보</h5>
-
-                                  {factor.actionDate && (
-                                    <div>
-                                      <span className="text-sm font-semibold text-slate-600">조치일: </span>
-                                      <span className="text-sm text-slate-700">{factor.actionDate}</span>
-                                    </div>
-                                  )}
-
-                                  {factor.actionAssigneeIds && factor.actionAssigneeIds.length > 0 && (
-                                    <div>
-                                      <span className="text-sm font-semibold text-slate-600">조치자: </span>
-                                      <span className="text-sm text-slate-700">
-                                        {factor.actionAssigneeIds.length}명
-                                      </span>
-                                    </div>
-                                  )}
-
-                                  {factor.actionConfirmerIds && factor.actionConfirmerIds.length > 0 && (
-                                    <div>
-                                      <span className="text-sm font-semibold text-slate-600">조치확인자: </span>
-                                      <span className="text-sm text-slate-700">
-                                        {factor.actionConfirmerIds.length}명
-                                      </span>
-                                    </div>
-                                  )}
-
-                                  {/* 검토내용 */}
-                                  {factor.reviewComments && factor.reviewComments.length > 0 && (
-                                    <div>
-                                      <span className="text-sm font-semibold text-slate-600 block mb-2">검토내용:</span>
-                                      <div className="space-y-2">
-                                        {factor.reviewComments.map((comment, idx) => (
-                                          <div
-                                            key={idx}
-                                            className="flex items-start gap-2 p-2 rounded bg-gray-50 border border-gray-200"
-                                          >
-                                            <span className="text-sm text-slate-600 font-semibold">{idx + 1}.</span>
-                                            <span className="text-sm text-slate-700 flex-1">{comment}</span>
-                                          </div>
-                                        ))}
-                                      </div>
-                                    </div>
-                                  )}
-                                </div>
-                              )}
                             </div>
                           );
                         })}
                       </div>
+
+                      {/* 소분류별 조치 정보 (수시 평가만) */}
+                      {(subcategory.actionDate || subcategory.actionAssigneeIds || subcategory.actionConfirmerIds || subcategory.reviewComments) && (
+                        <div className="p-4 rounded-lg bg-white border-2 border-orange-300 space-y-3">
+                          <h5 className="text-sm font-bold text-orange-700">📋 소분류 조치 정보</h5>
+
+                          {subcategory.actionDate && (
+                            <div>
+                              <span className="text-sm font-semibold text-slate-600">조치일: </span>
+                              <span className="text-sm text-slate-700">{subcategory.actionDate}</span>
+                            </div>
+                          )}
+
+                          {subcategory.actionAssigneeIds && subcategory.actionAssigneeIds.length > 0 && (
+                            <div>
+                              <span className="text-sm font-semibold text-slate-600">조치자: </span>
+                              <span className="text-sm text-slate-700">
+                                {subcategory.actionAssigneeIds.length}명
+                              </span>
+                            </div>
+                          )}
+
+                          {subcategory.actionConfirmerIds && subcategory.actionConfirmerIds.length > 0 && (
+                            <div>
+                              <span className="text-sm font-semibold text-slate-600">조치확인자: </span>
+                              <span className="text-sm text-slate-700">
+                                {subcategory.actionConfirmerIds.length}명
+                              </span>
+                            </div>
+                          )}
+
+                          {/* 검토내용 */}
+                          {subcategory.reviewComments && subcategory.reviewComments.length > 0 && (
+                            <div>
+                              <span className="text-sm font-semibold text-slate-600 block mb-2">검토내용:</span>
+                              <div className="space-y-2">
+                                {subcategory.reviewComments.map((comment, idx) => (
+                                  <div
+                                    key={idx}
+                                    className="flex items-start gap-2 p-2 rounded bg-gray-50 border border-gray-200"
+                                  >
+                                    <span className="text-sm text-slate-600 font-semibold">{idx + 1}.</span>
+                                    <span className="text-sm text-slate-700 flex-1">{comment}</span>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      )}
                     </div>
                   );
                 })}
@@ -741,6 +891,10 @@ export default function RiskAssessmentDetailPage() {
         lines={availableApprovalLines}
         selectedId={selectedApprovalLine?.id || null}
         onSelect={handleApprovalLineSelect}
+        onCreate={() => {
+          setApprovalModalOpen(false);
+          navigate('/settings/approval-line');
+        }}
       />
 
       <ConfirmDialog

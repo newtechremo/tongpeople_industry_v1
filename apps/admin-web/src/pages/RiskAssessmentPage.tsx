@@ -6,7 +6,7 @@ import { Plus, FileText, Calendar, RefreshCw, Clock } from 'lucide-react';
 
 import AssessmentTypeSelectModal, { AssessmentType } from '../components/risk-assessment/AssessmentTypeSelectModal';
 
-import { getActiveTeams, getTeamById } from '@/mocks/teams';
+import { getTeamById } from '@/mocks/teams';
 
 
 
@@ -210,21 +210,15 @@ const AVAILABLE_CREATE_TYPES: AssessmentType[] = ['INITIAL', 'REGULAR', 'OCCASIO
 
 
 
-const STATUS_LABELS: Record<AssessmentStatus, { label: string; color: string }> = {
-
-  DRAFT: { label: '작성중', color: 'bg-yellow-100 text-yellow-700' },
-
-  PENDING: { label: '결재대기', color: 'bg-blue-100 text-blue-700' },
-
-  APPROVED: { label: '승인완료', color: 'bg-green-100 text-green-700' },
-
-  REJECTED: { label: '반려', color: 'bg-red-100 text-red-700' },
-
-  IN_PROGRESS: { label: '작업대기중', color: 'bg-orange-100 text-orange-700' },
-
-  COMPLETED: { label: '작업종료', color: 'bg-gray-100 text-gray-600' },
-
-};
+// 상태 라벨 (향후 사용 예정)
+// const STATUS_LABELS: Record<AssessmentStatus, { label: string; color: string }> = {
+//   DRAFT: { label: '작성중', color: 'bg-yellow-100 text-yellow-700' },
+//   PENDING: { label: '결재대기', color: 'bg-blue-100 text-blue-700' },
+//   APPROVED: { label: '승인완료', color: 'bg-green-100 text-green-700' },
+//   REJECTED: { label: '반려', color: 'bg-red-100 text-red-700' },
+//   IN_PROGRESS: { label: '작업대기중', color: 'bg-orange-100 text-orange-700' },
+//   COMPLETED: { label: '작업종료', color: 'bg-gray-100 text-gray-600' },
+// };
 
 
 
@@ -552,6 +546,8 @@ interface LocalDraft {
 
   title?: string;
 
+  status?: AssessmentStatus;
+
   workPeriodStart: string;
 
   workPeriodEnd: string;
@@ -700,8 +696,6 @@ export default function RiskAssessmentPage() {
   const [showTypeModal, setShowTypeModal] = useState(false);
 
   const [drafts, setDrafts] = useState<RiskAssessment[]>([]);
-
-  const teams = useMemo(() => getActiveTeams(), []);
 
 
 
