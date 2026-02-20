@@ -12,7 +12,7 @@ import { useReducer, useCallback } from 'react';
 /**
  * 섹션 ID
  */
-export type SectionId = 'BASIC_INFO' | 'OCCASIONAL_INFO' | 'RISK_METHOD' | 'WORK_CATEGORY';
+export type SectionId = 'BASIC_INFO' | 'RISK_METHOD' | 'WORK_CATEGORY';
 
 /**
  * 섹션 상태
@@ -59,27 +59,21 @@ export type WorkflowAction =
 export const SECTION_METADATA: Record<SectionId, SectionMeta> = {
   BASIC_INFO: {
     id: 'BASIC_INFO',
-    title: '기본 정보',
-    description: '현장명, 회사명, 작업기간 등',
+    title: '기본/수시 정보',
+    description: '기본 정보와 수시 평가 정보를 함께 입력',
     order: 1,
-  },
-  OCCASIONAL_INFO: {
-    id: 'OCCASIONAL_INFO',
-    title: '수시 평가 정보',
-    description: '발생일, 수시 평가 사유 (선택)',
-    order: 2,
   },
   RISK_METHOD: {
     id: 'RISK_METHOD',
     title: '위험성 산정 방식',
     description: '상중하 또는 빈도강도',
-    order: 3,
+    order: 2,
   },
   WORK_CATEGORY: {
     id: 'WORK_CATEGORY',
     title: '작업 공종',
     description: '공종, 소분류, 위험요인 입력',
-    order: 4,
+    order: 3,
   },
 };
 
@@ -88,7 +82,6 @@ export const SECTION_METADATA: Record<SectionId, SectionMeta> = {
  */
 export const SECTION_ORDER: SectionId[] = [
   'BASIC_INFO',
-  'OCCASIONAL_INFO',
   'RISK_METHOD',
   'WORK_CATEGORY',
 ];
@@ -98,7 +91,6 @@ export const SECTION_ORDER: SectionId[] = [
 const initialState: WorkflowState = {
   sections: {
     BASIC_INFO: 'active',
-    OCCASIONAL_INFO: 'locked',
     RISK_METHOD: 'locked',
     WORK_CATEGORY: 'locked',
   },
@@ -231,23 +223,6 @@ function workflowReducer(state: WorkflowState, action: WorkflowAction): Workflow
         newExpandedSections.delete(section);
       } else {
         newExpandedSections.add(section);
-      }
-
-      // completed 섹션을 클릭하면 active로 변경 (수정 모드)
-      if (sectionState === 'completed') {
-        return {
-          ...state,
-          sections: {
-            ...state.sections,
-            [section]: 'active',
-          },
-          expandedSections: newExpandedSections,
-          currentSection: section,
-          completedCount: countCompleted({
-            ...state.sections,
-            [section]: 'active',
-          }),
-        };
       }
 
       return {

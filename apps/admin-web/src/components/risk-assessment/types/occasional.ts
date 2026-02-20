@@ -13,7 +13,6 @@ export type RiskGradeLevel = 'LOW' | 'MEDIUM' | 'HIGH';
 
 /**
  * 위험요인 공통 필드
- * - 조치일, 조치자, 조치확인자는 필수
  */
 export interface RiskFactorBase {
   id: string;
@@ -21,14 +20,6 @@ export interface RiskFactorBase {
   improvement: string;
   workPeriodStart: string;
   workPeriodEnd: string;
-
-  // 공통 조치 필드 (필수)
-  actionDate: string;
-  actionAssigneeIds: string[];
-  actionConfirmerIds: string[];
-
-  // 검토내용 (옵션, 문자열 배열)
-  reviewComments?: string[];
 }
 
 /**
@@ -40,16 +31,28 @@ export interface RiskFactorLevel extends RiskFactorBase {
 
 /**
  * 빈도강도 방식 위험요인
- * - frequency: 1~4 (빈도)
- * - intensity: 1~5 (강도)
- * - riskScore: frequency * intensity (1~20)
- * - gradeLevel: 계산된 등급 (LOW/MEDIUM/HIGH)
+ *
+ * 개선 전/후 두 번 평가:
+ * - 개선 전: 현재 위험성 평가
+ * - 개선 후: 개선대책 적용 후 예상 위험성 평가
+ *
+ * frequency: 1~4 (빈도)
+ * intensity: 1~5 (강도)
+ * riskScore: frequency * intensity (1~20)
+ * gradeLevel: 계산된 등급 (LOW/MEDIUM/HIGH)
  */
 export interface RiskFactorFrequencyIntensity extends RiskFactorBase {
-  frequency: number | null;   // 1-4
-  intensity: number | null;   // 1-5
-  riskScore: number | null;   // frequency * intensity
-  gradeLevel: RiskGradeLevel | null;
+  // 개선 전 평가
+  beforeFrequency: number | null;   // 1-4
+  beforeIntensity: number | null;   // 1-5
+  beforeRiskScore: number | null;   // beforeFrequency * beforeIntensity
+  beforeGradeLevel: RiskGradeLevel | null;
+
+  // 개선 후 평가
+  afterFrequency: number | null;    // 1-4
+  afterIntensity: number | null;    // 1-5
+  afterRiskScore: number | null;    // afterFrequency * afterIntensity
+  afterGradeLevel: RiskGradeLevel | null;
 }
 
 /**
@@ -59,12 +62,21 @@ export type OccasionalRiskFactor = RiskFactorLevel | RiskFactorFrequencyIntensit
 
 /**
  * 하위 분류
+ * - 조치 정보는 소분류 레벨에서 관리 (위험요인별이 아님)
  */
 export interface OccasionalSubcategory {
   id: number;
   name: string;
   isCustom?: boolean;
   riskFactors: OccasionalRiskFactor[];
+
+  // 소분류별 조치 정보 (필수)
+  actionDate: string;
+  actionAssigneeIds: string[];
+  actionConfirmerIds: string[];
+
+  // 검토내용 (옵션, 문자열 배열)
+  reviewComments?: string[];
 }
 
 /**
@@ -109,5 +121,5 @@ export function isRiskFactorLevel(factor: OccasionalRiskFactor): factor is RiskF
 export function isRiskFactorFrequencyIntensity(
   factor: OccasionalRiskFactor
 ): factor is RiskFactorFrequencyIntensity {
-  return 'frequency' in factor && 'intensity' in factor;
+  return 'beforeFrequency' in factor && 'beforeIntensity' in factor;
 }

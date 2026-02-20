@@ -11,12 +11,23 @@ import SubcategoryCheckList from './SubcategoryCheckList';
 import OccasionalRiskFactorCard from '@/components/risk-assessment/forms/components/OccasionalRiskFactorCard';
 import ActionAssigneeSelectModal from '@/components/risk-assessment/modals/ActionAssigneeSelectModal';
 import { getUsersByIds } from '@/mocks/users';
-import type { RiskMethod, OccasionalRiskFactor, OccasionalSubcategory } from '@/components/risk-assessment/types/occasional';
+import type { RiskMethod, OccasionalRiskFactor } from '@/components/risk-assessment/types/occasional';
+
+interface CategoryItemSubcategory {
+  id: number;
+  name: string;
+  isCustom?: boolean;
+  riskFactors: OccasionalRiskFactor[];
+  actionDate?: string;
+  actionAssigneeIds?: string[];
+  actionConfirmerIds?: string[];
+  reviewComments?: string[];
+}
 
 interface OccasionalCategoryItemProps {
   categoryId: number | null;
   categoryName: string;
-  subcategories: OccasionalSubcategory[];
+  subcategories: CategoryItemSubcategory[];
   riskMethod: RiskMethod;
   onCategoryChange: (categoryId: number, categoryName: string) => void;
   onCategoryClear: () => void;
@@ -26,9 +37,10 @@ interface OccasionalCategoryItemProps {
   onUpdateRiskFactor: (subcategoryId: number, factorId: string, updatedFactor: OccasionalRiskFactor) => void;
   onDeleteRiskFactor: (subcategoryId: number, factorId: string) => void;
   onSearchRiskFactor: (subcategoryId: number) => void;
-  onUpdateSubcategory: (subcategoryId: number, updatedSubcategory: OccasionalSubcategory) => void;
+  onUpdateSubcategory: (subcategoryId: number, updatedSubcategory: CategoryItemSubcategory) => void;
   onDelete: () => void;
   index: number;
+  showActionFields?: boolean;
   excludedCategoryIds?: number[]; // 이미 사용된 대분류 ID 목록
   excludedSubcategoryIds?: number[]; // 이미 사용된 소분류 ID 목록
 }
@@ -51,6 +63,7 @@ export default function OccasionalCategoryItem({
   onUpdateSubcategory,
   onDelete,
   index,
+  showActionFields = true,
 }: OccasionalCategoryItemProps) {
   const selectedSubcategoryIds = subcategories.map((s) => s.id);
   const customSubcategories = subcategories.filter((s) => s.isCustom);
@@ -68,10 +81,10 @@ export default function OccasionalCategoryItem({
   const [reviewCommentInputs, setReviewCommentInputs] = useState<Record<number, string>>({});
 
   // 소분류 필드 업데이트
-  const updateSubcategoryField = <K extends keyof OccasionalSubcategory>(
+  const updateSubcategoryField = <K extends keyof CategoryItemSubcategory>(
     subcategoryId: number,
     key: K,
-    value: OccasionalSubcategory[K]
+    value: CategoryItemSubcategory[K]
   ) => {
     const subcategory = subcategories.find((s) => s.id === subcategoryId);
     if (subcategory) {
@@ -241,7 +254,8 @@ export default function OccasionalCategoryItem({
               )}
 
               {/* 소분류별 조치 정보 */}
-              <div className="p-4 rounded-lg bg-white border-2 border-orange-300 space-y-4">
+              {showActionFields && (
+                <div className="p-4 rounded-lg bg-white border-2 border-orange-300 space-y-4">
                 <h5 className="text-sm font-bold text-orange-700">
                   📋 소분류 조치 정보
                 </h5>
@@ -378,13 +392,14 @@ export default function OccasionalCategoryItem({
                   </div>
                 </div>
               </div>
+              )}
             </div>
           );
         })}
       </div>
 
       {/* 조치자/확인자 선택 모달 */}
-      {actionModalState.subcategoryId !== null && actionModalState.type && (
+      {showActionFields && actionModalState.subcategoryId !== null && actionModalState.type && (
         <ActionAssigneeSelectModal
           isOpen={true}
           title={actionModalState.type === 'assignee' ? '조치자 선택' : '조치확인자 선택'}
@@ -411,3 +426,4 @@ export default function OccasionalCategoryItem({
     </>
   );
 }
+

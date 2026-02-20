@@ -1,7 +1,7 @@
-﻿import { useState } from 'react';
+﻿import { useCallback, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ChevronLeft, CheckCircle, AlertCircle } from 'lucide-react';
-import InitialAssessmentForm from '@/components/risk-assessment/forms/InitialAssessmentForm';
+import InitialAssessmentForm from '@/components/risk-assessment/forms/InitialAssessmentForm_Workflow';
 import OccasionalAssessmentForm from '@/components/risk-assessment/forms/OccasionalAssessmentForm_Workflow';
 
 const TYPE_LABELS: Record<string, string> = {
@@ -25,9 +25,19 @@ export default function CreateAssessmentPage() {
   const navigate = useNavigate();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitStatus, setSubmitStatus] = useState<'success' | 'error' | null>(null);
+  const [workflowProgress, setWorkflowProgress] = useState<{ completed: number; total: number } | null>(null);
 
   const typeLabel = type ? TYPE_LABELS[type] || type.toUpperCase() : '유형 없음';
   const assessmentType = type ? TYPE_MAPPING[type] : null;
+
+  const handleWorkflowProgressChange = useCallback((completed: number, total: number) => {
+    setWorkflowProgress((prev) => {
+      if (prev && prev.completed === completed && prev.total === total) {
+        return prev;
+      }
+      return { completed, total };
+    });
+  }, []);
 
   const handleBack = () => {
     navigate('/safety/risk');
@@ -44,7 +54,7 @@ export default function CreateAssessmentPage() {
         ...data,
         type: assessmentType,
         created_at: new Date().toISOString(),
-        status: 'PENDING', // 바로 결재대기 상태로 생성
+        status: 'PENDING',
       };
 
       try {
@@ -99,17 +109,24 @@ export default function CreateAssessmentPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-3">
-        <button
-          onClick={handleBack}
-          className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-          disabled={isSubmitting}
-        >
-          <ChevronLeft size={20} className="text-slate-600" />
-        </button>
-        <h1 className="text-2xl font-black tracking-tight text-slate-800">
-          {typeLabel} 위험성평가 만들기
-        </h1>
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <button
+            onClick={handleBack}
+            className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+            disabled={isSubmitting}
+          >
+            <ChevronLeft size={20} className="text-slate-600" />
+          </button>
+          <h1 className="text-2xl font-black tracking-tight text-slate-800">
+            {typeLabel} 위험성평가 만들기
+          </h1>
+        </div>
+        {(assessmentType === 'INITIAL' || assessmentType === 'REGULAR' || assessmentType === 'OCCASIONAL') && workflowProgress && (
+          <div className="shrink-0 rounded-full border border-orange-200 bg-orange-50 px-3 py-1 text-sm font-semibold text-orange-700">
+            진행 {workflowProgress.completed}/{workflowProgress.total}
+          </div>
+        )}
       </div>
 
       {submitStatus === 'success' && (
@@ -140,6 +157,7 @@ export default function CreateAssessmentPage() {
           type={type as 'initial' | 'regular'}
           onSubmit={handleSubmit}
           onCancel={handleCancel}
+          onProgressChange={handleWorkflowProgressChange}
         />
       )}
 
@@ -147,6 +165,7 @@ export default function CreateAssessmentPage() {
         <OccasionalAssessmentForm
           onSubmit={handleSubmit}
           onCancel={handleCancel}
+          onProgressChange={handleWorkflowProgressChange}
         />
       )}
 

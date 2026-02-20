@@ -7,6 +7,7 @@
 import type {
   OccasionalAssessmentPayload,
   OccasionalRiskFactor,
+  OccasionalSubcategory,
   RiskMethod,
   RiskGradeLevel,
   RiskFactorLevel,
@@ -28,40 +29,87 @@ export function calculateGradeLevel(score: number): RiskGradeLevel {
 }
 
 /**
- * 빈도강도 검증
- * - frequency: 1~4
- * - intensity: 1~5
- * - riskScore = frequency * intensity
- * - gradeLevel = calculateGradeLevel(riskScore)
+ * 빈도강도 검증 (개선 전/후)
+ * - beforeFrequency: 1~4
+ * - beforeIntensity: 1~5
+ * - beforeRiskScore = beforeFrequency * beforeIntensity
+ * - beforeGradeLevel = calculateGradeLevel(beforeRiskScore)
+ * - afterFrequency: 1~4
+ * - afterIntensity: 1~5
+ * - afterRiskScore = afterFrequency * afterIntensity
+ * - afterGradeLevel = calculateGradeLevel(afterRiskScore)
  */
 function validateFrequencyIntensity(factor: RiskFactorFrequencyIntensity): string[] {
   const errors: string[] = [];
 
+  // ========== 개선 전 평가 검증 ==========
+
   // 빈도 검증
-  if (factor.frequency === null) {
-    errors.push('빈도를 선택해주세요.');
-  } else if (factor.frequency < 1 || factor.frequency > 4) {
-    errors.push('빈도는 1~4 범위여야 합니다.');
+  if (factor.beforeFrequency === null) {
+    errors.push('[개선 전] 빈도를 선택해주세요.');
+  } else if (factor.beforeFrequency < 1 || factor.beforeFrequency > 4) {
+    errors.push('[개선 전] 빈도는 1~4 범위여야 합니다.');
   }
 
   // 강도 검증
-  if (factor.intensity === null) {
-    errors.push('강도를 선택해주세요.');
-  } else if (factor.intensity < 1 || factor.intensity > 5) {
-    errors.push('강도는 1~5 범위여야 합니다.');
+  if (factor.beforeIntensity === null) {
+    errors.push('[개선 전] 강도를 선택해주세요.');
+  } else if (factor.beforeIntensity < 1 || factor.beforeIntensity > 5) {
+    errors.push('[개선 전] 강도는 1~5 범위여야 합니다.');
   }
 
   // 점수 검증
-  if (factor.frequency !== null && factor.intensity !== null) {
-    const expectedScore = factor.frequency * factor.intensity;
-    if (factor.riskScore !== expectedScore) {
-      errors.push(`위험성 점수가 올바르지 않습니다. (기대값: ${expectedScore})`);
+  if (factor.beforeFrequency !== null && factor.beforeIntensity !== null) {
+    const expectedScore = factor.beforeFrequency * factor.beforeIntensity;
+    if (factor.beforeRiskScore !== expectedScore) {
+      errors.push(`[개선 전] 위험성 점수가 올바르지 않습니다. (기대값: ${expectedScore})`);
     }
 
     // 등급 검증
     const expectedGrade = calculateGradeLevel(expectedScore);
-    if (factor.gradeLevel !== expectedGrade) {
-      errors.push(`위험성 등급이 올바르지 않습니다. (기대값: ${expectedGrade})`);
+    if (factor.beforeGradeLevel !== expectedGrade) {
+      errors.push(`[개선 전] 위험성 등급이 올바르지 않습니다. (기대값: ${expectedGrade})`);
+    }
+  }
+
+  // ========== 개선 후 평가 검증 ==========
+
+  // 개선 효과 검증 (개선 전 평가가 완료된 경우에만)
+  if (
+    factor.beforeRiskScore !== null &&
+    factor.afterRiskScore !== null &&
+    factor.afterRiskScore > factor.beforeRiskScore
+  ) {
+    errors.push(
+      `[개선 효과] 개선 후 점수(${factor.afterRiskScore})가 개선 전 점수(${factor.beforeRiskScore})보다 높습니다. 개선대책을 재검토해주세요.`
+    );
+  }
+
+  // 빈도 검증
+  if (factor.afterFrequency === null) {
+    errors.push('[개선 후] 빈도를 선택해주세요.');
+  } else if (factor.afterFrequency < 1 || factor.afterFrequency > 4) {
+    errors.push('[개선 후] 빈도는 1~4 범위여야 합니다.');
+  }
+
+  // 강도 검증
+  if (factor.afterIntensity === null) {
+    errors.push('[개선 후] 강도를 선택해주세요.');
+  } else if (factor.afterIntensity < 1 || factor.afterIntensity > 5) {
+    errors.push('[개선 후] 강도는 1~5 범위여야 합니다.');
+  }
+
+  // 점수 검증
+  if (factor.afterFrequency !== null && factor.afterIntensity !== null) {
+    const expectedScore = factor.afterFrequency * factor.afterIntensity;
+    if (factor.afterRiskScore !== expectedScore) {
+      errors.push(`[개선 후] 위험성 점수가 올바르지 않습니다. (기대값: ${expectedScore})`);
+    }
+
+    // 등급 검증
+    const expectedGrade = calculateGradeLevel(expectedScore);
+    if (factor.afterGradeLevel !== expectedGrade) {
+      errors.push(`[개선 후] 위험성 등급이 올바르지 않습니다. (기대값: ${expectedGrade})`);
     }
   }
 
@@ -82,20 +130,20 @@ function validateLevel(factor: RiskFactorLevel): string[] {
 }
 
 /**
- * 공통 조치 필드 검증
+ * 소분류별 조치 필드 검증
  */
-function validateActionFields(factor: OccasionalRiskFactor): string[] {
+function validateSubcategoryActionFields(subcategory: OccasionalSubcategory): string[] {
   const errors: string[] = [];
 
-  if (!factor.actionDate || factor.actionDate.trim() === '') {
+  if (!subcategory.actionDate || subcategory.actionDate.trim() === '') {
     errors.push('조치일을 입력해주세요.');
   }
 
-  if (!factor.actionAssigneeIds || factor.actionAssigneeIds.length === 0) {
+  if (!subcategory.actionAssigneeIds || subcategory.actionAssigneeIds.length === 0) {
     errors.push('조치자를 최소 1명 이상 지정해주세요.');
   }
 
-  if (!factor.actionConfirmerIds || factor.actionConfirmerIds.length === 0) {
+  if (!subcategory.actionConfirmerIds || subcategory.actionConfirmerIds.length === 0) {
     errors.push('조치확인자를 최소 1명 이상 지정해주세요.');
   }
 
@@ -128,9 +176,6 @@ export function validateRiskFactorByMethod(
     errors.push('작업 종료일을 입력해주세요.');
   }
 
-  // 공통 조치 필드 검증
-  errors.push(...validateActionFields(factor));
-
   // 방식별 검증
   if (method === 'LEVEL') {
     if ('level' in factor) {
@@ -139,7 +184,7 @@ export function validateRiskFactorByMethod(
       errors.push('위험성 수준 정보가 없습니다.');
     }
   } else if (method === 'FREQUENCY_INTENSITY') {
-    if ('frequency' in factor && 'intensity' in factor) {
+    if ('beforeFrequency' in factor && 'beforeIntensity' in factor) {
       errors.push(...validateFrequencyIntensity(factor as RiskFactorFrequencyIntensity));
     } else {
       errors.push('빈도강도 정보가 없습니다.');
@@ -202,6 +247,13 @@ export function validateOccasionalAssessment(
         errors.push(`공종 ${catIdx + 1}: 최소 1개 이상의 하위 분류를 추가해주세요.`);
       } else {
         category.subcategories.forEach((subcategory, subIdx) => {
+          // 소분류별 조치 필드 검증
+          const actionErrors = validateSubcategoryActionFields(subcategory);
+          actionErrors.forEach((err) => {
+            errors.push(`공종 ${catIdx + 1} > ${subcategory.name}: ${err}`);
+          });
+
+          // 위험요인 검증
           if (!subcategory.riskFactors || subcategory.riskFactors.length === 0) {
             errors.push(
               `공종 ${catIdx + 1} > ${subcategory.name}: 최소 1개 이상의 위험요인을 추가해주세요.`

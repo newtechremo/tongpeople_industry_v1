@@ -110,10 +110,14 @@ export function resetRiskFactorsForMethodChange(
     } else {
       return {
         ...baseFactor,
-        frequency: null,
-        intensity: null,
-        riskScore: null,
-        gradeLevel: null,
+        beforeFrequency: null,
+        beforeIntensity: null,
+        beforeRiskScore: null,
+        beforeGradeLevel: null,
+        afterFrequency: null,
+        afterIntensity: null,
+        afterRiskScore: null,
+        afterGradeLevel: null,
       };
     }
   });

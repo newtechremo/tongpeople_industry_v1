@@ -11,6 +11,9 @@ PC 관리자 위험성평가 문서를 정리한 저장소입니다.
 
 ## 참고
 - 스킬 기반 문서: `docs/ui-specs/pc/`
+- 수시 만들기 상태 전이표(Phase 0): `docs/risk-assessment/occasional-create-workflow-state-machine.md`
+- 최초/정기 만들기 고도화 이행 계획: `docs/risk-assessment/initial-regular-migration-plan.md`
+- 수시 만들기/상세보기 컴팩트 개선 다음 단계: `docs/risk-assessment/occasional-compact-ui-next-step-plan.md`
 - 관련 코드:
   - `apps/admin-web/src/pages/risk-assessment/`
   - `apps/admin-web/src/components/risk-assessment/`

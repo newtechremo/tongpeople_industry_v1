@@ -89,7 +89,7 @@ export default function WorkflowSection({
     <div className="bg-white rounded-xl border-2 border-gray-200 overflow-hidden transition-all duration-300">
       {/* 섹션 헤더 */}
       <div
-        className={`flex items-center justify-between p-4 border-b-2 transition-all duration-200 ${currentStyle.header}`}
+        className={`flex items-center justify-between p-3 border-b-2 transition-all duration-200 ${currentStyle.header}`}
         onClick={handleHeaderClick}
         role="button"
         tabIndex={state === 'locked' ? -1 : 0}
@@ -99,21 +99,21 @@ export default function WorkflowSection({
         <div className="flex items-center gap-4 flex-1">
           {/* 섹션 번호 + 아이콘 */}
           <div className="flex items-center gap-2">
-            <span className={`text-2xl font-black ${currentStyle.title}`}>{sectionNumber}</span>
-            <StateIcon size={24} className={currentStyle.iconColor} />
+            <span className={`text-xl font-black ${currentStyle.title}`}>{sectionNumber}</span>
+            <StateIcon size={20} className={currentStyle.iconColor} />
           </div>
 
           {/* 섹션 제목 + 설명 */}
           <div className="flex-1">
-            <h3 className={`text-lg font-bold ${currentStyle.title}`}>{title}</h3>
-            <p className="text-sm text-slate-500 mt-1">{description}</p>
+            <h3 className={`text-base font-bold ${currentStyle.title}`}>{title}</h3>
+            <p className="text-xs text-slate-500 mt-0.5">{description}</p>
           </div>
         </div>
 
         {/* 상태 배지 + 확장 아이콘 */}
         <div className="flex items-center gap-3">
           <span
-            className={`px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider ${currentStyle.badge}`}
+            className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold uppercase tracking-wider ${currentStyle.badge}`}
           >
             {state === 'locked' && '잠김'}
             {state === 'active' && '작성중'}
@@ -123,7 +123,7 @@ export default function WorkflowSection({
 
           {state !== 'locked' && (
             <ChevronDown
-              size={24}
+              size={20}
               className={`transition-transform duration-300 ${
                 isExpanded ? 'rotate-180' : ''
               } ${currentStyle.iconColor}`}
@@ -136,15 +136,15 @@ export default function WorkflowSection({
       {isExpanded && state !== 'locked' && (
         <div className="animate-slideDown">
           {/* 섹션 내용 */}
-          <div className="p-6 space-y-4">{children}</div>
+          <div className="p-4 space-y-3">{children}</div>
 
           {/* 섹션 푸터 (이전/다음 버튼) */}
-          <div className="flex items-center justify-between px-6 py-4 bg-gray-50 border-t border-gray-200">
+          <div className="flex items-center justify-between px-4 py-3 bg-gray-50 border-t border-gray-200">
             {onPrevClick ? (
               <button
                 type="button"
                 onClick={onPrevClick}
-                className="px-6 py-2.5 rounded-lg font-medium text-slate-600 bg-white border border-gray-300 hover:bg-gray-100 transition-colors"
+                className="px-4 py-2 rounded-lg text-sm font-medium text-slate-600 bg-white border border-gray-300 hover:bg-gray-100 transition-colors"
               >
                 ← 이전
               </button>
@@ -156,12 +156,12 @@ export default function WorkflowSection({
               <button
                 type="button"
                 onClick={onNextClick}
-                className="px-6 py-2.5 rounded-lg font-bold text-white bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 transition-all shadow-md"
+                className="px-4 py-2 rounded-lg text-sm font-bold text-white bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 transition-all shadow-md"
               >
                 다음 →
               </button>
             ) : (
-              <div className="px-6 py-2.5 text-sm text-green-600 font-bold">
+              <div className="px-4 py-2 text-sm text-green-600 font-bold">
                 ✓ 모든 섹션 작성 완료
               </div>
             )}
@@ -171,8 +171,8 @@ export default function WorkflowSection({
 
       {/* locked 상태일 때 안내 메시지 */}
       {state === 'locked' && (
-        <div className="p-4 bg-gray-50 border-t border-gray-200">
-          <p className="text-sm text-gray-500 text-center">
+        <div className="p-3 bg-gray-50 border-t border-gray-200">
+          <p className="text-xs text-gray-500 text-center">
             이전 섹션을 완료하면 잠금이 해제됩니다
           </p>
         </div>
