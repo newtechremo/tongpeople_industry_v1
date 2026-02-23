@@ -40,7 +40,7 @@ interface Props {
   onCancel: () => void;
 }
 
-export default function InitialAssessmentForm({ type, onSubmit, onCancel }: Props) {
+export default function InitialAssessmentForm({ type: _type, onSubmit, onCancel }: Props) {
   const navigate = useNavigate();
   const { today, oneMonthLater } = useMemo(() => {
     const base = new Date();
@@ -404,7 +404,7 @@ export default function InitialAssessmentForm({ type, onSubmit, onCancel }: Prop
               key={category.id}
               categoryId={category.categoryId}
               categoryName={category.categoryName}
-              subcategories={category.subcategories}
+              subcategories={category.subcategories as never[]}
               onCategoryChange={(catId, catName) =>
                 handleCategoryChange(category.id, catId, catName)
               }

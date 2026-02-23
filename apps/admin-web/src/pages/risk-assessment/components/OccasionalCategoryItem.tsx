@@ -59,7 +59,7 @@ export default function OccasionalCategoryItem({
   onAddRiskFactor,
   onUpdateRiskFactor,
   onDeleteRiskFactor,
-  onSearchRiskFactor,
+  onSearchRiskFactor: _onSearchRiskFactor,
   onUpdateSubcategory,
   onDelete,
   index,

@@ -5,7 +5,6 @@
  */
 
 import type {
-  RiskFactor,
   SubcategoryBase,
   CategoryBase,
   AssessmentPayloadBase,
@@ -45,8 +44,8 @@ export interface InitialAssessmentPayload extends AssessmentPayloadBase {
  * 최초 평가 Payload 체크
  */
 export function isInitialAssessmentPayload(
-  payload: AssessmentPayloadBase
-): payload is InitialAssessmentPayload {
+  _payload: AssessmentPayloadBase
+): _payload is InitialAssessmentPayload {
   // 현재는 Base와 동일하므로 항상 true
   // 향후 최초 전용 필드 추가 시 검증 로직 추가
   return true;

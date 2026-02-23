@@ -99,9 +99,6 @@ function validateWorkCategorySection(
 
   const usedCategoryIds = new Set<number>();
   const usedCategoryNames = new Set<string>();
-  const usedSubcategoryIds = new Set<number>();
-  const usedSubcategoryNames = new Set<string>();
-  const usedRiskFactorNames = new Set<string>();
 
   categories.forEach((category, catIdx) => {
     const catPrefix = `대분류 ${catIdx + 1}`;
@@ -133,6 +130,10 @@ function validateWorkCategorySection(
       return;
     }
 
+    // 소분류 중복 체크 (대분류 내에서만 유니크 보장)
+    const usedSubcategoryIds = new Set<number>();
+    const usedSubcategoryNames = new Set<string>();
+
     // 소분류별 검증
     category.subcategories.forEach((subcategory, subIdx) => {
       const subPrefix = `${catPrefix} > 소분류 ${subIdx + 1}`;
@@ -156,6 +157,9 @@ function validateWorkCategorySection(
       if (subcategory.riskFactors.length === 0) {
         errors.push(`${subPrefix}: 최소 1개 이상의 위험요인을 추가해주세요.`);
       }
+
+      // 위험요인명 중복 체크 (소분류 내에서만 유니크 보장)
+      const usedRiskFactorNames = new Set<string>();
 
       // 위험요인별 검증
       subcategory.riskFactors.forEach((factor, factorIdx) => {

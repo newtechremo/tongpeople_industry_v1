@@ -233,7 +233,7 @@ export function validateWorkCategory(data: WorkCategoryData): ValidationResult {
     }
 
     // 각 소분류 검증
-    category.subcategories.forEach((subcategory, subIdx) => {
+    category.subcategories.forEach((subcategory, _subIdx) => {
       const subPrefix = `${catPrefix} > ${subcategory.name}`;
 
       // 위험요인 개수 검증

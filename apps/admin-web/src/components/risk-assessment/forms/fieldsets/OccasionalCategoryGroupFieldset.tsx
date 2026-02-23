@@ -74,6 +74,9 @@ export default function OccasionalCategoryGroupFieldset({
       name,
       isCustom: true,
       riskFactors: [],
+      actionDate: '',
+      actionAssigneeIds: [],
+      actionConfirmerIds: [],
     };
 
     onChange(
@@ -119,10 +122,14 @@ export default function OccasionalCategoryGroupFieldset({
         ? ({ ...baseFactor, level: null } as RiskFactorLevel)
         : ({
             ...baseFactor,
-            frequency: null,
-            intensity: null,
-            riskScore: null,
-            gradeLevel: null,
+            beforeFrequency: null,
+            beforeIntensity: null,
+            beforeRiskScore: null,
+            beforeGradeLevel: null,
+            afterFrequency: null,
+            afterIntensity: null,
+            afterRiskScore: null,
+            afterGradeLevel: null,
           } as RiskFactorFrequencyIntensity);
 
     onChange(

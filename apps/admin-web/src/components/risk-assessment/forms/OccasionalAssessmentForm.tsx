@@ -37,6 +37,9 @@ interface OccasionalSubcategory {
   name: string;
   isCustom?: boolean;
   riskFactors: OccasionalRiskFactor[];
+  actionDate: string;
+  actionAssigneeIds: string[];
+  actionConfirmerIds: string[];
 }
 
 interface OccasionalCategory {
@@ -243,10 +246,14 @@ export default function OccasionalAssessmentForm({ onSubmit, onCancel }: Props) 
                 ? ({ ...baseFactor, level: null } as RiskFactorLevel)
                 : ({
                     ...baseFactor,
-                    frequency: null,
-                    intensity: null,
-                    riskScore: null,
-                    gradeLevel: null,
+                    beforeFrequency: null,
+                    beforeIntensity: null,
+                    beforeRiskScore: null,
+                    beforeGradeLevel: null,
+                    afterFrequency: null,
+                    afterIntensity: null,
+                    afterRiskScore: null,
+                    afterGradeLevel: null,
                   } as RiskFactorFrequencyIntensity);
             });
 
@@ -507,7 +514,7 @@ export default function OccasionalAssessmentForm({ onSubmit, onCancel }: Props) 
               }
               onSearchRiskFactor={(subId) => handleAddRiskFactor(category.id, subId)}
               onUpdateSubcategory={(subId, updatedSub) =>
-                handleUpdateSubcategory(category.id, subId, updatedSub)
+                handleUpdateSubcategory(category.id, subId, updatedSub as OccasionalSubcategory)
               }
               onDelete={() => handleDeleteCategory(category.id)}
               index={index}

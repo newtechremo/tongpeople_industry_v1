@@ -246,7 +246,7 @@ export function validateOccasionalAssessment(
       if (!category.subcategories || category.subcategories.length === 0) {
         errors.push(`공종 ${catIdx + 1}: 최소 1개 이상의 하위 분류를 추가해주세요.`);
       } else {
-        category.subcategories.forEach((subcategory, subIdx) => {
+        category.subcategories.forEach((subcategory, _subIdx) => {
           // 소분류별 조치 필드 검증
           const actionErrors = validateSubcategoryActionFields(subcategory);
           actionErrors.forEach((err) => {

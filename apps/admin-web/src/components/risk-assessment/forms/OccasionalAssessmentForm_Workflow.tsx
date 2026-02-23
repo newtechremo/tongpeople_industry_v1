@@ -747,7 +747,7 @@ export default function OccasionalAssessmentForm({
                   }
                   onSearchRiskFactor={(subId) => handleAddRiskFactor(category.id, subId)}
                   onUpdateSubcategory={(subId, updatedSub) =>
-                    handleUpdateSubcategory(category.id, subId, updatedSub)
+                    handleUpdateSubcategory(category.id, subId, updatedSub as OccasionalSubcategory)
                   }
                   onDelete={() => handleDeleteCategory(category.id)}
                   index={index}

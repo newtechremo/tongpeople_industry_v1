@@ -5,7 +5,6 @@
  */
 
 import type {
-  RiskFactor,
   SubcategoryBase,
   CategoryBase,
   AssessmentPayloadBase,

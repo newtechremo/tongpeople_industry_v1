@@ -633,6 +633,7 @@ export default function RiskAssessmentDetailPage() {
                                   </div>
                                 ) : (factor.beforeFrequency !== undefined && factor.beforeIntensity !== undefined) || (factor.frequency !== undefined && factor.intensity !== undefined) ? (
                                   // 빈도강도 방식 (개선 전/후 또는 단일 평가)
+                                  <>
                                   <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
                                     {/* 개선 전 */}
                                     <div className="rounded-lg border border-blue-200 bg-blue-50/50 p-3 space-y-2.5">
@@ -746,6 +747,67 @@ export default function RiskAssessmentDetailPage() {
                                       </div>
                                     </div>
                                   </div>
+
+                                  {/* 개선 효과 */}
+                                  {factor.beforeRiskScore != null &&
+                                    factor.afterRiskScore != null &&
+                                    factor.beforeGradeLevel != null &&
+                                    factor.afterGradeLevel != null && (
+                                      <div className="p-4 rounded-lg border-2 border-slate-200 bg-gradient-to-r from-slate-50 to-white">
+                                        <div className="flex items-center justify-between">
+                                          <div className="flex items-center gap-4">
+                                            {/* 점수 변화 */}
+                                            <div className="flex items-center gap-2">
+                                              <span className="text-sm font-semibold text-slate-600">점수 변화:</span>
+                                              <span className="text-lg font-bold text-slate-800">{factor.beforeRiskScore}</span>
+                                              <span className="text-slate-400">→</span>
+                                              <span className="text-lg font-bold text-slate-800">{factor.afterRiskScore}</span>
+                                              {factor.beforeRiskScore !== factor.afterRiskScore && (
+                                                <span className={`text-sm font-bold ${factor.afterRiskScore < factor.beforeRiskScore ? 'text-green-600' : 'text-red-600'}`}>
+                                                  ({factor.afterRiskScore > factor.beforeRiskScore ? '+' : ''}{factor.afterRiskScore - factor.beforeRiskScore})
+                                                </span>
+                                              )}
+                                            </div>
+
+                                            <div className="h-6 w-px bg-slate-300" />
+
+                                            {/* 등급 변화 */}
+                                            <div className="flex items-center gap-2">
+                                              <span className="text-sm font-semibold text-slate-600">등급 변화:</span>
+                                              <span className={`text-lg font-bold ${factor.beforeGradeLevel === 'HIGH' ? 'text-red-600' : factor.beforeGradeLevel === 'MEDIUM' ? 'text-orange-600' : 'text-green-600'}`}>
+                                                {factor.beforeGradeLevel === 'HIGH' ? '상' : factor.beforeGradeLevel === 'MEDIUM' ? '중' : '하'}
+                                              </span>
+                                              <span className="text-slate-400">→</span>
+                                              <span className={`text-lg font-bold ${factor.afterGradeLevel === 'HIGH' ? 'text-red-600' : factor.afterGradeLevel === 'MEDIUM' ? 'text-orange-600' : 'text-green-600'}`}>
+                                                {factor.afterGradeLevel === 'HIGH' ? '상' : factor.afterGradeLevel === 'MEDIUM' ? '중' : '하'}
+                                              </span>
+                                            </div>
+                                          </div>
+
+                                          {/* 개선 상태 배지 */}
+                                          {factor.beforeRiskScore !== factor.afterRiskScore && (
+                                            <div>
+                                              {factor.afterRiskScore < factor.beforeRiskScore ? (
+                                                <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-green-100 border border-green-300 text-green-700 text-sm font-bold">
+                                                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                                                  </svg>
+                                                  개선됨
+                                                </span>
+                                              ) : (
+                                                <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-amber-100 border border-amber-300 text-amber-700 text-sm font-bold">
+                                                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                                                  </svg>
+                                                  주의 필요
+                                                </span>
+                                              )}
+                                            </div>
+                                          )}
+                                        </div>
+                                      </div>
+                                    )}
+                                  </>
                                 ) : null}
                               </div>
 

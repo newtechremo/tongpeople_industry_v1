@@ -5,7 +5,7 @@
  */
 
 import { areStringsEqual } from './stringNormalize';
-import type { CategoryBase, SubcategoryBase, RiskFactor } from '../types/common';
+import type { CategoryBase, SubcategoryBase } from '../types/common';
 
 // ==================== 대분류 중복 검사 ====================
 
