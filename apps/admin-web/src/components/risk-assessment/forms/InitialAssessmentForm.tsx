@@ -1,5 +1,5 @@
 /**
- * 최초 위험성평가 폼 (레거시 기반)
+ * 위험성평가 폼 (최초/정기)
  *
  * 기본정보 + 작업 공종/소분류 + 위험요인 입력 흐름 유지
  */
@@ -13,62 +13,54 @@ import ApprovalLineSelectModal from '@/pages/risk-assessment/modals/ApprovalLine
 import SubcategoryAddModal from '@/pages/risk-assessment/modals/SubcategoryAddModal';
 import RiskFactorSelectModal from '@/pages/risk-assessment/modals/RiskFactorSelectModal';
 import { useApprovalLines } from '@/stores/approvalLinesStore';
+import { getActiveTeams } from '@/mocks/teams';
 
-let idCounter = 0;
-const generateId = () => `temp-${Date.now()}-${++idCounter}`;
-
-interface RiskFactor {
-  id: string;
-  factor: string;
-  level: 'HIGH' | 'MEDIUM' | 'LOW' | null;
-  improvement: string;
-  workPeriodStart: string;
-  workPeriodEnd: string;
-}
-
-interface Subcategory {
-  id: number;
-  name: string;
-  isCustom?: boolean;
-  riskFactors: RiskFactor[];
-}
-
-interface Category {
-  id: string;
-  categoryId: number | null;
-  categoryName: string;
-  subcategories: Subcategory[];
-}
-
-interface InitialAssessmentPayload {
-  siteName: string;
-  companyName: string;
-  approvalLineId: string | null;
-  workPeriodStart: string;
-  workPeriodEnd: string;
-  categories: Category[];
-}
+// 공통 타입 및 유틸리티
+import {
+  generateId,
+  formatDateInputValue,
+  addMonths,
+  type RiskFactorLevel,
+} from '../types/common';
+import type {
+  InitialCategory,
+  InitialSubcategory,
+  InitialAssessmentPayload,
+} from '../types/initial';
+import { validateRiskFactorByMethod } from '../validation/common';
+import {
+  isCategoryDuplicate,
+  isSubcategoryDuplicate,
+  isRiskFactorDuplicate,
+} from '../utils/duplicateGuard';
 
 interface Props {
+  type: 'initial' | 'regular';
   onSubmit: (data: InitialAssessmentPayload) => void;
   onCancel: () => void;
 }
 
-export default function InitialAssessmentForm({ onSubmit, onCancel }: Props) {
+export default function InitialAssessmentForm({ type: _type, onSubmit, onCancel }: Props) {
   const navigate = useNavigate();
+  const { today, oneMonthLater } = useMemo(() => {
+    const base = new Date();
+    return {
+      today: formatDateInputValue(base),
+      oneMonthLater: formatDateInputValue(addMonths(base, 1)),
+    };
+  }, []);
 
   const [siteName] = useState('통사통사현장');
   const [companyName] = useState('(주)통하는사람들');
-  const [workPeriodStart, setWorkPeriodStart] = useState('2026-01-01');
-  const [workPeriodEnd, setWorkPeriodEnd] = useState('2026-01-31');
+  const [teamId, setTeamId] = useState<string>('all');
+  const [workPeriodStart, setWorkPeriodStart] = useState(today);
+  const [workPeriodEnd, setWorkPeriodEnd] = useState(oneMonthLater);
   const [approvalModalOpen, setApprovalModalOpen] = useState(false);
 
+  const teams = useMemo(() => getActiveTeams(), []);
+
   const approvalLines = useApprovalLines();
-  const availableApprovalLines = useMemo(() => {
-    return approvalLines.filter((line) =>
-      line.tags.includes('RISK_ASSESSMENT') || line.tags.includes('GENERAL')
-    );
-  }, [approvalLines]);
+  const availableApprovalLines = useMemo(() => approvalLines, [approvalLines]);
 
   const defaultApprovalLine = useMemo(() => {
     const pinned = availableApprovalLines.find((line) => line.isPinned);
@@ -83,7 +75,7 @@ export default function InitialAssessmentForm({ onSubmit, onCancel }: Props) {
     }
   }, [availableApprovalLines, defaultApprovalLine, selectedApprovalLine]);
 
-  const [categories, setCategories] = useState<Category[]>([]);
+  const [categories, setCategories] = useState<InitialCategory[]>([]);
 
   const [subcategoryModalOpen, setSubcategoryModalOpen] = useState(false);
   const [riskFactorModalOpen, setRiskFactorModalOpen] = useState(false);
@@ -103,6 +95,12 @@ export default function InitialAssessmentForm({ onSubmit, onCancel }: Props) {
   };
 
   const handleCategoryChange = (categoryId: string, newCategoryId: number, newCategoryName: string) => {
+    // 중복 검사
+    if (isCategoryDuplicate(categories, newCategoryId, newCategoryName, categoryId)) {
+      alert(`이미 선택된 대분류입니다: ${newCategoryName}`);
+      return;
+    }
+
     setCategories(
       categories.map((cat) =>
         cat.id === categoryId
@@ -140,11 +138,23 @@ export default function InitialAssessmentForm({ onSubmit, onCancel }: Props) {
           (id) => !cat.subcategories.find((sub) => sub.id === id)
         );
 
-        const newSubs: Subcategory[] = newSubIds.map((id) => ({
-          id,
-          name: getMockSubcategoryName(id),
-          riskFactors: [],
-        }));
+        // 새로 추가되는 소분류에 대해 중복 검사
+        const newSubs: InitialSubcategory[] = [];
+        for (const id of newSubIds) {
+          const name = getMockSubcategoryName(id);
+
+          // 중복 검사 (이미 선택된 소분류 제외)
+          if (isSubcategoryDuplicate(cat, id, name)) {
+            alert(`이미 선택된 소분류입니다: ${name}`);
+            continue;  // 중복이면 추가하지 않음
+          }
+
+          newSubs.push({
+            id,
+            name,
+            riskFactors: [],
+          });
+        }
 
         return {
           ...cat,
@@ -161,6 +171,16 @@ export default function InitialAssessmentForm({ onSubmit, onCancel }: Props) {
     }
 
     const newSubcategoryId = Math.floor(Math.random() * 1000000) + 1000;
+
+    // 현재 대분류 찾기
+    const currentCategory = categories.find((cat) => cat.id === activeCategory);
+    if (!currentCategory) return;
+
+    // 중복 검사
+    if (isSubcategoryDuplicate(currentCategory, newSubcategoryId, name)) {
+      alert(`이미 존재하는 소분류 이름입니다: ${name}`);
+      return;
+    }
 
     setCategories(
       categories.map((cat) => {
@@ -191,6 +211,25 @@ export default function InitialAssessmentForm({ onSubmit, onCancel }: Props) {
   const handleSelectRiskFactors = (factors: { factor: string; improvement: string }[]) => {
     if (!activeCategory || !activeSubcategory) return;
 
+    // 현재 소분류 찾기
+    const currentCategory = categories.find((cat) => cat.id === activeCategory);
+    const currentSubcategory = currentCategory?.subcategories.find(
+      (sub) => sub.id === activeSubcategory
+    );
+
+    if (!currentSubcategory) return;
+
+    // 중복 검사 후 필터링
+    const validFactors = factors.filter((f) => {
+      if (isRiskFactorDuplicate(currentSubcategory, f.factor)) {
+        alert(`이미 추가된 위험요인입니다: ${f.factor}`);
+        return false;
+      }
+      return true;
+    });
+
+    if (validFactors.length === 0) return;
+
     setCategories(
       categories.map((cat) => {
         if (cat.id !== activeCategory) return cat;
@@ -200,7 +239,7 @@ export default function InitialAssessmentForm({ onSubmit, onCancel }: Props) {
           subcategories: cat.subcategories.map((sub) => {
             if (sub.id !== activeSubcategory) return sub;
 
-            const newFactors: RiskFactor[] = factors.map((f) => ({
+            const newFactors: RiskFactorLevel[] = validFactors.map((f) => ({
               id: generateId(),
               factor: f.factor,
               level: null,
@@ -270,53 +309,61 @@ export default function InitialAssessmentForm({ onSubmit, onCancel }: Props) {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
+    // 1. 기본 정보 검증
     if (categories.length === 0) {
       alert('최소 1개 이상의 작업 공종을 추가해주세요.');
       return;
     }
 
+    // 2. 카테고리별 검증
     for (let i = 0; i < categories.length; i++) {
       const category = categories[i];
+
+      // 대분류 선택 검증
       if (!category.categoryId) {
         alert(`대분류${i + 1}를 선택해주세요.`);
         return;
       }
+
+      // 소분류 개수 검증
       if (category.subcategories.length === 0) {
         alert(`대분류${i + 1} (${category.categoryName})에 최소 1개 이상의 소분류를 선택해주세요.`);
         return;
       }
 
+      // 소분류별 검증
       for (let j = 0; j < category.subcategories.length; j++) {
         const subcategory = category.subcategories[j];
+
+        // 위험요인 개수 검증
         if (subcategory.riskFactors.length === 0) {
           alert(`소분류 "${subcategory.name}"에 최소 1개 이상의 위험요인을 추가해주세요.`);
           return;
         }
 
+        // 위험요인별 검증 (공통 검증 함수 사용)
         for (let k = 0; k < subcategory.riskFactors.length; k++) {
           const factor = subcategory.riskFactors[k];
-          if (!factor.factor.trim()) {
-            alert(`소분류 "${subcategory.name}"의 위험요인 ${k + 1}번째 항목에 위험요인을 입력해주세요.`);
-            return;
-          }
-          if (!factor.level) {
-            alert(`소분류 "${subcategory.name}"의 위험요인 "${factor.factor}"의 위험성 수준을 선택해주세요.`);
-            return;
-          }
-          if (!factor.improvement.trim()) {
-            alert(`소분류 "${subcategory.name}"의 위험요인 "${factor.factor}"의 개선대책을 입력해주세요.`);
+
+          // 공통 검증 함수 호출 (LEVEL 방식 고정)
+          const errors = validateRiskFactorByMethod(factor, 'LEVEL');
+
+          if (errors.length > 0) {
+            alert(`소분류 "${subcategory.name}"의 위험요인 ${k + 1}:\n${errors.join('\n')}`);
             return;
           }
         }
       }
     }
 
+    // 3. 제출
     onSubmit({
       siteName,
       companyName,
       approvalLineId: selectedApprovalLine?.id || null,
       workPeriodStart,
       workPeriodEnd,
+      riskMethod: 'LEVEL',  // 최초/정기는 상중하 고정
       categories,
     });
   };
@@ -327,12 +374,16 @@ export default function InitialAssessmentForm({ onSubmit, onCancel }: Props) {
         <BasicInfoSection
           siteName={siteName}
           companyName={companyName}
+          teamId={teamId}
+          teams={teams}
           approvalLineName={selectedApprovalLine?.name || null}
           approvalLineCount={selectedApprovalLine?.approvers.length || null}
           approvalLineApprovers={
             selectedApprovalLine?.approvers.map((approver) => ({
               approvalTitle: approver.approvalTitle,
               userName: approver.userName,
+              userId: approver.userId,
+              position: approver.position,
             })) || []
           }
           workPeriodStart={workPeriodStart}
@@ -342,6 +393,7 @@ export default function InitialAssessmentForm({ onSubmit, onCancel }: Props) {
             if (field === 'start') setWorkPeriodStart(value);
             else setWorkPeriodEnd(value);
           }}
+          onTeamChange={setTeamId}
         />
 
         <div className="space-y-6">
@@ -352,7 +404,7 @@ export default function InitialAssessmentForm({ onSubmit, onCancel }: Props) {
               key={category.id}
               categoryId={category.categoryId}
               categoryName={category.categoryName}
-              subcategories={category.subcategories}
+              subcategories={category.subcategories as never[]}
               onCategoryChange={(catId, catName) =>
                 handleCategoryChange(category.id, catId, catName)
               }

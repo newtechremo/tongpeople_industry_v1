@@ -48,7 +48,7 @@ export default function RiskFactorCard({
         <button
           type="button"
           onClick={onDelete}
-          className="flex items-center gap-1 text-sm text-red-500 font-medium hover:text-red-600 transition-colors"
+          className="flex items-center gap-1 text-base text-red-500 font-medium hover:text-red-600 transition-colors"
         >
           <Trash2 size={16} />
           항목 삭제
@@ -57,7 +57,7 @@ export default function RiskFactorCard({
 
       {/* 위험 요인 */}
       <div>
-        <label className="block text-sm font-medium text-slate-600 mb-2">
+        <label className="block text-base font-medium text-slate-600 mb-2">
           위험 요인
         </label>
         <div className="relative">
@@ -66,7 +66,7 @@ export default function RiskFactorCard({
             value={factor}
             onChange={(e) => onChange('factor', e.target.value)}
             placeholder="위험 요인을 입력하세요..."
-            className="w-full px-4 py-2 pr-10 border border-gray-300 rounded-lg text-sm focus:outline-none focus:border-orange-500 focus:ring-1 focus:ring-orange-500"
+            className="w-full px-4 py-2 pr-10 border border-gray-300 rounded-lg text-base focus:outline-none focus:border-orange-500 focus:ring-1 focus:ring-orange-500"
           />
           <button
             type="button"
@@ -81,7 +81,7 @@ export default function RiskFactorCard({
       {/* 위험성 수준 */}
       <div>
         <div className="flex items-center gap-6">
-          <span className="text-sm font-medium text-slate-600">위험성 수준</span>
+          <span className="text-base font-medium text-slate-600">위험성 수준</span>
 
           <div className="flex items-center gap-4">
             {[
@@ -98,7 +98,7 @@ export default function RiskFactorCard({
                   onChange={() => onChange('level', option.value)}
                   className="w-4 h-4 text-orange-500 focus:ring-orange-500"
                 />
-                <span className="text-sm text-slate-700">{option.label}</span>
+                <span className="text-base text-slate-700">{option.label}</span>
               </label>
             ))}
           </div>
@@ -107,7 +107,7 @@ export default function RiskFactorCard({
 
       {/* 개선 대책 */}
       <div>
-        <label className="block text-sm font-medium text-slate-600 mb-2">
+        <label className="block text-base font-medium text-slate-600 mb-2">
           개선 대책
         </label>
         <input
@@ -115,13 +115,13 @@ export default function RiskFactorCard({
           value={improvement}
           onChange={(e) => onChange('improvement', e.target.value)}
           placeholder="개선 대책을 입력하세요..."
-          className="w-full px-4 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:border-orange-500 focus:ring-1 focus:ring-orange-500"
+          className="w-full px-4 py-2 border border-gray-300 rounded-lg text-base focus:outline-none focus:border-orange-500 focus:ring-1 focus:ring-orange-500"
         />
       </div>
 
       {/* 작업 기간 */}
       <div>
-        <label className="block text-sm font-medium text-slate-600 mb-2">
+        <label className="block text-base font-medium text-slate-600 mb-2">
           작업 기간
         </label>
         <div className="flex items-center gap-3">
@@ -130,7 +130,7 @@ export default function RiskFactorCard({
               type="date"
               value={workPeriodStart}
               onChange={(e) => onChange('workPeriodStart', e.target.value)}
-              className="w-full px-4 py-2 pr-10 border border-gray-300 rounded-lg text-sm focus:outline-none focus:border-orange-500 focus:ring-1 focus:ring-orange-500"
+              className="w-full px-4 py-2 pr-10 border border-gray-300 rounded-lg text-base focus:outline-none focus:border-orange-500 focus:ring-1 focus:ring-orange-500"
             />
             <Calendar className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
           </div>
@@ -140,7 +140,7 @@ export default function RiskFactorCard({
               type="date"
               value={workPeriodEnd}
               onChange={(e) => onChange('workPeriodEnd', e.target.value)}
-              className="w-full px-4 py-2 pr-10 border border-gray-300 rounded-lg text-sm focus:outline-none focus:border-orange-500 focus:ring-1 focus:ring-orange-500"
+              className="w-full px-4 py-2 pr-10 border border-gray-300 rounded-lg text-base focus:outline-none focus:border-orange-500 focus:ring-1 focus:ring-orange-500"
             />
             <Calendar className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
           </div>

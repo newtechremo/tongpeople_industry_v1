@@ -5,7 +5,8 @@
  * 복수 선택 가능, 커스텀 소분류 추가 가능
  */
 
-import { CheckCircle, PlusCircle } from 'lucide-react';
+import { useState } from 'react';
+import { CheckCircle, PlusCircle, Search } from 'lucide-react';
 
 interface Subcategory {
   id: number;
@@ -19,6 +20,7 @@ interface SubcategoryCheckListProps {
   customItems: Subcategory[];
   onChange: (selectedIds: number[]) => void;
   onAddCustom: () => void;
+  excludedIds?: number[]; // 다른 대분류에서 이미 사용된 소분류 ID 목록
 }
 
 export default function SubcategoryCheckList({
@@ -27,7 +29,10 @@ export default function SubcategoryCheckList({
   customItems,
   onChange,
   onAddCustom,
+  excludedIds = [],
 }: SubcategoryCheckListProps) {
+  const [searchQuery, setSearchQuery] = useState('');
+
   // Mock 데이터 (실제로는 API에서 categoryId로 조회)
   const mockSubcategories: Subcategory[] = [
     { id: 101, name: '가설전선 설치작업' },
@@ -38,6 +43,11 @@ export default function SubcategoryCheckList({
   ];
 
   const allSubcategories = [...mockSubcategories, ...customItems];
+
+  // 검색 필터링
+  const filteredSubcategories = allSubcategories.filter((sub) =>
+    sub.name.toLowerCase().includes(searchQuery.toLowerCase())
+  );
 
   const handleToggle = (id: number) => {
     if (selectedIds.includes(id)) {
@@ -53,35 +63,62 @@ export default function SubcategoryCheckList({
         소분류 선택 <span className="text-slate-400">(한 개 이상 선택하세요)</span>
       </p>
 
+      {/* 검색창 */}
+      <div className="relative">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+        <input
+          type="text"
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          placeholder="소분류 검색..."
+          className="w-full pl-10 pr-4 py-2 border-2 border-gray-200 rounded-lg focus:border-orange-500 focus:outline-none text-sm"
+        />
+      </div>
+
       {/* 체크박스 리스트 */}
       <div className="space-y-2">
-        {allSubcategories.map((sub) => {
-          const isSelected = selectedIds.includes(sub.id);
+        {filteredSubcategories.length > 0 ? (
+          filteredSubcategories.map((sub) => {
+            const isSelected = selectedIds.includes(sub.id);
+            const isExcluded = excludedIds.includes(sub.id) && !isSelected;
 
-          return (
-            <label
-              key={sub.id}
-              className="flex items-center gap-3 py-2 px-2 cursor-pointer hover:bg-gray-50 rounded transition-colors"
-            >
-              {isSelected ? (
-                <CheckCircle size={20} className="text-red-500 flex-shrink-0" />
-              ) : (
-                <input
-                  type="checkbox"
-                  checked={false}
-                  onChange={() => handleToggle(sub.id)}
-                  className="w-5 h-5 rounded border-gray-300 text-orange-500 focus:ring-orange-500 focus:ring-offset-0"
-                />
-              )}
-              <span className="text-sm text-slate-700 flex-1">
-                {sub.name}
-                {sub.isCustom && (
-                  <span className="ml-2 text-xs text-orange-600">(직접 추가)</span>
+            return (
+              <label
+                key={sub.id}
+                className={`flex items-center gap-3 py-2 px-2 rounded transition-colors ${
+                  isExcluded
+                    ? 'opacity-50 cursor-not-allowed'
+                    : 'cursor-pointer hover:bg-gray-50'
+                }`}
+              >
+                {isSelected ? (
+                  <CheckCircle size={20} className="text-red-500 flex-shrink-0" />
+                ) : (
+                  <input
+                    type="checkbox"
+                    checked={false}
+                    onChange={() => handleToggle(sub.id)}
+                    disabled={isExcluded}
+                    className="w-5 h-5 rounded border-gray-300 text-orange-500 focus:ring-orange-500 focus:ring-offset-0 disabled:opacity-50 disabled:cursor-not-allowed"
+                  />
                 )}
-              </span>
-            </label>
-          );
-        })}
+                <span className={`text-sm flex-1 ${isExcluded ? 'text-slate-400' : 'text-slate-700'}`}>
+                  {sub.name}
+                  {sub.isCustom && (
+                    <span className="ml-2 text-xs text-orange-600">(직접 추가)</span>
+                  )}
+                  {isExcluded && (
+                    <span className="ml-2 text-xs text-red-600">(이미 사용됨)</span>
+                  )}
+                </span>
+              </label>
+            );
+          })
+        ) : (
+          <div className="py-8 text-center text-slate-400 text-sm">
+            검색 결과가 없습니다
+          </div>
+        )}
       </div>
 
       {/* 소분류 직접 추가 버튼 */}

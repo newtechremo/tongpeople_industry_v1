@@ -18,6 +18,7 @@ interface CategorySearchInputProps {
   onChange: (categoryId: number, categoryName: string) => void;
   onClear: () => void;
   placeholder?: string;
+  excludedIds?: number[]; // 이미 사용된 대분류 ID 목록
 }
 
 export default function CategorySearchInput({
@@ -26,6 +27,7 @@ export default function CategorySearchInput({
   onChange,
   onClear,
   placeholder = '대분류를 입력하세요...',
+  excludedIds = [],
 }: CategorySearchInputProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [isOpen, setIsOpen] = useState(false);
@@ -58,17 +60,24 @@ export default function CategorySearchInput({
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // 검색어 변경 시 필터링
+  // 검색어 변경 시 필터링 (이미 사용된 대분류 제외)
   useEffect(() => {
+    let filtered = mockCategories;
+
+    // 검색어 필터링
     if (searchQuery) {
-      const filtered = mockCategories.filter(cat =>
+      filtered = filtered.filter(cat =>
         cat.name.toLowerCase().includes(searchQuery.toLowerCase())
       );
-      setCategories(filtered);
-    } else {
-      setCategories(mockCategories);
     }
-  }, [searchQuery]);
+
+    // 이미 사용된 대분류 제외 (단, 현재 선택된 것은 유지)
+    filtered = filtered.filter(cat =>
+      cat.id === categoryId || !excludedIds.includes(cat.id)
+    );
+
+    setCategories(filtered);
+  }, [searchQuery, excludedIds, categoryId]);
 
   const handleSelect = (category: Category) => {
     onChange(category.id, category.name);

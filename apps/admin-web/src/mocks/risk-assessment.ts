@@ -7,7 +7,7 @@
 
 // ============ 타입 정의 ============
 
-export type AssessmentType = 'INITIAL' | 'ADHOC' | 'FREQUENCY_INTENSITY';
+export type AssessmentType = 'INITIAL' | 'REGULAR' | 'OCCASIONAL' | 'FREQUENCY_INTENSITY';
 export type AssessmentStatus = 'DRAFT' | 'IN_PROGRESS' | 'COMPLETED' | 'APPROVED' | 'REJECTED';
 export type RiskGradeLevel = '하' | '중' | '고';
 
@@ -39,11 +39,25 @@ export interface MockRiskAssessmentItem {
   risk_factor_id: string;
   risk_factor_name: string;
   accident_type: string;
+  // 구형 단일 평가 필드 (레거시 호환)
   frequency?: number; // 1-4
   intensity?: number; // 1-5
   risk_grade?: number; // frequency × intensity
   grade_level?: RiskGradeLevel;
   measures?: string; // 개선대책
+  // 신형 개선 전/후 평가 필드
+  beforeFrequency?: number | null;
+  beforeIntensity?: number | null;
+  beforeRiskScore?: number | null;
+  beforeGradeLevel?: 'LOW' | 'MEDIUM' | 'HIGH' | null;
+  afterFrequency?: number | null;
+  afterIntensity?: number | null;
+  afterRiskScore?: number | null;
+  afterGradeLevel?: 'LOW' | 'MEDIUM' | 'HIGH' | null;
+  level?: 'HIGH' | 'MEDIUM' | 'LOW' | null;
+  improvement?: string;
+  workPeriodStart?: string;
+  workPeriodEnd?: string;
 }
 
 export interface MockRiskAssessment {
@@ -307,7 +321,7 @@ export const mockAssessments: MockRiskAssessment[] = [
   // 수시 위험성평가 (빈도강도)
   {
     id: 'ra-3',
-    type: 'ADHOC',
+    type: 'OCCASIONAL',
     status: 'IN_PROGRESS',
     title: '신규 설비 도입에 따른 수시 위험성평가',
     site_id: 'site-2',
@@ -383,8 +397,67 @@ export const mockAssessments: MockRiskAssessment[] = [
   },
 
   {
+    id: 'ra-6',
+    type: 'OCCASIONAL',
+    status: 'IN_PROGRESS',
+    title: '[빈도강도 개선전후] 고소작업 수시 위험성평가',
+    site_id: 'site-1',
+    site_name: '대전공장',
+    team_id: 'team-1',
+    team_name: '(주)정이앤지',
+    creator_id: 'user-1',
+    creator_name: '홍길동',
+    work_start_date: '2026-02-01',
+    work_end_date: '2026-02-28',
+    category_id: 'cat-6',
+    category_name: '고소작업',
+    trigger_reason: '고소작업 방법 변경',
+    trigger_date: '2026-02-01',
+    created_at: '2026-02-01T09:00:00Z',
+    updated_at: '2026-02-20T12:00:00Z',
+    items: [
+      {
+        id: 'item-test-1',
+        risk_factor_id: 'rf-test-1',
+        risk_factor_name: '추락 위험',
+        accident_type: '추락',
+        measures: '안전벨트 착용, 안전망 설치',
+        beforeFrequency: 4,
+        beforeIntensity: 5,
+        beforeRiskScore: 20,
+        beforeGradeLevel: 'HIGH',
+        afterFrequency: 2,
+        afterIntensity: 3,
+        afterRiskScore: 6,
+        afterGradeLevel: 'MEDIUM',
+        improvement: '안전벨트 착용 의무화 + 안전망 설치',
+        workPeriodStart: '2026-02-01',
+        workPeriodEnd: '2026-02-28',
+      },
+      {
+        id: 'item-test-2',
+        risk_factor_id: 'rf-test-2',
+        risk_factor_name: '공구 낙하',
+        accident_type: '맞음',
+        measures: '공구 낙하방지 줄 사용',
+        beforeFrequency: 3,
+        beforeIntensity: 4,
+        beforeRiskScore: 12,
+        beforeGradeLevel: 'MEDIUM',
+        afterFrequency: 1,
+        afterIntensity: 2,
+        afterRiskScore: 2,
+        afterGradeLevel: 'LOW',
+        improvement: '낙하방지줄 필수 착용',
+        workPeriodStart: '2026-02-01',
+        workPeriodEnd: '2026-02-28',
+      },
+    ],
+  },
+
+  {
     id: 'ra-5',
-    type: 'ADHOC',
+    type: 'OCCASIONAL',
     status: 'COMPLETED',
     title: '작업방법 변경에 따른 수시평가',
     site_id: 'site-2',
